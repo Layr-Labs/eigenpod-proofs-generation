@@ -4,34 +4,6 @@ This repository allows users to generate the proofs necessary to prove consensus
 An important note is that this CLI is designed to be used with inputs that can be retrieved from a consensus layer client, [here](https://ethereum.github.io/beacon-APIs/) is the relevant API specification.
 
 
-# GIT Large File Storage
-Please install git LFS (large file storage) before using this REPO in order for the CI to function.  We use LFS to store our large state files that are needed to generate the proofs and verify their integrity via the CI.
-
-To install LFS: 
-```
-# On macOS using Homebrew
-brew install git-lfs
-
-# On Debian-based Linux
-sudo apt-get install git-lfs
-
-# On RPM-based Linux
-sudo yum install git-lfs
-```
-
-Then to install it on this repo, navigate to apg/ and run:
-```
-git lfs install
-```
-
-If you have the repo cloned already, run: 
-```
-git lfs pull
-```
-If this doesn't work, it may require you to re-clone the repo from scratch.  
-
-
-
 # How to Generate the Proofs with the Proof Generation library
 This package allows you to generate withdrawal credential proofs, withdrawal proofs and balance update proofs. To generate the proofs using this library, run the following commands:
 
