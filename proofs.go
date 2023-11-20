@@ -9,6 +9,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
+	"github.com/rs/zerolog/log"
 )
 
 var zeroBytes = make([]byte, 32)
@@ -214,12 +215,6 @@ func ComputeValidatorTreeLeaves(validators []*phase0.Validator) ([]phase0.Root, 
 }
 
 func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (Proof, error) {
-	hh := ssz.NewHasher()
-	//fmt.Println("currents tate of hh", hh.Hash())
-
-	//initialize the hash buffer with the first balance
-	//hh.PutUint64(uint64(balances[0]))
-	fmt.Println("currents tate of hh", hh.Index())
 
 	buf := []byte{}
 
@@ -244,7 +239,7 @@ func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, va
 	proof, err := GetProof(balanceRootList, validatorBalanceIndex, numLayers)
 
 	if err != nil {
-		fmt.Println("error", err)
+		log.Debug().AnErr("error", err).Msg("error getting proof")
 		return nil, err
 	}
 

@@ -11,6 +11,7 @@ import (
 
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -213,16 +214,15 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 func parseStateJSONFile(filePath string) (*beaconStateJSON, error) {
 	data, err := ioutil.ReadFile(filePath)
 
-	fmt.Println(len(data))
 	if err != nil {
-		fmt.Println("error with reading file", filePath)
+		log.Debug().Str("file", filePath).Msg("error with reading file")
 		return nil, err
 	}
 
 	var beaconState beaconStateVersion
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
-		fmt.Println("error with JSON unmarshalling")
+		log.Debug().Msg("error with JSON unmarshalling")
 		return nil, err
 	}
 
