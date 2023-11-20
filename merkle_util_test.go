@@ -109,8 +109,15 @@ func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	leaf, _ := b.Validators[validatorIndex].HashTreeRoot()
-	root, _ := b.HashTreeRoot()
+	leaf, err := b.Validators[validatorIndex].HashTreeRoot()
+	if err != nil {
+		fmt.Println("error with hash tree root")
+	}
+
+	root, err := b.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error with hash tree root of beacon state")
+	}
 
 	index := VALIDATOR_LIST_INDEX<<(VALIDATOR_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | uint64(validatorIndex)
 
