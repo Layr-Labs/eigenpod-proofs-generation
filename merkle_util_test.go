@@ -188,10 +188,8 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 
 func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
-	// curl -H "Accept: application/json" 'https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/6400000?api_key\="343035|f6ebfef661524745abb4f1fd908a76e8"'
 	currentBeaconStateJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
 
-	// curl -H "Accept: application/json" 'https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/6397951?api_key\="343035|f6ebfef661524745abb4f1fd908a76e8"' -o goerli_slot_6291455_capella.json
 	if err != nil {
 		fmt.Println("error parsing currentBeaconStateJSON")
 	}
@@ -397,7 +395,6 @@ func TestComputeExecutionPayloadHeader(t *testing.T) {
 
 func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 
-	// curl -H "Accept: application/json" 'https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/6399999?api_key\="343035|f6ebfef661524745abb4f1fd908a76e8"'
 	// this is the state where the latest block header from the oracle was taken.  This is the next slot after
 	// the state we want to prove things about (remember latestBlockHeader.state_root = previous slot's state root)
 	// oracleStateJSON, err := parseJSONFile("data/historical_summary_proof/goerli_slot_6399999.json")
@@ -415,7 +412,6 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	}
 
 	//the state from the prev slot which contains shit we wanna prove about
-	// curl -H "Accept: application/json" 'https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/6399998?api_key\="343035|f6ebfef661524745abb4f1fd908a76e8"'
 	stateToProveJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
 	var stateToProve capella.BeaconState
 	ParseCapellaBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
