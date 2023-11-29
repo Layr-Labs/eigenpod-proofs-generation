@@ -57,13 +57,10 @@ const balanceListMerkleSubtreeNumLayers = uint64(40)
 const withdrawalListMerkleSubtreeNumLayers = uint64(4)
 
 // Number of layers for the merkleization of the Beacon State
-const BEACON_STATE_MERKLE_SUBTREE_NUM_LAYERS = uint64(5)
+const beaconStateMerkleSubtreeNumLayers = uint64(5)
 
 // Number of layers for the merkleization of the Block Roots in the Beacon State
-const BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS = uint64(13)
+const blockRootsMerkleSubtreeNumLayers = uint64(13)
 
 // **************Number of fields of various containers**************
-const BEACON_STATE_NUM_FIELDS = uint64(28)
-const BEACON_BLOCK_HEADER_NUM_FIELDS = uint64(5)
-const BEACON_BLOCK_BODY_NUM_FIELDS = uint64(11)
-const EXECUTION_PAYLOAD_NUM_FIELDS = uint64(15)
+const beaconBlockHeaderNumFields = uint64(5)

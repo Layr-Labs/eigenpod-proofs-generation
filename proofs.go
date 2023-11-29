@@ -122,7 +122,7 @@ func ProveWithdrawalAgainstExecutionPayload(
 }
 
 func ProveBlockRootAgainstBlockRootsList(blockRoots []phase0.Root, blockRootIndex uint64) (Proof, error) {
-	proof, err := GetProof(blockRoots, blockRootIndex, BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := GetProof(blockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateT
 		roots[i] = v.(phase0.Root)
 	}
 
-	return GetProof(roots, index, BEACON_STATE_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(roots, index, beaconStateMerkleSubtreeNumLayers)
 }
 
 func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, withdrawalIndex uint8) (Proof, error) {
@@ -1031,7 +1031,7 @@ func GetExecutionPayloadFieldRoots(executionPayloadFields *capella.ExecutionPayl
 }
 
 func GetBlockHeaderFieldRoots(blockHeader *phase0.BeaconBlockHeader) ([]phase0.Root, error) {
-	blockHeaderContainerRoots := make([]phase0.Root, BEACON_BLOCK_HEADER_NUM_FIELDS)
+	blockHeaderContainerRoots := make([]phase0.Root, beaconBlockHeaderNumFields)
 
 	hh := ssz.NewHasher()
 
