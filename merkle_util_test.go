@@ -32,7 +32,7 @@ var VALIDATOR_INDEX uint64 = 61336           //this is the index of a validator 
 var REPOINTED_VALIDATOR_INDEX uint64 = 61511 //this is the index of a validator that we use for the withdrawal credential proofs
 
 // this needs to be hand crafted. If you want the root of the header at the slot x,
-// then look for entry in (x)%SLOTS_PER_HISTORICAL_ROOT in the block_roots.
+// then look for entry in (x)%slotsPerHistoricalRoot in the block_roots.
 
 // var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 656
 var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 2262
@@ -81,7 +81,7 @@ func setupSuite() {
 
 	executionPayload = *block.Body.ExecutionPayload
 
-	blockHeaderIndex = uint64(blockHeader.Slot) % SLOTS_PER_HISTORICAL_ROOT
+	blockHeaderIndex = uint64(blockHeader.Slot) % slotsPerHistoricalRoot
 
 	epp, err = NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
 	if err != nil {

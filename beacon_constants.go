@@ -1,13 +1,8 @@
 package main
 
-const VALIDATOR_REGISTRY_LIMIT = uint64(1099511627776)
-const SLOTS_PER_HISTORICAL_ROOT = uint64(8192)
-
-// Maximum number of withdrawals in an execution payload
-const MAX_WITHDRAWALS_PER_PAYLOAD = uint64(16)
+const slotsPerHistoricalRoot = uint64(8192)
 
 // **************Indexes of relevant containers**************
-const BLOCK_ROOTS_INDEX = uint64(5)
 
 // Index of the historical summaries in the beacon state
 const HISTORICAL_SUMMARY_INDEX = uint64(27)
@@ -15,8 +10,6 @@ const HISTORICAL_SUMMARY_INDEX = uint64(27)
 // Index of validator list in beacon state
 const VALIDATOR_LIST_INDEX = uint64(11)
 const BALANCE_LIST_INDEX = uint64(12)
-
-const BEACON_STATE_SLOT_INDEX = uint64(2)
 
 const LATEST_BLOCK_HEADER_INDEX = uint64(4)
 
