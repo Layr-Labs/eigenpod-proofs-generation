@@ -5,7 +5,7 @@ const slotsPerHistoricalRoot = uint64(8192)
 // **************Indexes of relevant containers**************
 
 // Index of the historical summaries in the beacon state
-const HISTORICAL_SUMMARY_INDEX = uint64(27)
+const historicalSummaryIndex = uint64(27)
 
 // Index of validator list in beacon state
 const VALIDATOR_LIST_INDEX = uint64(11)

@@ -250,7 +250,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := HISTORICAL_SUMMARY_INDEX<<((HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)+1+(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)) |
+	historicalBlockHeaderIndex := historicalSummaryIndex<<((HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)+1+(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)) |
 		historicalSummaryIndex<<(1+BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS) |
 		BLOCK_SUMMARY_ROOT_INDEX<<(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS) | beaconBlockHeaderToVerifyIndex
 
