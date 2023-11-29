@@ -8,36 +8,27 @@ const slotsPerHistoricalRoot = uint64(8192)
 const historicalSummaryIndex = uint64(27)
 
 // Index of validator list in beacon state
-const VALIDATOR_LIST_INDEX = uint64(11)
-const BALANCE_LIST_INDEX = uint64(12)
-
-const LATEST_BLOCK_HEADER_INDEX = uint64(4)
+const validatorListIndex = uint64(11)
+const balanceListIndex = uint64(12)
 
 // Index of the beacon body root inside the beacon body header
-const BEACON_BLOCK_BODY_ROOT_INDEX = uint64(4)
+const beaconBlockBodyIndex = uint64(4)
 
 // Index of the execution payload in the BeaconBlockBody container
-const EXECUTION_PAYLOAD_INDEX = uint64(9)
-
-// Index of the block number inside the execution payload
-const BLOCK_NUMBER_INDEX = uint64(6)
+const executionPayloadIndex = uint64(9)
 
 // Index of the timestamp inside the execution payload
-const TIMESTAMP_INDEX = uint64(9)
+const timestampIndex = uint64(9)
 
 // Index of the withdrawals inside the execution payload
-const WITHDRAWALS_INDEX = uint64(14)
+const withdrawalsIndex = uint64(14)
 
 // Index of the slot in the beacon block header
-const SLOT_INDEX = uint64(0)
-const STATE_ROOT_INDEX = uint64(3)
-
-const VALIDATORS_INDEX = uint64(11)
-
-const WITHDRAWAL_CREDENTIALS_INDEX = uint64(1)
+const slotIndex = uint64(0)
+const stateRootIndex = uint64(3)
 
 // in the historical summary coontainer, the block root summary is at index 0
-const BLOCK_SUMMARY_ROOT_INDEX = uint64(0)
+const blockSummaryRootIndex = uint64(0)
 
 //
 //
@@ -46,27 +37,24 @@ const BLOCK_SUMMARY_ROOT_INDEX = uint64(0)
 //
 
 // Number of layers for various merkle subtrees
-const BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS = uint64(3)
+const blockHeaderMerkleSubtreeNumLayers = uint64(3)
 
-const BLOCK_BODY_MERKLE_SUBTREE_NUM_LAYERS = uint64(4)
+const blockBodyMerkleSubtreeNumLayers = uint64(4)
 
 // Number of layers for the merkelization of the Execution Payload
-const EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS = uint64(4)
-
-// Number of layers for the merkleization of the Validator container
-const VALIDATOR_MERKLE_SUBTREE_NUM_LAYERS = uint64(3)
+const executionPayloadMerkleSubtreeNumLayers = uint64(4)
 
 // Number of layers for the merkleixation of the Validator List in the Beacon State
-const VALIDATOR_LIST_MERKLE_SUBTREE_NUM_LAYERS = uint64(40)
+const validatorListMerkleSubtreeNumLayers = uint64(40)
 
 // Number of layers for the merkleixation of the Historical Summary List in the Beacon State
-const HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS = uint64(24)
+const historicalSummaryListMerkleSubtreeNumLayers = uint64(24)
 
 // Number of layers for the merkleixation of the Balance List in the Beacon State
-const BALANCE_LIST_MERKLE_SUBTREE_NUM_LAYERS = uint64(40)
+const balanceListMerkleSubtreeNumLayers = uint64(40)
 
 // Number of layers for the merkleization of the Withdrawal List in the Exection Payload
-const WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS = uint64(4)
+const withdrawalListMerkleSubtreeNumLayers = uint64(4)
 
 // Number of layers for the merkleization of the Beacon State
 const BEACON_STATE_MERKLE_SUBTREE_NUM_LAYERS = uint64(5)
