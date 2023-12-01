@@ -246,9 +246,9 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := historicalSummaryListIndex<<((HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)+1+(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)) |
-		historicalSummaryIndex<<(1+BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS) |
-		blockSummaryRootIndex<<(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS) | beaconBlockHeaderToVerifyIndex
+	historicalBlockHeaderIndex := historicalSummaryListIndex<<((historicalSummaryListMerkleSubtreeNumLayers+1)+1+(blockRootsMerkleSubtreeNumLayers)) |
+		historicalSummaryIndex<<(1+blockRootsMerkleSubtreeNumLayers) |
+		blockSummaryRootIndex<<(blockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
 
 	flag := ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
 	if flag != true {
@@ -559,9 +559,9 @@ func TestGetWithdrawalProof(t *testing.T) {
 	if err != nil {
 		fmt.Println("error")
 	}
-	// withdrawalIndex = beaconBlockBodyRootIndex<<( blockBodyMerkleSubtreeNumLayers+ executionPayloadMerkleSubtreeNumLayers+( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)) | executionPayloadIndex<<( executionPayloadMerkleSubtreeNumLayers+( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)) | withdrawalsIndex<<( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | withdrawalIndex
+	// withdrawalIndex = beaconBlockBodyRootIndex<<( blockBodyMerkleSubtreeNumLayers+ executionPayloadMerkleSubtreeNumLayers+( withdrawalListMerkleSubtreeNumLayers+1)) | executionPayloadIndex<<( executionPayloadMerkleSubtreeNumLayers+( withdrawalListMerkleSubtreeNumLayers+1)) | withdrawalsIndex<<( withdrawalListMerkleSubtreeNumLayers+1) | withdrawalIndex
 
-	withdrawalRelativeToELPayloadIndex := withdrawalsIndex<<(WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | uint64(withdrawalIndex)
+	withdrawalRelativeToELPayloadIndex := withdrawalsIndex<<(withdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
 
 	// calling the proof verification func
 	flag := ValidateProof(executionPayloadRoot, withdrawalProof, leaf, withdrawalRelativeToELPayloadIndex)

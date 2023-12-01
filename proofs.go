@@ -122,7 +122,7 @@ func ProveWithdrawalAgainstExecutionPayload(
 }
 
 func ProveBlockRootAgainstBlockRootsList(blockRoots []phase0.Root, blockRootIndex uint64) (Proof, error) {
-	proof, err := GetProof(blockRoots, blockRootIndex, BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := GetProof(blockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateT
 		roots[i] = v.(phase0.Root)
 	}
 
-	return GetProof(roots, index, BEACON_STATE_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(roots, index, beaconStateMerkleSubtreeNumLayers)
 }
 
 func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, withdrawalIndex uint8) (Proof, error) {
@@ -156,7 +156,7 @@ func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, wit
 		withdrawalNodeList[i] = phase0.Root(withdrawalRoot)
 	}
 
-	proof, err := GetProof(withdrawalNodeList, uint64(withdrawalIndex), WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := GetProof(withdrawalNodeList, uint64(withdrawalIndex), withdrawalListMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func ProveHistoricalSummaryAgainstHistoricalSummariesList(historicalSummaries []
 		historicalSummaryNodeList[i] = phase0.Root(historicalSummaryRoot)
 	}
 
-	proof, err := GetProof(historicalSummaryNodeList, historicalSummaryIndex, HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := GetProof(historicalSummaryNodeList, historicalSummaryIndex, historicalSummaryListMerkleSubtreeNumLayers)
 
 	if err != nil {
 		return nil, err
