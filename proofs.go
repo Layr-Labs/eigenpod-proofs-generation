@@ -283,7 +283,7 @@ func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Pr
 		return nil, err
 	}
 
-	return GetProof(blockHeaderContainerRoots, BEACON_BLOCK_BODY_ROOT_INDEX, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
 }
 
 func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
@@ -454,9 +454,9 @@ func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *capella.BeaconBlockB
 		hh.Reset()
 	}
 
-	proof, err := GetProof(beaconBlockBodyContainerRoots, EXECUTION_PAYLOAD_INDEX, BLOCK_BODY_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, BLOCK_BODY_MERKLE_SUBTREE_NUM_LAYERS)
 
-	return proof, beaconBlockBodyContainerRoots[EXECUTION_PAYLOAD_INDEX], err
+	return proof, beaconBlockBodyContainerRoots[executionPayloadIndex], err
 }
 
 // refer to this: https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/phase0/beaconblockheader_encoding.go

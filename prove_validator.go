@@ -142,7 +142,7 @@ func (epp *EigenPodProofs) ProveValidatorBalanceAgainstBalanceRoot(oracleBeaconS
 	}
 
 	// prove the validator balance list root against the beacon state
-	beaconStateProof, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, BALANCE_LIST_INDEX)
+	beaconStateProof, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, balanceListIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (epp *EigenPodProofs) ProveValidatorBalanceAgainstBalanceRoot(oracleBeaconS
 
 func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *capella.BeaconState, beaconStateTopLevelRoots *BeaconStateTopLevelRoots, validatorIndex uint64) (Proof, error) {
 	// prove the validator list against the beacon state
-	validatorListProof, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, VALIDATOR_LIST_INDEX)
+	validatorListProof, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, validatorListIndex)
 	if err != nil {
 		return nil, err
 	}

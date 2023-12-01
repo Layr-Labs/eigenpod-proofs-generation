@@ -6,21 +6,14 @@ const slotsPerHistoricalRoot = uint64(8192)
 const historicalSummaryListIndex = uint64(27)
 
 // Index of validator list in beacon state
-const VALIDATOR_LIST_INDEX = uint64(11)
-const BALANCE_LIST_INDEX = uint64(12)
-
-const BEACON_STATE_SLOT_INDEX = uint64(2)
-
-const LATEST_BLOCK_HEADER_INDEX = uint64(4)
+const validatorListIndex = uint64(11)
+const balanceListIndex = uint64(12)
 
 // Index of the beacon body root inside the beacon body header
-const BEACON_BLOCK_BODY_ROOT_INDEX = uint64(4)
+const beaconBlockBodyRootIndex = uint64(4)
 
 // Index of the execution payload in the BeaconBlockBody container
-const EXECUTION_PAYLOAD_INDEX = uint64(9)
-
-// Index of the block number inside the execution payload
-const BLOCK_NUMBER_INDEX = uint64(6)
+const executionPayloadIndex = uint64(9)
 
 // Index of the timestamp inside the execution payload
 const TIMESTAMP_INDEX = uint64(9)
