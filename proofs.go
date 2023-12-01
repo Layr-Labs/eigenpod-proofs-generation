@@ -47,7 +47,7 @@ type BeaconStateTopLevelRoots struct {
 
 func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelRoots *BeaconStateTopLevelRoots, historicalSummaries []*capella.HistoricalSummary, historicalBlockRoots []phase0.Root, historicalSummaryIndex uint64, blockRootIndex uint64) ([][32]byte, error) {
 	// prove the historical summaries against the beacon state
-	historicalSummariesListAgainstBeaconState, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, HISTORICAL_SUMMARY_INDEX)
+	historicalSummariesListAgainstBeaconState, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, historicalSummaryListIndex)
 
 	if err != nil {
 		return nil, err

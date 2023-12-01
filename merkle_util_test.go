@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -32,7 +31,7 @@ var VALIDATOR_INDEX uint64 = 61336           //this is the index of a validator 
 var REPOINTED_VALIDATOR_INDEX uint64 = 61511 //this is the index of a validator that we use for the withdrawal credential proofs
 
 // this needs to be hand crafted. If you want the root of the header at the slot x,
-// then look for entry in (x)%SLOTS_PER_HISTORICAL_ROOT in the block_roots.
+// then look for entry in (x)%slotsPerHistoricalRoot in the block_roots.
 
 // var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 656
 var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 2262
@@ -81,7 +80,7 @@ func setupSuite() {
 
 	executionPayload = *block.Body.ExecutionPayload
 
-	blockHeaderIndex = uint64(blockHeader.Slot) % SLOTS_PER_HISTORICAL_ROOT
+	blockHeaderIndex = uint64(blockHeader.Slot) % slotsPerHistoricalRoot
 
 	epp, err = NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
 	if err != nil {
@@ -157,7 +156,6 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 
 	// get the oracle state root for a merkle tree with top level roots as the leaves
 	beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRoots(&b)
-	fmt.Println("beacon state hashes", beaconStateTopLevelRoots)
 	if err != nil {
 		fmt.Println("error")
 	}
@@ -207,8 +205,6 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 		fmt.Println("blockHeader.UnmarshalJSON error", err)
 	}
 
-	fmt.Println("blockHeader", blockHeader)
-
 	var currentBeaconState capella.BeaconState
 	var oldBeaconState capella.BeaconState
 
@@ -216,7 +212,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 	ParseCapellaBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
 
 	currentBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&currentBeaconState)
-	oldBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&oldBeaconState)
+	//oldBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&oldBeaconState)
 
 	if err != nil {
 		fmt.Println("error")
@@ -229,10 +225,10 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 		fmt.Println("error", err)
 	}
 
-	fmt.Println("THESE SHOULD BE", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	fmt.Println("THE SAME", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	fmt.Println("THESE SHOULD BE", hex.EncodeToString(oldBeaconStateTopLevelRoots.BlockRootsRoot[:]))
-	fmt.Println("THE SAME", hex.EncodeToString(currentBeaconState.HistoricalSummaries[146].BlockSummaryRoot[:]))
+	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
+	// fmt.Println("THE SAME", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
+	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(oldBeaconStateTopLevelRoots.BlockRootsRoot[:]))
+	// fmt.Println("THE SAME", hex.EncodeToString(currentBeaconState.HistoricalSummaries[146].BlockSummaryRoot[:]))
 
 	oldBlockRoots := oldBeaconState.BlockRoots
 
@@ -250,7 +246,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := HISTORICAL_SUMMARY_INDEX<<((HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)+1+(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)) |
+	historicalBlockHeaderIndex := historicalSummaryListIndex<<((HISTORICAL_SUMMARY_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)+1+(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS)) |
 		historicalSummaryIndex<<(1+BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS) |
 		BLOCK_SUMMARY_ROOT_INDEX<<(BLOCK_ROOTS_MERKLE_SUBTREE_NUM_LAYERS) | beaconBlockHeaderToVerifyIndex
 
@@ -291,7 +287,6 @@ func TestProveValidatorAgainstValidatorList(t *testing.T) {
 	}
 
 	// calling the proof verification func
-	fmt.Println("beaconStateTopLevelRoots.ValidatorsRoot", beaconStateTopLevelRoots.ValidatorsRoot)
 	flag := ValidateProof(*beaconStateTopLevelRoots.ValidatorsRoot, validatorProof, leaf, uint64(validatorIndex))
 	if flag != true {
 		fmt.Println("error")
@@ -362,9 +357,6 @@ func TestProveBlockBodyAgainstBlockHeader(t *testing.T) {
 
 func TestComputeExecutionPayloadHeader(t *testing.T) {
 
-	fmt.Println(block.Body.ExecutionPayload.BaseFeePerGas)
-	fmt.Println("blockHeader", blockHeader.Slot)
-
 	// get the proof for execution payload in the block body
 	beaconBlockBodyProof, _, err := ProveExecutionPayloadAgainstBlockBody(block.Body)
 	if err != nil {
@@ -431,10 +423,6 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	if err != nil {
 		fmt.Println("this error", err)
 	}
-
-	fmt.Println("state root in header", hex.EncodeToString(blockHeader.StateRoot[:]))
-	fmt.Println("state root", hex.EncodeToString(leaf[:]))
-	fmt.Println("latest block header root", hex.EncodeToString(root[:]))
 
 	flag := ValidateProof(root, proof, leaf, 3)
 	if flag != true {
@@ -581,8 +569,6 @@ func TestGetWithdrawalProof(t *testing.T) {
 		fmt.Println("error")
 	}
 
-	fmt.Println("length of proof", len(withdrawalProof))
-
 	assert.True(t, flag, "Proof %v failed\n")
 }
 
@@ -652,7 +638,6 @@ func TestGetSlotProof(t *testing.T) {
 	binary.LittleEndian.PutUint64(buf, uint64(slot))
 	var bytes32 [32]byte
 	copy(bytes32[:], buf[:32])
-	fmt.Printf("bytes32: %x\n", bytes32)
 
 	proof, _ := ProveSlotAgainstBlockHeader(&blockHeader)
 
@@ -662,8 +647,6 @@ func TestGetSlotProof(t *testing.T) {
 	hh.PutUint64(uint64(slot))
 
 	leaf := ConvertTo32ByteArray(hh.Hash())
-
-	fmt.Println("leaf", hex.EncodeToString(leaf[:]))
 
 	flag := ValidateProof(root, proof, leaf, 0)
 	if flag != true {
@@ -696,7 +679,6 @@ type Proofs struct {
 func parseJSONFile(filePath string) (*beaconStateJSON, error) {
 	data, err := os.ReadFile(filePath)
 
-	fmt.Println("len data", len(data))
 	if err != nil {
 		fmt.Println("error with reading file")
 		return nil, err
