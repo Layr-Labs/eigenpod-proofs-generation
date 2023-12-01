@@ -16,13 +16,13 @@ const beaconBlockBodyRootIndex = uint64(4)
 const executionPayloadIndex = uint64(9)
 
 // Index of the timestamp inside the execution payload
-const TIMESTAMP_INDEX = uint64(9)
+const timestampIndex = uint64(9)
 
 // Index of the withdrawals inside the execution payload
-const WITHDRAWALS_INDEX = uint64(14)
+const withdrawalsIndex = uint64(14)
 
 // Index of the slot in the beacon block header
-const SLOT_INDEX = uint64(0)
+const slotIndex = uint64(0)
 const STATE_ROOT_INDEX = uint64(3)
 
 const VALIDATORS_INDEX = uint64(11)

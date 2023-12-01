@@ -273,7 +273,7 @@ func ProveSlotAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Proof, 
 		return nil, err
 	}
 
-	return GetProof(blockHeaderContainerRoots, SLOT_INDEX, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(blockHeaderContainerRoots, slotIndex, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
 }
 
 func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Proof, error) {
@@ -293,7 +293,7 @@ func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.
 		return nil, err
 	}
 
-	return GetProof(executionPayloadFieldRoots, WITHDRAWALS_INDEX, EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS)
 }
 
 func ProveTimestampAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
@@ -302,7 +302,7 @@ func ProveTimestampAgainstExecutionPayload(executionPayloadFields *capella.Execu
 		return nil, err
 	}
 
-	return GetProof(executionPayloadFieldRoots, TIMESTAMP_INDEX, EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(executionPayloadFieldRoots, timestampIndex, EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS)
 }
 
 // Refer to beaconblockbody.go in go-eth2-client

@@ -317,7 +317,7 @@ func TestComputeBlockSlotProof(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, SLOT_INDEX)
+	flag := ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, slotIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -488,7 +488,7 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 		}
 		copy(executionPayloadHashRoot[:], hh.Hash())
 	}
-	flag := ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, WITHDRAWALS_INDEX)
+	flag := ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, withdrawalsIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -559,9 +559,9 @@ func TestGetWithdrawalProof(t *testing.T) {
 	if err != nil {
 		fmt.Println("error")
 	}
-	// withdrawalIndex = beaconBlockBodyRootIndex<<( BLOCK_BODY_MERKLE_SUBTREE_NUM_LAYERS+ EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS+( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)) | executionPayloadIndex<<( EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS+( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)) | WITHDRAWALS_INDEX<<( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | withdrawalIndex
+	// withdrawalIndex = beaconBlockBodyRootIndex<<( BLOCK_BODY_MERKLE_SUBTREE_NUM_LAYERS+ EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS+( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)) | executionPayloadIndex<<( EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS+( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1)) | withdrawalsIndex<<( WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | withdrawalIndex
 
-	withdrawalRelativeToELPayloadIndex := WITHDRAWALS_INDEX<<(WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | uint64(withdrawalIndex)
+	withdrawalRelativeToELPayloadIndex := withdrawalsIndex<<(WITHDRAWAL_LIST_MERKLE_SUBTREE_NUM_LAYERS+1) | uint64(withdrawalIndex)
 
 	// calling the proof verification func
 	flag := ValidateProof(executionPayloadRoot, withdrawalProof, leaf, withdrawalRelativeToELPayloadIndex)
@@ -591,7 +591,7 @@ func TestGetTimestampProof(t *testing.T) {
 	}
 
 	// calling the proof verification func
-	flag := ValidateProof(root, timestampProof, leaf, TIMESTAMP_INDEX)
+	flag := ValidateProof(root, timestampProof, leaf, timestampIndex)
 	if flag != true {
 		fmt.Println("proof failed")
 	}
