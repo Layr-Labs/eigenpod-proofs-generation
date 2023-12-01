@@ -14,7 +14,7 @@ import (
 )
 
 // this needs to be hand crafted. If you want the root of the header at the slot x,
-// then look for entry in (x)%SLOTS_PER_HISTORICAL_ROOT in the block_roots.
+// then look for entry in (x)%slotsPerHistoricalRoot in the block_roots.
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
