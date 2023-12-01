@@ -58,7 +58,4 @@ const beaconStateMerkleSubtreeNumLayers = uint64(5)
 const blockRootsMerkleSubtreeNumLayers = uint64(13)
 
 // **************Number of fields of various containers**************
-const BEACON_STATE_NUM_FIELDS = uint64(28)
-const BEACON_BLOCK_HEADER_NUM_FIELDS = uint64(5)
-const BEACON_BLOCK_BODY_NUM_FIELDS = uint64(11)
-const EXECUTION_PAYLOAD_NUM_FIELDS = uint64(15)
+const beaconBlockHeaderNumFields = uint64(5)

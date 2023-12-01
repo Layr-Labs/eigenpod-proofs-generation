@@ -1031,7 +1031,7 @@ func GetExecutionPayloadFieldRoots(executionPayloadFields *capella.ExecutionPayl
 }
 
 func GetBlockHeaderFieldRoots(blockHeader *phase0.BeaconBlockHeader) ([]phase0.Root, error) {
-	blockHeaderContainerRoots := make([]phase0.Root, BEACON_BLOCK_HEADER_NUM_FIELDS)
+	blockHeaderContainerRoots := make([]phase0.Root, beaconBlockHeaderNumFields)
 
 	hh := ssz.NewHasher()
 
