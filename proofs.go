@@ -273,7 +273,7 @@ func ProveSlotAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Proof, 
 		return nil, err
 	}
 
-	return GetProof(blockHeaderContainerRoots, slotIndex, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(blockHeaderContainerRoots, slotIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Proof, error) {
@@ -283,7 +283,7 @@ func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Pr
 		return nil, err
 	}
 
-	return GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
@@ -293,7 +293,7 @@ func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.
 		return nil, err
 	}
 
-	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, executionPayloadMerkleSubtreeNumLayers)
 }
 
 func ProveTimestampAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
@@ -302,7 +302,7 @@ func ProveTimestampAgainstExecutionPayload(executionPayloadFields *capella.Execu
 		return nil, err
 	}
 
-	return GetProof(executionPayloadFieldRoots, timestampIndex, EXECUTION_PAYLOAD_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(executionPayloadFieldRoots, timestampIndex, executionPayloadMerkleSubtreeNumLayers)
 }
 
 // Refer to beaconblockbody.go in go-eth2-client
@@ -454,7 +454,7 @@ func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *capella.BeaconBlockB
 		hh.Reset()
 	}
 
-	proof, err := GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, BLOCK_BODY_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
 
 	return proof, beaconBlockBodyContainerRoots[executionPayloadIndex], err
 }
@@ -490,7 +490,7 @@ func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (Proof, error
 	copy(beaconBlockHeaderContainerRoots[4][:], hh.Hash())
 	hh.Reset()
 
-	return GetProof(beaconBlockHeaderContainerRoots, STATE_ROOT_INDEX, BLOCK_HEADER_MERKLE_SUBTREE_NUM_LAYERS)
+	return GetProof(beaconBlockHeaderContainerRoots, stateRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 // taken from https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/capella/beaconstate_ssz.go#L639

@@ -181,7 +181,7 @@ func (epp *EigenPodProofs) ProveValidatorAgainstValidatorList(slot uint64, valid
 		return nil, err
 	}
 
-	proof, err := ComputeMerkleProofFromTree(validatorTree, validatorIndex, VALIDATOR_LIST_MERKLE_SUBTREE_NUM_LAYERS)
+	proof, err := ComputeMerkleProofFromTree(validatorTree, validatorIndex, validatorListMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
