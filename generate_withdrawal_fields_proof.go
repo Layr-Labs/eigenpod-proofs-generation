@@ -95,7 +95,7 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ComputeBeaconStateTopLevelRoots", err)
 	}
-	withdrawalProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &state, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex), FIRST_CAPELLA_SLOT_GOERLI)
+	withdrawalProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &state, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
 	}

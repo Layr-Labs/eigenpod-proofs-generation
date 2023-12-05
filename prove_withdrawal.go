@@ -109,17 +109,10 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 	verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs = make([]Proof, len(withdrawalBlocks))
 	verifyAndProcessWithdrawalCallParams.ValidatorFields = make([][]Bytes32, len(withdrawalBlocks))
 
-	var FIRST_CAPELLA_SLOT uint64
-	if epp.chainID == 5 {
-		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_GOERLI
-	} else if epp.chainID == 1 {
-		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_MAINNET
-	}
-
 	for i, _ := range withdrawalBlocks {
 		start := time.Now()
 		// prove withdrawal
-		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i], validatorIndices[i], FIRST_CAPELLA_SLOT)
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i], validatorIndices[i])
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +145,6 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	historicalSummaryStateBlockRoots []phase0.Root,
 	withdrawalBlock *capella.BeaconBlock,
 	validatorIndex uint64,
-	FIRST_CAPELLA_SLOT uint64,
 ) (*WithdrawalProof, error) {
 	withdrawalProof := &WithdrawalProof{}
 	withdrawalProof.WithdrawalIndex = math.MaxUint64 // max uint 64 value
@@ -164,6 +156,13 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	}
 	if withdrawalProof.WithdrawalIndex == math.MaxUint64 {
 		return nil, errors.New("validator index not found in withdrawal block")
+	}
+
+	var FIRST_CAPELLA_SLOT uint64
+	if epp.chainID == 5 {
+		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_GOERLI
+	} else if epp.chainID == 1 {
+		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_MAINNET
 	}
 
 	withdrawalSlotUint64 := uint64(withdrawalBlock.Slot)
