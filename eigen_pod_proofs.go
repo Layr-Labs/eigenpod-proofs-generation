@@ -1,4 +1,4 @@
-package main
+package eigenpodproofs
 
 import (
 	"encoding/json"
