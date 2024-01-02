@@ -1,4 +1,4 @@
-module github.com/Layr-Labs/ProofGeneration
+module github.com/Layr-Labs/eigenpod-proofs-generation
 
 go 1.20
 

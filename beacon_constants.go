@@ -1,4 +1,4 @@
-package main
+package eigenpodproofs
 
 const slotsPerHistoricalRoot = uint64(8192)
 

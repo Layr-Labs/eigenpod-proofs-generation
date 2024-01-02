@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -42,13 +43,13 @@ func main() {
 	// Handling commands based on the 'command' flag
 	switch *command {
 	case "ValidatorFieldsProof":
-		GenerateValidatorFieldsProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
+		eigenpodproofs.GenerateValidatorFieldsProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
 
 	case "WithdrawalFieldsProof":
-		GenerateWithdrawalFieldsProof(*oracleBlockHeaderFile, *stateFile, *historicalSummaryStateFile, *blockHeaderFile, *blockBodyFile, *validatorIndex, *withdrawalIndex, *historicalSummariesIndex, *blockHeaderIndex, *chainID, *outputFile)
+		eigenpodproofs.GenerateWithdrawalFieldsProof(*oracleBlockHeaderFile, *stateFile, *historicalSummaryStateFile, *blockHeaderFile, *blockBodyFile, *validatorIndex, *withdrawalIndex, *historicalSummariesIndex, *blockHeaderIndex, *chainID, *outputFile)
 
 	case "BalanceUpdateProof":
-		GenerateBalanceUpdateProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
+		eigenpodproofs.GenerateBalanceUpdateProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
 
 	default:
 		log.Debug().Str("Unknown command:", *command)
