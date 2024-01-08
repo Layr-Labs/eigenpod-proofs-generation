@@ -99,16 +99,22 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
 	}
-	stateRootProof, err := ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
+	stateRootProofAgainstBlockHeader, err := ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveStateRootAgainstBlockHeader", err)
 	}
+	slotProofAgainstBlockHeader, err := ProveSlotAgainstBlockHeader(&oracleBeaconBlockHeader)
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveSlotAgainstBlockHeader", err)
+	}
+
 	validatorProof, err := epp.ProveValidatorAgainstBeaconState(&state, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveValidatorAgainstBeaconState", err)
 	}
 	proofs := WithdrawalProofs{
-		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProof),
+		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProofAgainstBlockHeader),
+		SlotAgainstLatestBlockHeaderProof:      ConvertBytesToStrings(slotProofAgainstBlockHeader),
 		BeaconStateRoot:                        "0x" + hex.EncodeToString(beaconStateRoot[:]),
 		WithdrawalProof:                        ConvertBytesToStrings(withdrawalProof.WithdrawalProof),
 		SlotProof:                              ConvertBytesToStrings(withdrawalProof.SlotProof),

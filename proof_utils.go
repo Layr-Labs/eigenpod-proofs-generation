@@ -20,6 +20,7 @@ import (
 
 type WithdrawalProofs struct {
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
+	SlotAgainstLatestBlockHeaderProof      []string `json:"SlotAgainstLatestBlockHeaderProof"`
 	BeaconStateRoot                        string   `json:"beaconStateRoot"`
 	WithdrawalProof                        []string `json:"WithdrawalProof"`
 	SlotProof                              []string `json:"SlotProof"`
