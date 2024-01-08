@@ -11,6 +11,7 @@ This package allows you to generate withdrawal credential proofs, withdrawal pro
 ## Build the Executable
 
 ```
+$cd proofGenCli
 $go build
 ```
 
@@ -21,7 +22,7 @@ $ ./proof-gen -command ValidatorFieldsProof -oracleBlockHeaderFile [ORACLE_BLOCK
 ```
 Here is an example of running this command with the sample state/block files in the `/data` folder
 ```
-./proof-gen -command ValidatorFieldsProof -oracleBlockHeaderFile "data/goerli_block_header_6399998.json" -stateFile "data/goerli_slot_6399998.json" -validatorIndex 302913 -outputFile "withdrawal_credential_proof_302913.json" -chainID 5
+./proof-gen -command ValidatorFieldsProof -oracleBlockHeaderFile "../data/goerli_block_header_6399998.json" -stateFile "../data/goerli_slot_6399998.json" -validatorIndex 302913 -outputFile "withdrawal_credential_proof_302913.json" -chainID 5
 ```
 ### Generate Withdrawal Proof
 Here is the command:
@@ -31,7 +32,7 @@ $ ./proofGeneration -command WithdrawalFieldsProof -oracleBlockHeaderFile [ORACL
 Here is an example of running this command with the sample state/block files in the `/data` folder
 
 ```
-./proofGeneration -command WithdrawalFieldsProof -oracleBlockHeaderFile "data/goerli_block_header_6399998.json" -stateFile "data/goerli_slot_6399998.json" -validatorIndex 200240 -outputFile "withdrawal_proof_302913.json" -chainID 5 -historicalSummariesIndex 146 -blockHeaderIndex 8092 -historicalSummaryStateFile "data/goerli_slot_6397852.json" -blockHeaderFile  "data/goerli_block_header_6397852.json" -blockBodyFile "data/goerli_block_6397852.json" -withdrawalIndex 0
+./proofGeneration -command WithdrawalFieldsProof -oracleBlockHeaderFile "../data/goerli_block_header_6399998.json" -stateFile "../data/goerli_slot_6399998.json" -validatorIndex 200240 -outputFile "withdrawal_proof_302913.json" -chainID 5 -historicalSummariesIndex 146 -blockHeaderIndex 8092 -historicalSummaryStateFile "../data/goerli_slot_6397852.json" -blockHeaderFile  "../data/goerli_block_header_6397852.json" -blockBodyFile "../data/goerli_block_6397852.json" -withdrawalIndex 0
 ```
 
 ### Generate a Balance Update Proof.  
@@ -40,7 +41,7 @@ $ ./proofGeneration "BalanceUpdateProof"  -oracleBlockHeaderFile [ORACLE_BLOCK_H
 ```
 Here is an example of running this command with the sample state/block files in the `/data` folder:
 ```
-./proof-gen -command BalanceUpdateProof -oracleBlockHeaderFile "data/goerli_block_header_6399998.json" -stateFile "data/goerli_slot_6399998.json" -validatorIndex 302913 -outputFile "withdrawal_credential_proof_302913.json" -chainID 5
+./proof-gen -command BalanceUpdateProof -oracleBlockHeaderFile "../data/goerli_block_header_6399998.json" -stateFile "../data/goerli_slot_6399998.json" -validatorIndex 302913 -outputFile "withdrawal_credential_proof_302913.json" -chainID 5
 ```
 
 # Proof Generation Input Glossary
