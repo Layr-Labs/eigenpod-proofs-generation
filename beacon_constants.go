@@ -48,7 +48,7 @@ const validatorListMerkleSubtreeNumLayers = uint64(40)
 // Number of layers for the merkleixation of the Historical Summary List in the Beacon State
 const historicalSummaryListMerkleSubtreeNumLayers = uint64(24)
 
-// Number of layers for the merkleization of the Withdrawal List in the Exection Payload
+// Number of layers for the merkleization of the Withdrawal List in the Execution Payload
 const withdrawalListMerkleSubtreeNumLayers = uint64(4)
 
 // Number of layers for the merkleization of the Beacon State
