@@ -36,16 +36,6 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 		log.Debug().AnErr("Error creating EPP object", err)
 	}
 
-	balanceRootList, err := GetBalanceRoots(state.Balances)
-	if err != nil {
-		log.Debug().AnErr("Error with GetBalanceRoots", err)
-	}
-	balanceRoot := balanceRootList[validatorIndex/4]
-	balanceProof, err := epp.ProveValidatorBalance(&oracleBeaconBlockHeader, &state, uint64(validatorIndex))
-	if err != nil {
-		log.Debug().AnErr("Error with ProveValidatorBalance", err)
-	}
-
 	stateRootProof, validatorFieldsProof, err := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &state, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)
@@ -53,10 +43,8 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 	proofs := BalanceUpdateProofs{
 		ValidatorIndex:                         uint64(validatorIndex),
 		BeaconStateRoot:                        "0x" + hex.EncodeToString(beaconStateRoot[:]),
-		BalanceRoot:                            "0x" + hex.EncodeToString(balanceRoot[:]),
-		ValidatorBalanceProof:                  ConvertBytesToStrings(balanceProof.BalanceUpdateProof.ValidatorBalanceProof),
 		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProof.StateRootProof),
-		WithdrawalCredentialProof:              ConvertBytesToStrings(validatorFieldsProof),
+		ValidatorFieldsProof:                   ConvertBytesToStrings(validatorFieldsProof),
 		ValidatorFields:                        GetValidatorFields(state.Validators[validatorIndex]),
 	}
 

@@ -53,58 +53,6 @@ func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader
 	return verifyWithdrawalCredentialsCallParams, nil
 }
 
-type VerifyBalanceUpdateCallParams struct {
-	OracleTimestamp    uint64              `json:"oracleTimestamp"`
-	ValidatorIndex     uint64              `json:"validatorIndex"`
-	StateRootProof     *StateRootProof     `json:"stateRootProof"`
-	BalanceUpdateProof *BalanceUpdateProof `json:"validatorFieldsProofs"`
-	ValidatorFields    []Bytes32           `json:"validatorFields"`
-}
-
-type BalanceUpdateProof struct {
-	ValidatorBalanceProof Proof   `json:"validatorBalanceProof"`
-	ValidatorFieldsProof  Proof   `json:"validatorFieldsProof"`
-	BalanceRoot           Bytes32 `json:"balanceRoot"`
-}
-
-func (epp *EigenPodProofs) ProveValidatorBalance(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *capella.BeaconState, validatorIndex uint64) (*VerifyBalanceUpdateCallParams, error) {
-	verifyBalanceUpdateCallParams := &VerifyBalanceUpdateCallParams{}
-	verifyBalanceUpdateCallParams.StateRootProof = &StateRootProof{}
-	// Get beacon state top level roots
-	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
-	if err != nil {
-		return nil, err
-	}
-
-	verifyBalanceUpdateCallParams.StateRootProof.BeaconStateRoot, err = epp.ComputeBeaconStateRoot(oracleBeaconState)
-	if err != nil {
-		return nil, err
-	}
-
-	verifyBalanceUpdateCallParams.StateRootProof.StateRootProof, err = ProveStateRootAgainstBlockHeader(oracleBlockHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	verifyBalanceUpdateCallParams.OracleTimestamp = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
-	verifyBalanceUpdateCallParams.ValidatorIndex = validatorIndex
-	verifyBalanceUpdateCallParams.BalanceUpdateProof = &BalanceUpdateProof{}
-	verifyBalanceUpdateCallParams.BalanceUpdateProof.ValidatorBalanceProof, err = epp.ProveValidatorBalanceAgainstBalanceRoot(oracleBeaconState, validatorIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	verifyBalanceUpdateCallParams.BalanceUpdateProof.ValidatorFieldsProof, err = epp.ProveValidatorAgainstBeaconState(oracleBeaconState, beaconStateTopLevelRoots, validatorIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	verifyBalanceUpdateCallParams.BalanceUpdateProof.BalanceRoot = ConvertUint64ToBytes32(uint64(oracleBeaconState.Balances[validatorIndex]))
-	verifyBalanceUpdateCallParams.ValidatorFields = ConvertValidatorToValidatorFields(oracleBeaconState.Validators[validatorIndex])
-
-	return verifyBalanceUpdateCallParams, err
-}
-
 func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *capella.BeaconState, validatorIndex uint64) (*StateRootProof, Proof, error) {
 	stateRootProof := &StateRootProof{}
 	// Get beacon state top level roots
@@ -132,29 +80,6 @@ func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.Beacon
 	}
 
 	return stateRootProof, validatorFieldsProof, nil
-}
-
-func (epp *EigenPodProofs) ProveValidatorBalanceAgainstBalanceRoot(oracleBeaconState *capella.BeaconState, validatorIndex uint64) ([][32]byte, error) {
-	// Get beacon state top level roots
-	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
-	if err != nil {
-		return nil, err
-	}
-
-	// prove the validator balance list root against the beacon state
-	beaconStateProof, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, balanceListIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	// prove the validator balance root against the validator balance list root
-	balancesProof, err := ProveValidatorBalanceAgainstValidatorBalanceList(oracleBeaconState.Balances, validatorIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	fullBalanceProof := append(balancesProof, beaconStateProof...)
-	return fullBalanceProof, nil
 }
 
 func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *capella.BeaconState, beaconStateTopLevelRoots *BeaconStateTopLevelRoots, validatorIndex uint64) (Proof, error) {

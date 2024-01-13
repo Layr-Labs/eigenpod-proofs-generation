@@ -3,6 +3,7 @@ package eigenpodproofs
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -34,6 +35,10 @@ func GenerateWithdrawalFieldsProof(
 	var withdrawalBlock capella.BeaconBlock
 
 	oracleBeaconBlockHeader, err := ExtractBlockHeader(oracleBlockHeaderFile)
+
+	root, _ := oracleBeaconBlockHeader.HashTreeRoot()
+	fmt.Println("oracleBeaconBlockHeader: ", root)
+
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
 	}
@@ -107,7 +112,6 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveSlotAgainstBlockHeader", err)
 	}
-
 	validatorProof, err := epp.ProveValidatorAgainstBeaconState(&state, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveValidatorAgainstBeaconState", err)
