@@ -11,16 +11,15 @@ import (
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
 var (
-	b                              capella.BeaconState
+	b                              deneb.BeaconState
 	blockHeader                    phase0.BeaconBlockHeader
 	blockHeaderIndex               uint64
-	block                          capella.BeaconBlock
+	block                          deneb.BeaconBlock
 	validatorIndex                 phase0.ValidatorIndex
 	beaconBlockHeaderToVerifyIndex uint64
 	executionPayload               deneb.ExecutionPayload
@@ -67,7 +66,7 @@ func setupSuite() {
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
-	ParseCapellaBeaconStateFromJSON(*stateJSON, &b)
+	ParseDenebBeaconStateFromJSON(*stateJSON, &b)
 
 	blockHeader, err = ExtractBlockHeader(headerFile)
 	if err != nil {
@@ -206,11 +205,11 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 		fmt.Println("blockHeader.UnmarshalJSON error", err)
 	}
 
-	var currentBeaconState capella.BeaconState
-	var oldBeaconState capella.BeaconState
+	var currentBeaconState deneb.BeaconState
+	var oldBeaconState deneb.BeaconState
 
-	ParseCapellaBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
-	ParseCapellaBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
+	ParseDenebBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
+	ParseDenebBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
 
 	currentBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&currentBeaconState)
 	//oldBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&oldBeaconState)
@@ -391,7 +390,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	// this is the state where the latest block header from the oracle was taken.  This is the next slot after
 	// the state we want to prove things about (remember latestBlockHeader.state_root = previous slot's state root)
 	// oracleStateJSON, err := parseJSONFile("data/historical_summary_proof/goerli_slot_6399999.json")
-	// var oracleState capella.BeaconState
+	// var oracleState deneb.BeaconState
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	var blockHeader phase0.BeaconBlockHeader
@@ -406,8 +405,8 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 
 	//the state from the prev slot which contains shit we wanna prove about
 	stateToProveJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
-	var stateToProve capella.BeaconState
-	ParseCapellaBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
+	var stateToProve deneb.BeaconState
+	ParseDenebBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
 
 	proof, err := ProveStateRootAgainstBlockHeader(&blockHeader)
 	if err != nil {

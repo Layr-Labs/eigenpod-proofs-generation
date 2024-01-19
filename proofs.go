@@ -46,7 +46,7 @@ type BeaconStateTopLevelRoots struct {
 	HistoricalSummariesRoot          *phase0.Root
 }
 
-func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelRoots *BeaconStateTopLevelRoots, historicalSummaries []*deneb.HistoricalSummary, historicalBlockRoots []phase0.Root, historicalSummaryIndex uint64, blockRootIndex uint64) ([][32]byte, error) {
+func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelRoots *BeaconStateTopLevelRoots, historicalSummaries []*capella.HistoricalSummary, historicalBlockRoots []phase0.Root, historicalSummaryIndex uint64, blockRootIndex uint64) ([][32]byte, error) {
 	// prove the historical summaries against the beacon state
 	historicalSummariesListAgainstBeaconState, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, historicalSummaryListIndex)
 
@@ -953,7 +953,7 @@ func GetExecutionPayloadFieldRoots(executionPayloadFields *deneb.ExecutionPayloa
 	}
 
 	//Field 11: BaseFeePerGas
-	hh.PutBytes(executionPayloadFields.BaseFeePerGas[:])
+	hh.PutBytes(executionPayloadFields.BaseFeePerGas.Bytes())
 	copy(executionPayloadFieldRoots[11][:], hh.Hash())
 	hh.Reset()
 

@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
 )
@@ -79,9 +79,9 @@ func (epp *EigenPodProofs) GetWithdrawalProofParams(latestOracleBeaconSlot, with
 
 func (epp *EigenPodProofs) ProveWithdrawals(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *capella.BeaconState,
+	oracleBeaconState *deneb.BeaconState,
 	historicalSummaryStateBlockRoots [][]phase0.Root,
-	withdrawalBlocks []*capella.BeaconBlock,
+	withdrawalBlocks []*deneb.BeaconBlock,
 	validatorIndices []uint64,
 ) (*VerifyAndProcessWithdrawalCallParams, error) {
 	verifyAndProcessWithdrawalCallParams := &VerifyAndProcessWithdrawalCallParams{}
@@ -150,10 +150,10 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 // validatorIndex: the index of the validator that the withdrawal happened for
 func (epp *EigenPodProofs) ProveWithdrawal(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *capella.BeaconState,
+	oracleBeaconState *deneb.BeaconState,
 	oracleBeaconStateTopLevelRoots *BeaconStateTopLevelRoots,
 	historicalSummaryStateBlockRoots []phase0.Root,
-	withdrawalBlock *capella.BeaconBlock,
+	withdrawalBlock *deneb.BeaconBlock,
 	validatorIndex uint64,
 ) (*WithdrawalProof, error) {
 	withdrawalProof := &WithdrawalProof{}

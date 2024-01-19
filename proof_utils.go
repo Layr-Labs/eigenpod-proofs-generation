@@ -103,8 +103,8 @@ type InputDataBlockHeader struct {
 type InputDataBlock struct {
 	Version string `json:"version"`
 	Data    struct {
-		Message   capella.BeaconBlock `json:"message"`
-		Signature string              `json:"signature"`
+		Message   deneb.BeaconBlock `json:"message"`
+		Signature string            `json:"signature"`
 	} `json:"data"`
 	Execution_optimistic bool `json:"execution_optimistic"`
 	Finalized            bool `json:"finalized"`
@@ -174,16 +174,16 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 	return inputData.Data.Header.Message, nil
 }
 
-func ExtractBlock(blockHeaderFile string) (capella.BeaconBlock, error) {
+func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
 	fileBytes, err := os.ReadFile(blockHeaderFile)
 	if err != nil {
-		return capella.BeaconBlock{}, err
+		return deneb.BeaconBlock{}, err
 	}
 
 	// Decode JSON
 	var data InputDataBlock
 	if err := json.Unmarshal(fileBytes, &data); err != nil {
-		return capella.BeaconBlock{}, err
+		return deneb.BeaconBlock{}, err
 	}
 
 	// Extract block body
@@ -233,7 +233,7 @@ func parseStateJSONFile(filePath string) (*beaconStateJSON, error) {
 }
 
 // nolint:gocyclo
-func ParseCapellaBeaconStateFromJSON(data beaconStateJSON, s *deneb.BeaconState) error {
+func ParseDenebBeaconStateFromJSON(data beaconStateJSON, s *deneb.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {

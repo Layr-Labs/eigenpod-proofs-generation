@@ -3,7 +3,6 @@ package eigenpodproofs
 import (
 	"math/big"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
@@ -16,7 +15,7 @@ type VerifyWithdrawalCredentialsCallParams struct {
 	ValidatorFields       [][]Bytes32     `json:"validatorFields"`
 }
 
-func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *capella.BeaconState, validatorIndices []uint64) (*VerifyWithdrawalCredentialsCallParams, error) {
+func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *deneb.BeaconState, validatorIndices []uint64) (*VerifyWithdrawalCredentialsCallParams, error) {
 	verifyWithdrawalCredentialsCallParams := &VerifyWithdrawalCredentialsCallParams{}
 	verifyWithdrawalCredentialsCallParams.StateRootProof = &StateRootProof{}
 	// Get beacon state top level roots

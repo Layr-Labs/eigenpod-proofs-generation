@@ -5,20 +5,20 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
 )
 
 func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, validatorIndex uint64, chainID uint64, output string) {
 
-	var state capella.BeaconState
+	var state deneb.BeaconState
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
 	stateJSON, err := parseStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateBalanceUpdateProof: error with JSON parsing", err)
 	}
-	ParseCapellaBeaconStateFromJSON(*stateJSON, &state)
+	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
 	oracleBeaconBlockHeader, err = ExtractBlockHeader(oracleBlockHeaderFile)
 	if err != nil {

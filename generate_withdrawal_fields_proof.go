@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/rs/zerolog/log"
@@ -29,10 +29,10 @@ func GenerateWithdrawalFieldsProof(
 	//this is the oracle provided state
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
 	//this is the state with the withdrawal in it
-	var state capella.BeaconState
-	var historicalSummaryState capella.BeaconState
+	var state deneb.BeaconState
+	var historicalSummaryState deneb.BeaconState
 	var withdrawalBlockHeader phase0.BeaconBlockHeader
-	var withdrawalBlock capella.BeaconBlock
+	var withdrawalBlock deneb.BeaconBlock
 
 	oracleBeaconBlockHeader, err := ExtractBlockHeader(oracleBlockHeaderFile)
 
@@ -47,13 +47,13 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
 	}
-	ParseCapellaBeaconStateFromJSON(*stateJSON, &state)
+	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
 	historicalSummaryJSON, err := parseStateJSONFile(historicalSummaryStateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
 	}
-	ParseCapellaBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
+	ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
 
 	withdrawalBlockHeader, err = ExtractBlockHeader(blockHeaderFile)
 	if err != nil {

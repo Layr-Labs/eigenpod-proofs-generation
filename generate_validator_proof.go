@@ -18,7 +18,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 	if err != nil {
 		log.Debug().Msg("GenerateValidatorFieldsProof: error with JSON parsing")
 	}
-	ParseCapellaBeaconStateFromJSON(*stateJSON, &state)
+	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
 	oracleBeaconBlockHeader, err = ExtractBlockHeader(oracleBlockHeaderFile)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"math/bits"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ssz "github.com/ferranbt/fastssz"
@@ -89,7 +90,7 @@ func NextPowerOfTwo(v uint64) uint {
 	return uint(v)
 }
 
-func GetSlotTimestamp(beaconState *capella.BeaconState, blockHeader *phase0.BeaconBlockHeader) uint64 {
+func GetSlotTimestamp(beaconState *deneb.BeaconState, blockHeader *phase0.BeaconBlockHeader) uint64 {
 	return beaconState.GenesisTime + uint64(blockHeader.Slot)*12
 }
 
