@@ -19,9 +19,11 @@ jobs:
     - name: Install Unzip
       run: sudo apt-get install unzip
     - name: Unzip the File 1
-      run: unzip data/deneb_goerli_slot_7416760.json.zip -d ./data
-    - name: Unzip the File 2
       run: unzip data/deneb_goerli_slot_7413760.json.zip -d ./data
+    - name: Unzip the File 2
+      run: unzip data/deneb_goerli_slot_7416760.json.zip -d ./data
+    - name: Unzip the File 3
+      run: unzip data/deneb_goerli_slot_7421952.json.zip -d ./data
 
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
