@@ -213,7 +213,7 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
-func parseStateJSONFile(filePath string) (*beaconStateJSON, error) {
+func ParseStateJSONFile(filePath string) (*beaconStateJSON, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {

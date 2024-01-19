@@ -14,7 +14,7 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 
 	var state deneb.BeaconState
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
-	stateJSON, err := parseStateJSONFile(stateFile)
+	stateJSON, err := ParseStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateBalanceUpdateProof: error with JSON parsing", err)
 	}

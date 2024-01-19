@@ -43,13 +43,13 @@ func GenerateWithdrawalFieldsProof(
 		log.Debug().AnErr("Error with parsing header file", err)
 	}
 
-	stateJSON, err := parseStateJSONFile(stateFile)
+	stateJSON, err := ParseStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
 	}
 	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
-	historicalSummaryJSON, err := parseStateJSONFile(historicalSummaryStateFile)
+	historicalSummaryJSON, err := ParseStateJSONFile(historicalSummaryStateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
 	}
