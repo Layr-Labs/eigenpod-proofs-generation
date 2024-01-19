@@ -397,19 +397,16 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	var blockHeader phase0.BeaconBlockHeader
-	// buf, err := os.ReadFile("data/goerli_block_header_6399998.json")
-	buf, err := os.ReadFile("data/deneb_goerli_block_header_7426414.json")
+	//buf, err := os.ReadFile("data/goerli_block_header_6399998.json")
+	blockHeader, err := ExtractBlockHeader("data/deneb_goerli_block_header_7426414.json")
 	if err != nil {
-		fmt.Println("read error with header file")
-	}
-	err = blockHeader.UnmarshalJSON(buf)
-	if err != nil {
-		fmt.Println("blockHeader.UnmarshalJSON error", err)
+		fmt.Println("error with block header", err)
 	}
 
 	//the state from the prev slot which contains shit we wanna prove about
 	// stateToProveJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
 	stateToProveJSON, err := parseJSONFile("data/deneb_slot_7426414.json")
+
 	var stateToProve deneb.BeaconState
 	ParseDenebBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
 
@@ -431,7 +428,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 
 	flag := ValidateProof(root, proof, leaf, 3)
 	if flag != true {
-		fmt.Println("this 2 error")
+		fmt.Println("this error")
 	}
 	assert.True(t, flag, "Proof %v failed")
 }
