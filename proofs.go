@@ -309,7 +309,7 @@ func ProveTimestampAgainstExecutionPayload(executionPayloadFields *deneb.Executi
 // Refer to beaconblockbody.go in go-eth2-client
 // https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/bellatrix/beaconblockbody_encoding.go
 func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *deneb.BeaconBlockBody) (Proof, [32]byte, error) {
-	beaconBlockBodyContainerRoots := make([]phase0.Root, 11)
+	beaconBlockBodyContainerRoots := make([]phase0.Root, 12)
 	var err error
 
 	hh := ssz.NewHasher()
@@ -452,6 +452,21 @@ func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *deneb.BeaconBlockBod
 		}
 		hh.MerkleizeWithMixin(subIndx, num, 16)
 		copy(beaconBlockBodyContainerRoots[10][:], hh.Hash())
+		hh.Reset()
+	}
+
+	{
+		if size := len(beaconBlockBody.BlobKZGCommitments); size > 4096 {
+			err = ssz.ErrListTooBigFn("BeaconBlockBody.BlobKZGCommitments", size, 4096)
+			return nil, [32]byte{}, err
+		}
+		subIndx := hh.Index()
+		for _, i := range beaconBlockBody.BlobKZGCommitments {
+			hh.PutBytes(i[:])
+		}
+		numItems := uint64(len(beaconBlockBody.BlobKZGCommitments))
+		hh.MerkleizeWithMixin(subIndx, numItems, 4096)
+		copy(beaconBlockBodyContainerRoots[11][:], hh.Hash())
 		hh.Reset()
 	}
 
@@ -877,7 +892,7 @@ func ComputeBeaconStateTopLevelRoots(b *deneb.BeaconState) (*BeaconStateTopLevel
 }
 
 func GetExecutionPayloadFieldRoots(executionPayloadFields *deneb.ExecutionPayload) ([]phase0.Root, error) {
-	executionPayloadFieldRoots := make([]phase0.Root, 15)
+	executionPayloadFieldRoots := make([]phase0.Root, 17)
 	var err error
 
 	hh := ssz.NewHasher()
@@ -1004,6 +1019,14 @@ func GetExecutionPayloadFieldRoots(executionPayloadFields *deneb.ExecutionPayloa
 		copy(executionPayloadFieldRoots[14][:], hh.Hash())
 		hh.Reset()
 	}
+
+	hh.PutUint64(executionPayloadFields.BlobGasUsed)
+	copy(executionPayloadFieldRoots[15][:], hh.Hash())
+	hh.Reset()
+
+	hh.PutUint64(executionPayloadFields.ExcessBlobGas)
+	copy(executionPayloadFieldRoots[16][:], hh.Hash())
+	hh.Reset()
 
 	return executionPayloadFieldRoots, nil
 }

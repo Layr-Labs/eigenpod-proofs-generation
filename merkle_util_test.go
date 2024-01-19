@@ -56,9 +56,12 @@ func TestMain(m *testing.M) {
 
 func setupSuite() {
 	log.Println("Setting up suite")
-	stateFile := "data/goerli_slot_6399998.json"
-	headerFile := "data/goerli_block_header_6376200.json"
-	bodyFile := "data/goerli_block_6376200.json"
+	// stateFile := "data/goerli_slot_6399998.json"
+	// headerFile := "data/goerli_block_header_6376200.json"
+	// bodyFile := "data/goerli_block_6376200.json"
+	stateFile := "data/deneb_slot_7426414.json"
+	headerFile := "data/deneb_goerli_block_header_7426113.json"
+	bodyFile := "data/deneb_goerli_block_7426113.json"
 
 	//ParseCapellaBeaconState(stateFile)
 
@@ -70,12 +73,12 @@ func setupSuite() {
 
 	blockHeader, err = ExtractBlockHeader(headerFile)
 	if err != nil {
-		fmt.Println("error with block header")
+		fmt.Println("error with block header", err)
 	}
 
 	block, err = ExtractBlock(bodyFile)
 	if err != nil {
-		fmt.Println("error with block body")
+		fmt.Println("error with block body", err)
 	}
 
 	executionPayload = *block.Body.ExecutionPayload
@@ -394,7 +397,8 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	var blockHeader phase0.BeaconBlockHeader
-	buf, err := os.ReadFile("data/goerli_block_header_6399998.json")
+	// buf, err := os.ReadFile("data/goerli_block_header_6399998.json")
+	buf, err := os.ReadFile("data/deneb_goerli_block_header_7426414.json")
 	if err != nil {
 		fmt.Println("read error with header file")
 	}
@@ -404,7 +408,8 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	}
 
 	//the state from the prev slot which contains shit we wanna prove about
-	stateToProveJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
+	// stateToProveJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
+	stateToProveJSON, err := parseJSONFile("data/deneb_slot_7426414.json")
 	var stateToProve deneb.BeaconState
 	ParseDenebBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
 
