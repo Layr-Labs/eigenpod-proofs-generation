@@ -404,12 +404,13 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	}
 
 	//the state from the prev slot which contains shit we wanna prove about
-	// stateToProveJSON, err := parseJSONFile("data/goerli_slot_6399998.json")
-	stateToProveJSON, err := parseJSONFile("data/deneb_slot_7426414.json")
+	stateToProveJSON, err := parseJSONFile("data/deneb_goerli_slot_7413760.json")
 
 	var stateToProve deneb.BeaconState
 	ParseDenebBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
 
+	roots, _ := stateToProve.HashTreeRoot()
+	fmt.Println("THIS IS ROOT", roots)
 	proof, err := ProveStateRootAgainstBlockHeader(&blockHeader)
 	if err != nil {
 		fmt.Println("Error in generating proof", err)
