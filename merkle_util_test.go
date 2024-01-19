@@ -187,7 +187,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	//curl -H "Accept: application/json" https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/7416760 -o deneb_goerli_slot_7416760.json --header 'X-API-Key: 343035|8b6ddd9b31f54c07b3fc18282b30f61c'
-	currentBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7416760.json")
+	currentBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7431952.json")
 
 	if err != nil {
 		fmt.Println("error parsing currentBeaconStateJSON")
@@ -195,14 +195,14 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	//this is not the beacon state of the slot containing the old withdrawal we want to proof but rather
 	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal
-	oldBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7413760.json")
+	oldBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing oldBeaconStateJSON")
 	}
 
 	var blockHeader phase0.BeaconBlockHeader
 	//blockHeader, err = ExtractBlockHeader("data/goerli_block_header_6397852.json")
-	blockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7413660.json")
+	blockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7421951.json")
 
 	if err != nil {
 		fmt.Println("blockHeader.UnmarshalJSON error", err)
@@ -222,8 +222,8 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 		fmt.Println("error")
 	}
 
-	historicalSummaryIndex := uint64(270)
-	beaconBlockHeaderToVerifyIndex = 8092 //(6397852 mod 8192)
+	historicalSummaryIndex := uint64(271)
+	beaconBlockHeaderToVerifyIndex = 8191 //(6397852 mod 8192)
 	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
