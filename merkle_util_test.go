@@ -202,7 +202,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	var blockHeader phase0.BeaconBlockHeader
 	//blockHeader, err = ExtractBlockHeader("data/goerli_block_header_6397852.json")
-	blockHeader, err = ExtractBlockHeader("data/goerli_block_header_7413660.json")
+	blockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7413660.json")
 
 	if err != nil {
 		fmt.Println("blockHeader.UnmarshalJSON error", err)
@@ -398,7 +398,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	var blockHeader phase0.BeaconBlockHeader
-	blockHeader, err := ExtractBlockHeader("data/deneb_goerli_block_header_7426414.json")
+	blockHeader, err := ExtractBlockHeader("data/deneb_goerli_block_header_7413760.json")
 	if err != nil {
 		fmt.Println("error with block header", err)
 	}
