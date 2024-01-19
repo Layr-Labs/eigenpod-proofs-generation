@@ -460,7 +460,7 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 
 	withdrawalsListProof, err := ProveWithdrawalListAgainstExecutionPayload(block.Body.ExecutionPayload)
 	if err != nil {
-		fmt.Println("error", err)
+		fmt.Println("error!", err)
 	}
 
 	var withdrawalsHashRoot phase0.Root
@@ -471,11 +471,11 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 		num := uint64(len(block.Body.ExecutionPayload.Withdrawals))
 		if num > 16 {
 			err := ssz.ErrIncorrectListSize
-			fmt.Println("error", err)
+			fmt.Println("error!", err)
 		}
 		for _, elem := range block.Body.ExecutionPayload.Withdrawals {
 			if err = elem.HashTreeRootWith(hh); err != nil {
-				fmt.Println("error", err)
+				fmt.Println("error 4", err)
 			}
 		}
 		hh.MerkleizeWithMixin(subIndx, num, 16)
@@ -486,13 +486,13 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 	var executionPayloadHashRoot phase0.Root
 	{
 		if err = block.Body.ExecutionPayload.HashTreeRootWith(hh); err != nil {
-			fmt.Println("error", err)
+			fmt.Println("error hel", err)
 		}
 		copy(executionPayloadHashRoot[:], hh.Hash())
 	}
 	flag := ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, withdrawalsIndex)
 	if flag != true {
-		fmt.Println("error")
+		fmt.Println("Proof Failed")
 	}
 	assert.True(t, flag, "Proof %v failed\n")
 
