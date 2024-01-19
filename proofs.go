@@ -7,6 +7,7 @@ import (
 
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/rs/zerolog/log"
@@ -45,7 +46,7 @@ type BeaconStateTopLevelRoots struct {
 	HistoricalSummariesRoot          *phase0.Root
 }
 
-func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelRoots *BeaconStateTopLevelRoots, historicalSummaries []*capella.HistoricalSummary, historicalBlockRoots []phase0.Root, historicalSummaryIndex uint64, blockRootIndex uint64) ([][32]byte, error) {
+func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelRoots *BeaconStateTopLevelRoots, historicalSummaries []*deneb.HistoricalSummary, historicalBlockRoots []phase0.Root, historicalSummaryIndex uint64, blockRootIndex uint64) ([][32]byte, error) {
 	// prove the historical summaries against the beacon state
 	historicalSummariesListAgainstBeaconState, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, historicalSummaryListIndex)
 
@@ -81,7 +82,7 @@ func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelR
 
 func ProveExecutionPayloadAgainstBlockHeader(
 	blockHeader *phase0.BeaconBlockHeader,
-	withdrawalBeaconBlockBody *capella.BeaconBlockBody,
+	withdrawalBeaconBlockBody *deneb.BeaconBlockBody,
 ) ([][32]byte, [32]byte, error) {
 	// prove block body root against block header
 	beaconBlockBodyAgainstBeaconBlockHeaderProof, err := ProveBlockBodyAgainstBlockHeader(blockHeader)
@@ -100,7 +101,7 @@ func ProveExecutionPayloadAgainstBlockHeader(
 }
 
 func ProveWithdrawalAgainstExecutionPayload(
-	executionPayload *capella.ExecutionPayload,
+	executionPayload *deneb.ExecutionPayload,
 	withdrawalIndex uint8,
 ) ([][32]byte, error) {
 	// prove withdrawal list against the execution payload
@@ -286,7 +287,7 @@ func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Pr
 	return GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
-func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
+func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *deneb.ExecutionPayload) (Proof, error) {
 	executionPayloadFieldRoots, err := GetExecutionPayloadFieldRoots(executionPayloadFields)
 
 	if err != nil {
@@ -296,7 +297,7 @@ func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.
 	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, executionPayloadMerkleSubtreeNumLayers)
 }
 
-func ProveTimestampAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
+func ProveTimestampAgainstExecutionPayload(executionPayloadFields *deneb.ExecutionPayload) (Proof, error) {
 	executionPayloadFieldRoots, err := GetExecutionPayloadFieldRoots(executionPayloadFields)
 	if err != nil {
 		return nil, err
@@ -307,7 +308,7 @@ func ProveTimestampAgainstExecutionPayload(executionPayloadFields *capella.Execu
 
 // Refer to beaconblockbody.go in go-eth2-client
 // https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/bellatrix/beaconblockbody_encoding.go
-func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *capella.BeaconBlockBody) (Proof, [32]byte, error) {
+func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *deneb.BeaconBlockBody) (Proof, [32]byte, error) {
 	beaconBlockBodyContainerRoots := make([]phase0.Root, 11)
 	var err error
 
@@ -470,8 +471,8 @@ func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (Proof, error
 	return GetProof(beaconBlockHeaderContainerRoots, stateRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
-// taken from https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/capella/beaconstate_ssz.go#L639
-func ComputeBeaconStateTopLevelRoots(b *capella.BeaconState) (*BeaconStateTopLevelRoots, error) {
+// taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
+func ComputeBeaconStateTopLevelRoots(b *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
 
 	var err error
 	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
@@ -875,7 +876,7 @@ func ComputeBeaconStateTopLevelRoots(b *capella.BeaconState) (*BeaconStateTopLev
 	return beaconStateTopLevelRoots, nil
 }
 
-func GetExecutionPayloadFieldRoots(executionPayloadFields *capella.ExecutionPayload) ([]phase0.Root, error) {
+func GetExecutionPayloadFieldRoots(executionPayloadFields *deneb.ExecutionPayload) ([]phase0.Root, error) {
 	executionPayloadFieldRoots := make([]phase0.Root, 15)
 	var err error
 

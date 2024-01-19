@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
@@ -53,7 +54,7 @@ func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader
 	return verifyWithdrawalCredentialsCallParams, nil
 }
 
-func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *capella.BeaconState, validatorIndex uint64) (*StateRootProof, Proof, error) {
+func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *deneb.BeaconState, validatorIndex uint64) (*StateRootProof, Proof, error) {
 	stateRootProof := &StateRootProof{}
 	// Get beacon state top level roots
 	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
@@ -82,7 +83,7 @@ func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.Beacon
 	return stateRootProof, validatorFieldsProof, nil
 }
 
-func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *capella.BeaconState, beaconStateTopLevelRoots *BeaconStateTopLevelRoots, validatorIndex uint64) (Proof, error) {
+func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *deneb.BeaconState, beaconStateTopLevelRoots *BeaconStateTopLevelRoots, validatorIndex uint64) (Proof, error) {
 	// prove the validator list against the beacon state
 	validatorListProof, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, validatorListIndex)
 	if err != nil {

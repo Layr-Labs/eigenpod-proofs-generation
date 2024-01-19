@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 )
@@ -39,7 +39,7 @@ func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*Eige
 	}, nil
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *capella.BeaconState) (phase0.Root, error) {
+func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState) (phase0.Root, error) {
 	// check if the beacon state root is cached
 	beaconStateRootSlice, found := epp.oracleStateCache.Get(key(BEACON_STATE_ROOT_PREFIX, uint64(beaconState.Slot)))
 	// if the beacon state root is cached, return it
@@ -60,7 +60,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *capella.BeaconSta
 	return beaconStateRoot, nil
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *capella.BeaconState) (*BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
 	// check if the beacon state top level roots are cached
 	beaconStateTopLevelRootsSlice, found := epp.oracleStateCache.Get(key(BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX, uint64(beaconState.Slot)))
 	// if the beacon state top level roots are cached, return them

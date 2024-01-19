@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
@@ -22,7 +23,7 @@ var (
 	block                          capella.BeaconBlock
 	validatorIndex                 phase0.ValidatorIndex
 	beaconBlockHeaderToVerifyIndex uint64
-	executionPayload               capella.ExecutionPayload
+	executionPayload               deneb.ExecutionPayload
 	epp                            *EigenPodProofs
 )
 
