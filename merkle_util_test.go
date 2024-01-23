@@ -394,11 +394,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	var blockHeader phase0.BeaconBlockHeader
-	buf, err := os.ReadFile("data/goerli_block_header_6399998.json")
-	if err != nil {
-		fmt.Println("read error with header file")
-	}
-	err = blockHeader.UnmarshalJSON(buf)
+	blockHeader, err := ExtractBlockHeader("data/goerli_block_header_6399998.json")
 	if err != nil {
 		fmt.Println("blockHeader.UnmarshalJSON error", err)
 	}
