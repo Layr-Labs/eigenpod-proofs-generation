@@ -763,7 +763,7 @@ type Proofs struct {
 	WithdrawalFields      []string `json:"WithdrawalFields"`
 }
 
-func parseJSONFile(filePath string) (*beaconStateJSON, error) {
+func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := os.ReadFile(filePath)
 
 	if err != nil {
