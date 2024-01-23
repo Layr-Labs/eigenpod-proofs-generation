@@ -181,9 +181,9 @@ func ProveExecutionPayloadAgainstBlockBodyCapella(beaconBlockBody *capella.Beaco
 		hh.Reset()
 	}
 
-	proof, err := common.GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(beaconBlockBodyContainerRoots, ExecutionPayloadIndex, BlockBodyMerkleSubtreeNumLayers)
 
-	return proof, beaconBlockBodyContainerRoots[executionPayloadIndex], err
+	return proof, beaconBlockBodyContainerRoots[ExecutionPayloadIndex], err
 }
 
 func GetExecutionPayloadFieldRootsCapella(executionPayloadFields *capella.ExecutionPayload) ([]phase0.Root, error) {

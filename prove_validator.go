@@ -87,7 +87,7 @@ func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.Beacon
 
 func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *deneb.BeaconState, beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, validatorIndex uint64) (common.Proof, error) {
 	// prove the validator list against the beacon state
-	validatorListProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, validatorListIndex)
+	validatorListProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, beacon.ValidatorListIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (epp *EigenPodProofs) ProveValidatorAgainstValidatorList(slot phase0.Slot, 
 		return nil, err
 	}
 
-	proof, err := common.ComputeMerkleProofFromTree(validatorTree, validatorIndex, validatorListMerkleSubtreeNumLayers)
+	proof, err := common.ComputeMerkleProofFromTree(validatorTree, validatorIndex, beacon.ValidatorListMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}

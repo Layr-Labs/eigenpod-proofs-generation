@@ -79,7 +79,7 @@ func GetBalanceRoots(balances []phase0.Gwei) ([]phase0.Root, error) {
 
 func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelRoots *BeaconStateTopLevelRoots, historicalSummaries []*capella.HistoricalSummary, historicalBlockRoots []phase0.Root, historicalSummaryIndex uint64, blockRootIndex uint64) ([][32]byte, error) {
 	// prove the historical summaries against the beacon state
-	historicalSummariesListAgainstBeaconState, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, historicalSummaryListIndex)
+	historicalSummariesListAgainstBeaconState, err := ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, HistoricalSummaryListIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelR
 	}
 
 	// historical block roots are incklude the really old block root you wanna prove
-	beaconBlockHeaderRootsProof, err := common.GetProof(historicalBlockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
+	beaconBlockHeaderRootsProof, err := common.GetProof(historicalBlockRoots, blockRootIndex, BlockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func ProveHistoricalSummaryAgainstHistoricalSummariesList(historicalSummaries []
 		historicalSummaryNodeList[i] = phase0.Root(historicalSummaryRoot)
 	}
 
-	proof, err := common.GetProof(historicalSummaryNodeList, historicalSummaryIndex, historicalSummaryListMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(historicalSummaryNodeList, historicalSummaryIndex, HistoricalSummaryListMerkleSubtreeNumLayers)
 
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func ProveBlockRootListAgainstHistoricalSummary(historicalSummary *capella.Histo
 }
 
 func ProveBlockRootAgainstBlockRootsList(blockRoots []phase0.Root, blockRootIndex uint64) (common.Proof, error) {
-	proof, err := common.GetProof(blockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(blockRoots, blockRootIndex, BlockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func ProveWithdrawalAgainstExecutionPayload(
 }
 
 func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFieldRoots []phase0.Root) (common.Proof, error) {
-	return common.GetProof(executionPayloadFieldRoots, withdrawalsIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
+	return common.GetProof(executionPayloadFieldRoots, WithdrawalsIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
 }
 
 func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, withdrawalIndex uint8) (common.Proof, error) {
@@ -189,7 +189,7 @@ func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, wit
 		withdrawalNodeList[i] = phase0.Root(withdrawalRoot)
 	}
 
-	proof, err := common.GetProof(withdrawalNodeList, uint64(withdrawalIndex), withdrawalListMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(withdrawalNodeList, uint64(withdrawalIndex), WithdrawalListMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -202,5 +202,5 @@ func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, wit
 }
 
 func ProveTimestampAgainstExecutionPayload(executionPayloadFieldRoots []phase0.Root) (common.Proof, error) {
-	return common.GetProof(executionPayloadFieldRoots, timestampIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
+	return common.GetProof(executionPayloadFieldRoots, TimestampIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
 }

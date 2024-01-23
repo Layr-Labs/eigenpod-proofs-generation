@@ -13,7 +13,7 @@ func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (co
 		return nil, err
 	}
 
-	return common.GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
+	return common.GetProof(blockHeaderContainerRoots, BeaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 // refer to this: https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/phase0/beaconblockheader_encoding.go
@@ -33,7 +33,7 @@ func ProveSlotAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (common.
 		return nil, err
 	}
 
-	return common.GetProof(blockHeaderContainerRoots, slotIndex, blockHeaderMerkleSubtreeNumLayers)
+	return common.GetProof(blockHeaderContainerRoots, SlotIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 func GetBlockHeaderFieldRoots(blockHeader *phase0.BeaconBlockHeader) ([]phase0.Root, error) {

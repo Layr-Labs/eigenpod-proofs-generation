@@ -85,7 +85,7 @@ func setupSuite() {
 
 	executionPayload = *block.Body.ExecutionPayload
 
-	blockHeaderIndex = uint64(blockHeader.Slot) % slotsPerHistoricalRoot
+	blockHeaderIndex = uint64(blockHeader.Slot) % beacon.SlotsPerHistoricalRoot
 
 	epp, err = NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 		fmt.Println("error with hash tree root of beacon state")
 	}
 
-	index := validatorListIndex<<(validatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
+	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
 
 	flag := common.ValidateProof(root, proof, leaf, index)
 	if flag != true {
@@ -167,7 +167,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 	}
 
 	// compute the Merkle proof for the inclusion of Validators Root as a leaf
-	validatorsRootProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, validatorListIndex)
+	validatorsRootProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, beacon.ValidatorListIndex)
 	if err != nil {
 		fmt.Println("error")
 	}
@@ -181,7 +181,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 	// validation of the proof
 	// get the leaf denoting the validatorsRoot in the BeaconStateRoot Merkle tree
 	leaf := beaconStateTopLevelRoots.ValidatorsRoot
-	flag := common.ValidateProof(beaconStateRoot, validatorsRootProof, *leaf, validatorListIndex)
+	flag := common.ValidateProof(beaconStateRoot, validatorsRootProof, *leaf, beacon.ValidatorListIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -256,9 +256,9 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := historicalSummaryListIndex<<((historicalSummaryListMerkleSubtreeNumLayers+1)+1+(blockRootsMerkleSubtreeNumLayers)) |
-		historicalSummaryIndex<<(1+blockRootsMerkleSubtreeNumLayers) |
-		blockSummaryRootIndex<<(blockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
+	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
+		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
+		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
 
 	flag := common.ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
 	if flag != true {
@@ -334,9 +334,9 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := historicalSummaryListIndex<<((historicalSummaryListMerkleSubtreeNumLayers+1)+1+(blockRootsMerkleSubtreeNumLayers)) |
-		historicalSummaryIndex<<(1+blockRootsMerkleSubtreeNumLayers) |
-		blockSummaryRootIndex<<(blockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
+	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
+		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
+		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
 
 	flag := common.ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
 	if flag != true {
@@ -405,7 +405,7 @@ func TestComputeBlockSlotProof(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, slotIndex)
+	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, beacon.SlotIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -435,7 +435,7 @@ func TestProveBlockBodyAgainstBlockHeader(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderBlockBodyProof, blockBodyHashRoot, beaconBlockBodyRootIndex)
+	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderBlockBodyProof, blockBodyHashRoot, beacon.BeaconBlockBodyRootIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -465,7 +465,7 @@ func TestComputeExecutionPayloadHeader(t *testing.T) {
 	blockHeaderBodyRoot := blockHeader.BodyRoot
 
 	// calling the proof verification function
-	flag := common.ValidateProof(blockHeaderBodyRoot, beaconBlockBodyProof, executionPayloadHashRoot, executionPayloadIndex)
+	flag := common.ValidateProof(blockHeaderBodyRoot, beaconBlockBodyProof, executionPayloadHashRoot, beacon.ExecutionPayloadIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -530,7 +530,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 	// get the body root in the beacon block header -  will be used as the Merkle root
 	root, _ := blockHeader.HashTreeRoot()
 
-	index := beaconBlockBodyRootIndex<<(blockBodyMerkleSubtreeNumLayers) | executionPayloadIndex
+	index := beacon.BeaconBlockBodyRootIndex<<(beacon.BlockBodyMerkleSubtreeNumLayers) | beacon.ExecutionPayloadIndex
 
 	// calling the proof verification function
 	flag := common.ValidateProof(root, exectionPayloadProof, executionPayloadHashRoot, index)
@@ -575,7 +575,7 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 		}
 		copy(executionPayloadHashRoot[:], hh.Hash())
 	}
-	flag := common.ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, withdrawalsIndex)
+	flag := common.ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, beacon.WithdrawalsIndex)
 	if flag != true {
 		fmt.Println("Proof Failed")
 	}
@@ -646,9 +646,9 @@ func TestGetWithdrawalProof(t *testing.T) {
 	if err != nil {
 		fmt.Println("error")
 	}
-	// withdrawalIndex = beaconBlockBodyRootIndex<<( blockBodyMerkleSubtreeNumLayers+ executionPayloadMerkleSubtreeNumLayers+( withdrawalListMerkleSubtreeNumLayers+1)) | executionPayloadIndex<<( executionPayloadMerkleSubtreeNumLayers+( withdrawalListMerkleSubtreeNumLayers+1)) | withdrawalsIndex<<( withdrawalListMerkleSubtreeNumLayers+1) | withdrawalIndex
+	// withdrawalIndex = beacon.BeaconBlockBodyRootIndex<<( beacon.BlockBodyMerkleSubtreeNumLayers+ executionPayloadMerkleSubtreeNumLayers+( beacon.WithdrawalListMerkleSubtreeNumLayers+1)) | beacon.ExecutionPayloadIndex<<( executionPayloadMerkleSubtreeNumLayers+( beacon.WithdrawalListMerkleSubtreeNumLayers+1)) | beacon.WithdrawalsIndex<<( beacon.WithdrawalListMerkleSubtreeNumLayers+1) | withdrawalIndex
 
-	withdrawalRelativeToELPayloadIndex := withdrawalsIndex<<(withdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
+	withdrawalRelativeToELPayloadIndex := beacon.WithdrawalsIndex<<(beacon.WithdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
 
 	// calling the proof verification func
 	flag := common.ValidateProof(executionPayloadRoot, withdrawalProof, leaf, withdrawalRelativeToELPayloadIndex)
@@ -678,7 +678,7 @@ func TestGetTimestampProof(t *testing.T) {
 	}
 
 	// calling the proof verification func
-	flag := common.ValidateProof(root, timestampProof, leaf, timestampIndex)
+	flag := common.ValidateProof(root, timestampProof, leaf, beacon.TimestampIndex)
 	if flag != true {
 		fmt.Println("proof failed")
 	}
@@ -707,7 +707,7 @@ func TestGetValidatorProof(t *testing.T) {
 	// calling the proof verification func
 	beaconRoot, _ := b.HashTreeRoot()
 
-	validatorIndex = validatorListIndex<<(validatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
+	validatorIndex = beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
 
 	flag := common.ValidateProof(beaconRoot, validatorProof, leaf, validatorIndex)
 	if flag != true {

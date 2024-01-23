@@ -55,13 +55,13 @@ const FIRST_CAPELLA_SLOT_GOERLI = uint64(5193728)
 const FIRST_CAPELLA_SLOT_MAINNET = uint64(6209536)
 
 func IsProvableWithdrawal(latestOracleBeaconSlot, withdrawalSlot uint64) bool {
-	return latestOracleBeaconSlot > slotsPerHistoricalRoot+withdrawalSlot
+	return latestOracleBeaconSlot > beacon.SlotsPerHistoricalRoot+withdrawalSlot
 }
 
 func (epp *EigenPodProofs) GetWithdrawalProofParams(latestOracleBeaconSlot, withdrawalSlot uint64) (uint64, error) {
 	if withdrawalSlot > latestOracleBeaconSlot {
 		return 0, errors.New("withdrawal slot is after than the latest oracle beacon slot")
-	} else if latestOracleBeaconSlot-withdrawalSlot < slotsPerHistoricalRoot {
+	} else if latestOracleBeaconSlot-withdrawalSlot < beacon.SlotsPerHistoricalRoot {
 		return 0, errors.New("oracle beacon slot does not have enough historical summaries to prove withdrawal")
 	}
 
@@ -72,10 +72,10 @@ func (epp *EigenPodProofs) GetWithdrawalProofParams(latestOracleBeaconSlot, with
 		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_MAINNET
 	}
 	// index of the historical summary in the array of historical_summaries
-	historicalSummaryIndex := (withdrawalSlot - FIRST_CAPELLA_SLOT) / slotsPerHistoricalRoot
+	historicalSummaryIndex := (withdrawalSlot - FIRST_CAPELLA_SLOT) / beacon.SlotsPerHistoricalRoot
 
 	// slot of which the beacon state is retrieved for getting the block roots array containing the old block with the old withdrawal
-	historicalSummarySlot := FIRST_CAPELLA_SLOT + (historicalSummaryIndex+1)*slotsPerHistoricalRoot
+	historicalSummarySlot := FIRST_CAPELLA_SLOT + (historicalSummaryIndex+1)*beacon.SlotsPerHistoricalRoot
 
 	return historicalSummarySlot, nil
 }
@@ -323,10 +323,10 @@ func (epp *EigenPodProofs) proveWithdrawal(
 	withdrawalSlotUint64 := uint64(withdrawalBlockHeader.Slot)
 
 	// index of the historical summary in the array of historical_summaries
-	withdrawalProof.HistoricalSummaryIndex = (withdrawalSlotUint64 - FIRST_CAPELLA_SLOT) / slotsPerHistoricalRoot
+	withdrawalProof.HistoricalSummaryIndex = (withdrawalSlotUint64 - FIRST_CAPELLA_SLOT) / beacon.SlotsPerHistoricalRoot
 
 	// index of the block containing the target withdrawal in the block roots array
-	withdrawalProof.BlockRootIndex = withdrawalSlotUint64 % slotsPerHistoricalRoot
+	withdrawalProof.BlockRootIndex = withdrawalSlotUint64 % beacon.SlotsPerHistoricalRoot
 	withdrawalProof.BlockRoot = historicalSummaryStateBlockRoots[withdrawalProof.BlockRootIndex]
 
 	// make sure the withdrawal index is in range

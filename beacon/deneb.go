@@ -5,6 +5,7 @@ import (
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec/altair"
+	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
@@ -194,9 +195,9 @@ func ProveExecutionPayloadAgainstBlockBodyDeneb(beaconBlockBody *deneb.BeaconBlo
 		hh.Reset()
 	}
 
-	proof, err := common.GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(beaconBlockBodyContainerRoots, ExecutionPayloadIndex, BlockBodyMerkleSubtreeNumLayers)
 
-	return proof, beaconBlockBodyContainerRoots[executionPayloadIndex], err
+	return proof, beaconBlockBodyContainerRoots[ExecutionPayloadIndex], err
 }
 
 // taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
@@ -740,6 +741,138 @@ func ComputeExecutionPayloadFieldRootsDeneb(executionPayloadFields *deneb.Execut
 	hh.PutUint64(executionPayloadFields.ExcessBlobGas)
 	copy(executionPayloadFieldRoots[16][:], hh.Hash())
 	hh.Reset()
+
+	return executionPayloadFieldRoots, nil
+}
+
+func ComputeExecutionPayloadFieldRootsCapella(executionPayloadFields *capella.ExecutionPayload) ([]phase0.Root, error) {
+	executionPayloadFieldRoots := make([]phase0.Root, 15)
+	var err error
+
+	hh := ssz.NewHasher()
+
+	//Field 0: ParentHash
+	hh.PutBytes(executionPayloadFields.ParentHash[:])
+	copy(executionPayloadFieldRoots[0][:], hh.Hash())
+	hh.Reset()
+
+	//Field 1: FeeRecipient
+	hh.PutBytes(executionPayloadFields.FeeRecipient[:])
+	copy(executionPayloadFieldRoots[1][:], hh.Hash())
+	hh.Reset()
+
+	//Field 2: StateRoot
+	hh.PutBytes(executionPayloadFields.StateRoot[:])
+	copy(executionPayloadFieldRoots[2][:], hh.Hash())
+	hh.Reset()
+
+	//Field 3: ReceiptRoot
+	hh.PutBytes(executionPayloadFields.ReceiptsRoot[:])
+	copy(executionPayloadFieldRoots[3][:], hh.Hash())
+	hh.Reset()
+
+	//Field 4: LogsBloom
+	hh.PutBytes(executionPayloadFields.LogsBloom[:])
+	copy(executionPayloadFieldRoots[4][:], hh.Hash())
+	hh.Reset()
+
+	//Field 5: PrevRandao
+	hh.PutBytes(executionPayloadFields.PrevRandao[:])
+	copy(executionPayloadFieldRoots[5][:], hh.Hash())
+	hh.Reset()
+
+	//Field 6: BlockNumber
+	hh.PutUint64(executionPayloadFields.BlockNumber)
+	copy(executionPayloadFieldRoots[6][:], hh.Hash())
+	hh.Reset()
+
+	//Field 7: GasLimit
+	hh.PutUint64(executionPayloadFields.GasLimit)
+	copy(executionPayloadFieldRoots[7][:], hh.Hash())
+	hh.Reset()
+
+	//Field 8: GasUsed
+	hh.PutUint64(executionPayloadFields.GasUsed)
+	copy(executionPayloadFieldRoots[8][:], hh.Hash())
+	hh.Reset()
+
+	//Field 9: Timestamp
+	hh.PutUint64(executionPayloadFields.Timestamp)
+	copy(executionPayloadFieldRoots[9][:], hh.Hash())
+	hh.Reset()
+
+	//Field 10: ExtraData
+
+	// //If the field is empty, we set it to 0
+	// if len(executionPayloadFields.ExtraData) == 0 {
+	// 	executionPayloadFields.ExtraData = []byte{0}
+	// }
+
+	{
+		elemIndx := hh.Index()
+		byteLen := uint64(len(executionPayloadFields.ExtraData))
+		if byteLen > 32 {
+			err = ssz.ErrIncorrectListSize
+			fmt.Println(err)
+		}
+		hh.PutBytes(executionPayloadFields.ExtraData)
+		hh.MerkleizeWithMixin(elemIndx, byteLen, (32+31)/32)
+		copy(executionPayloadFieldRoots[10][:], hh.Hash())
+		hh.Reset()
+	}
+
+	//Field 11: BaseFeePerGas
+	hh.PutBytes(executionPayloadFields.BaseFeePerGas[:])
+	copy(executionPayloadFieldRoots[11][:], hh.Hash())
+	hh.Reset()
+
+	//Field 12: BlockHash
+	hh.PutBytes(executionPayloadFields.BlockHash[:])
+	copy(executionPayloadFieldRoots[12][:], hh.Hash())
+	hh.Reset()
+
+	//Field 13: Transactions
+	{
+		subIndx := hh.Index()
+		num := uint64(len(executionPayloadFields.Transactions))
+		if num > 1048576 {
+			err = ssz.ErrIncorrectListSize
+			fmt.Println(err)
+		}
+		for _, elem := range executionPayloadFields.Transactions {
+			{
+				elemIndx := hh.Index()
+				byteLen := uint64(len(elem))
+				if byteLen > 1073741824 {
+					err = ssz.ErrIncorrectListSize
+					fmt.Println(err)
+				}
+				hh.AppendBytes32(elem)
+				hh.MerkleizeWithMixin(elemIndx, byteLen, (1073741824+31)/32)
+			}
+		}
+		hh.MerkleizeWithMixin(subIndx, num, 1048576)
+		copy(executionPayloadFieldRoots[13][:], hh.Hash())
+		hh.Reset()
+	}
+
+	//Field 14: Withdrawals
+	{
+		subIndx := hh.Index()
+		num := uint64(len(executionPayloadFields.Withdrawals))
+		if num > 16 {
+			err := ssz.ErrIncorrectListSize
+			return nil, err
+		}
+		for _, elem := range executionPayloadFields.Withdrawals {
+			if err = elem.HashTreeRootWith(hh); err != nil {
+				return nil, err
+			}
+		}
+		hh.MerkleizeWithMixin(subIndx, num, 16)
+		copy(executionPayloadFieldRoots[14][:], hh.Hash())
+		hh.Reset()
+	}
 
 	return executionPayloadFieldRoots, nil
 }
