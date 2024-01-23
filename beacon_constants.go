@@ -40,7 +40,7 @@ const blockHeaderMerkleSubtreeNumLayers = uint64(3)
 const blockBodyMerkleSubtreeNumLayers = uint64(4)
 
 // Number of layers for the merkelization of the Execution Payload
-const executionPayloadMerkleSubtreeNumLayers = uint64(5)
+const executionPayloadMerkleSubtreeNumLayersDeneb = uint64(5)
 
 const executionPayloadMerkleSubtreeNumLayersCapella = uint64(4)
 

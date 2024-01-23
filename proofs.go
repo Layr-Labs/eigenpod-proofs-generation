@@ -338,7 +338,7 @@ func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFields *deneb.Ex
 		return nil, err
 	}
 
-	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, executionPayloadMerkleSubtreeNumLayers)
+	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, executionPayloadMerkleSubtreeNumLayersDeneb)
 }
 
 func ProveCapellaWithdrawalListAgainstExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
@@ -357,7 +357,7 @@ func ProveTimestampAgainstExecutionPayload(executionPayloadFields *deneb.Executi
 		return nil, err
 	}
 
-	return GetProof(executionPayloadFieldRoots, timestampIndex, executionPayloadMerkleSubtreeNumLayers)
+	return GetProof(executionPayloadFieldRoots, timestampIndex, executionPayloadMerkleSubtreeNumLayersDeneb)
 }
 
 func ProveTimestampAgainstCapellaExecutionPayload(executionPayloadFields *capella.ExecutionPayload) (Proof, error) {
