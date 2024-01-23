@@ -37,7 +37,8 @@ func GenerateWithdrawalFieldsProof(
 	oracleBeaconBlockHeader, err := ExtractBlockHeader(oracleBlockHeaderFile)
 
 	root, _ := oracleBeaconBlockHeader.HashTreeRoot()
-	fmt.Println("oracleBeaconBlockHeader: ", root)
+	fmt.Println("oracleBeaconBlockHeader: ", hex.EncodeToString(root[:]))
+	fmt.Println("validatorIndex: ", validatorIndex)
 
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)

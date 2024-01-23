@@ -2,6 +2,7 @@ package eigenpodproofs
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -246,6 +247,8 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 
 	start = time.Now()
 	// prove the withdrawal block root against the oracle state root
+	fmt.Println("withdrawalProof.HistoricalSummaryIndex", withdrawalProof.HistoricalSummaryIndex)
+	fmt.Println("withdrawalProof.BlockRootIndex", withdrawalProof.BlockRootIndex)
 	withdrawalProof.HistoricalSummaryBlockRootProof, err = ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateTopLevelRoots, oracleBeaconState.HistoricalSummaries, historicalSummaryStateBlockRoots, withdrawalProof.HistoricalSummaryIndex, withdrawalProof.BlockRootIndex)
 	if err != nil {
 		return nil, err

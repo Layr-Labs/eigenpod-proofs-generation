@@ -32,7 +32,7 @@ $ ./proofGeneration -command WithdrawalFieldsProof -oracleBlockHeaderFile [ORACL
 Here is an example of running this command with the sample state/block files in the `/data` folder
 
 ```
-./proofGeneration -command WithdrawalFieldsProof -oracleBlockHeaderFile "../data/goerli_block_header_6399998.json" -stateFile "../data/goerli_slot_6399998.json" -validatorIndex 200240 -outputFile "withdrawal_proof_302913.json" -chainID 5 -historicalSummariesIndex 146 -blockHeaderIndex 8092 -historicalSummaryStateFile "../data/goerli_slot_6397852.json" -blockHeaderFile  "../data/goerli_block_header_6397852.json" -blockBodyFile "../data/goerli_block_6397852.json" -withdrawalIndex 0
+./proofGenCli/proofGenCLI -command WithdrawalFieldsProof -oracleBlockHeaderFile "data/goerli_block_header_6399998.json" -stateFile "data/goerli_slot_6399998.json" -validatorIndex 200240 -outputFile "withdrawal_proof_302913.json" -chainID 5 -historicalSummariesIndex 146 -blockHeaderIndex 8092 -historicalSummaryStateFile "data/goerli_slot_6397952.json" -blockHeaderFile "data/goerli_block_header_6397852.json" -blockBodyFile "data/goerli_block_6397852.json" -withdrawalIndex 0
 ```
 
 ### Generate a Balance Update Proof.  

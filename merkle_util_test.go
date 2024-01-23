@@ -232,6 +232,8 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	oldBlockRoots := oldBeaconState.BlockRoots
 
+	fmt.Println("historicalSummaryIndex", historicalSummaryIndex)
+	fmt.Println("beaconBlockHeaderToVerifyIndex", beaconBlockHeaderToVerifyIndex)
 	historicalSummaryBlockHeaderProof, err := ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(
 		currentBeaconStateTopLevelRoots,
 		currentBeaconState.HistoricalSummaries,
@@ -255,7 +257,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 		fmt.Println("error 2")
 	}
 
-	assert.True(t, flag, "Proof %v failed\n")
+	assert.True(t, false, "Proof %v failed\n")
 
 }
 
