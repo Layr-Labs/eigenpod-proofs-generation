@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
@@ -238,6 +239,113 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	start = time.Now()
 	// prove the timestamp against the execution payload
 	withdrawalProof.TimestampProof, err = ProveTimestampAgainstExecutionPayload(withdrawalBlock.Body.ExecutionPayload)
+	if err != nil {
+		return nil, err
+	}
+	withdrawalProof.TimestampRoot = ConvertUint64ToRoot(uint64(withdrawalBlock.Body.ExecutionPayload.Timestamp))
+	log.Info().Msgf("time to prove timestamp against execution payload: %s", time.Since(start))
+
+	start = time.Now()
+	// prove the withdrawal block root against the oracle state root
+	withdrawalProof.HistoricalSummaryBlockRootProof, err = ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateTopLevelRoots, oracleBeaconState.HistoricalSummaries, historicalSummaryStateBlockRoots, withdrawalProof.HistoricalSummaryIndex, withdrawalProof.BlockRootIndex)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Msgf("time to prove block root against beacon state via historical summaries: %s", time.Since(start))
+
+	return withdrawalProof, nil
+}
+
+func (epp *EigenPodProofs) ProveWithdrawalCapella(
+	oracleBlockHeader *phase0.BeaconBlockHeader,
+	oracleBeaconState *deneb.BeaconState,
+	oracleBeaconStateTopLevelRoots *BeaconStateTopLevelRoots,
+	historicalSummaryStateBlockRoots []phase0.Root,
+	withdrawalBlock *capella.BeaconBlock,
+	validatorIndex uint64,
+) (*WithdrawalProof, error) {
+	withdrawalProof := &WithdrawalProof{}
+	withdrawalProof.WithdrawalIndex = math.MaxUint64 // max uint 64 value
+	for i := 0; i < len(withdrawalBlock.Body.ExecutionPayload.Withdrawals); i++ {
+		if uint64(withdrawalBlock.Body.ExecutionPayload.Withdrawals[i].ValidatorIndex) == validatorIndex {
+			withdrawalProof.WithdrawalIndex = uint64(i)
+			break
+		}
+	}
+	if withdrawalProof.WithdrawalIndex == math.MaxUint64 {
+		return nil, errors.New("validator index not found in withdrawal block")
+	}
+
+	var FIRST_CAPELLA_SLOT uint64
+	if epp.chainID == 5 {
+		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_GOERLI
+	} else if epp.chainID == 1 {
+		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_MAINNET
+	}
+
+	withdrawalSlotUint64 := uint64(withdrawalBlock.Slot)
+
+	// index of the historical summary in the array of historical_summaries
+	withdrawalProof.HistoricalSummaryIndex = (withdrawalSlotUint64 - FIRST_CAPELLA_SLOT) / slotsPerHistoricalRoot
+
+	// index of the block containing the target withdrawal in the block roots array
+	withdrawalProof.BlockRootIndex = withdrawalSlotUint64 % slotsPerHistoricalRoot
+	withdrawalProof.BlockRoot = historicalSummaryStateBlockRoots[withdrawalProof.BlockRootIndex]
+
+	// make sure the withdrawal index is in range
+	if len(withdrawalBlock.Body.ExecutionPayload.Withdrawals) <= int(withdrawalProof.WithdrawalIndex) {
+		return nil, errors.New("withdrawal index is out of range")
+	}
+
+	// log the time it takes to compute each proof
+	log.Info().Msg("computing withdrawal proof")
+
+	var err error
+	start := time.Now()
+	// prove the withdrawal against the execution payload
+	withdrawalProof.WithdrawalProof, err = ProveCapellaWithdrawalAgainstExecutionPayload(withdrawalBlock.Body.ExecutionPayload, uint8(withdrawalProof.WithdrawalIndex))
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Msgf("time to prove withdrawal against execution payload: %s", time.Since(start))
+
+	start = time.Now()
+	// compute the withdrawal body root
+	blockBodyRoot, err := withdrawalBlock.Body.HashTreeRoot()
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Msgf("time to compute block body root: %s", time.Since(start))
+
+	// setup the withdrawal block header
+	withdrawalBlockHeader := &phase0.BeaconBlockHeader{
+		Slot:          withdrawalBlock.Slot,
+		ProposerIndex: withdrawalBlock.ProposerIndex,
+		ParentRoot:    withdrawalBlock.ParentRoot,
+		StateRoot:     withdrawalBlock.StateRoot,
+		BodyRoot:      blockBodyRoot,
+	}
+
+	start = time.Now()
+	// prove the execution payload against the withdrawal block header
+	withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = ProveCapellaExecutionPayloadAgainstBlockHeader(withdrawalBlockHeader, withdrawalBlock.Body)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
+
+	start = time.Now()
+	// prove the slot against the withdrawal block header
+	withdrawalProof.SlotProof, err = ProveSlotAgainstBlockHeader(withdrawalBlockHeader)
+	if err != nil {
+		return nil, err
+	}
+	log.Info().Msgf("time to prove slot against block header: %s", time.Since(start))
+	withdrawalProof.SlotRoot = ConvertUint64ToRoot(uint64(withdrawalBlockHeader.Slot))
+
+	start = time.Now()
+	// prove the timestamp against the execution payload
+	withdrawalProof.TimestampProof, err = ProveTimestampAgainstCapellaExecutionPayload(withdrawalBlock.Body.ExecutionPayload)
 	if err != nil {
 		return nil, err
 	}

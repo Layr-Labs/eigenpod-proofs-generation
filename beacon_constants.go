@@ -42,6 +42,8 @@ const blockBodyMerkleSubtreeNumLayers = uint64(4)
 // Number of layers for the merkelization of the Execution Payload
 const executionPayloadMerkleSubtreeNumLayers = uint64(5)
 
+const executionPayloadMerkleSubtreeNumLayersCapella = uint64(4)
+
 // Number of layers for the merkleixation of the Validator List in the Beacon State
 const validatorListMerkleSubtreeNumLayers = uint64(40)
 

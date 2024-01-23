@@ -116,6 +116,16 @@ type InputDataBlock struct {
 	Finalized            bool `json:"finalized"`
 }
 
+type InputDataBlockCapella struct {
+	Version string `json:"version"`
+	Data    struct {
+		Message   capella.BeaconBlock `json:"message"`
+		Signature string              `json:"signature"`
+	} `json:"data"`
+	Execution_optimistic bool `json:"execution_optimistic"`
+	Finalized            bool `json:"finalized"`
+}
+
 func SetUpWithdrawalsProof(
 	oracleBlockHeaderFile string,
 	stateFile string,
@@ -211,6 +221,107 @@ func SetUpWithdrawalsProof(
 		fmt.Println("new state root", hex.EncodeToString(newStateRoot[:]))
 	}
 	executionPayload = *block.Body.ExecutionPayload
+
+	return block
+
+}
+
+func SetUpWithdrawalsProofCapella(
+	oracleBlockHeaderFile string,
+	stateFile string,
+	historicalSummaryStateFile string,
+	headerFile string,
+	bodyFile string,
+	oracleBlockHeader *phase0.BeaconBlockHeader,
+	state *deneb.BeaconState,
+	historicalSummaryState *capella.BeaconState,
+	blockHeader *phase0.BeaconBlockHeader,
+	block *capella.BeaconBlock,
+	modifyStateToIncludeFullWithdrawal bool,
+	partialWithdrawalProof bool,
+	validatorIndex uint64,
+	historicalSummariesIndex uint64,
+	withdrawalToModifyIndex uint64,
+	advanceSlotOfWithdrawal bool,
+) *capella.BeaconBlock {
+	log.Println("Setting up suite")
+	// filename1 := "data/slot_58000/oracle_capella_beacon_state_58100.ssz"
+	// filename2 := "data/slot_58000/capella_block_header_58000.json"
+	// filename3 := "data/slot_58000/capella_block_58000.json"
+	// filename1 := "data/slot_43222/oracle_capella_beacon_state_43300.ssz"
+	// filename2 := "data/slot_43222/capella_block_header_43222.json"
+	// filename3 := "data/slot_43222/capella_block_43222.json"
+	var err error
+	fmt.Println("SetUpWithdrawalsProofCapella: oracleBlockHeaderFile", oracleBlockHeaderFile)
+	*oracleBlockHeader, err = ExtractBlockHeader(oracleBlockHeaderFile)
+	if err != nil {
+		fmt.Println("SetUpWithdrawalsProofCapella: read error with header file")
+	}
+
+	stateJSON, err := eigenpodproofs.ParseStateJSONFile(stateFile)
+	if err != nil {
+		fmt.Println("SetUpWithdrawalsProofCapella: error with JSON parsing state file")
+	}
+	eigenpodproofs.ParseDenebBeaconStateFromJSON(*stateJSON, state)
+
+	historicalSummaryJSON, err := eigenpodproofs.ParseCapellaStateJSONFile(historicalSummaryStateFile)
+	if err != nil {
+		fmt.Println("error with JSON parsing historical summary state file")
+	}
+	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*historicalSummaryJSON, historicalSummaryState)
+
+	fmt.Println("SetUpWithdrawalsProofCapella: headerFile", headerFile)
+	*blockHeader, err = ExtractBlockHeader(headerFile)
+	if err != nil {
+		fmt.Println("read error with header file")
+	}
+
+	*block, err = ExtractBlockCapella(bodyFile)
+	if err != nil {
+		fmt.Println("read error with body file")
+	}
+
+	fmt.Println("blockHeader slot", block.ParentRoot)
+
+	//this exists so that if there is not a full withdrawal in the block, we can modify the state to include one.
+	if modifyStateToIncludeFullWithdrawal {
+		if !partialWithdrawalProof {
+			block.Body.ExecutionPayload.Withdrawals[withdrawalToModifyIndex].Amount = 32000115173
+		}
+		block.Body.ExecutionPayload.Withdrawals[withdrawalToModifyIndex].ValidatorIndex = phase0.ValidatorIndex(validatorIndex)
+		if advanceSlotOfWithdrawal {
+			block.Body.ExecutionPayload.Timestamp = block.Body.ExecutionPayload.Timestamp + 1
+		}
+
+		bodyRoot, _ := block.Body.HashTreeRoot()
+		blockHeader.BodyRoot = bodyRoot
+
+		root, _ := historicalSummaryState.HashTreeRoot()
+		fmt.Println("old state root", hex.EncodeToString(root[:]))
+
+		blockHeaderRoot, _ := blockHeader.HashTreeRoot()
+		//set the block root in the state
+		historicalSummaryState.BlockRoots[uint64(blockHeader.Slot)%8192] = blockHeaderRoot
+		historicalSummaryStateTopLevelRoots, err := eigenpodproofs.ComputeBeaconStateTopLevelRootsCapella(historicalSummaryState)
+		if err != nil {
+			fmt.Println("error in getting top level roots", err)
+		}
+		state.HistoricalSummaries[historicalSummariesIndex].BlockSummaryRoot = *historicalSummaryStateTopLevelRoots.BlockRootsRoot
+
+		// set the withdrawable epoch of the validator to indicate a full withdrawal
+		if !partialWithdrawalProof {
+			state.Validators[validatorIndex].WithdrawableEpoch = 0
+		}
+
+		//set the new stateRoot as the latestBlockHeader.state_root
+		newStateRoot, _ := state.HashTreeRoot()
+		oracleBlockHeader.StateRoot = newStateRoot
+
+		fmt.Println("blockheader slot", blockHeader.Slot)
+
+		fmt.Println("new state root", hex.EncodeToString(newStateRoot[:]))
+	}
+	executionPayloadCapella = *block.Body.ExecutionPayload
 
 	return block
 
@@ -326,6 +437,22 @@ func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
 	var data InputDataBlock
 	if err := json.Unmarshal(fileBytes, &data); err != nil {
 		return deneb.BeaconBlock{}, err
+	}
+
+	// Extract block body
+	return data.Data.Message, nil
+}
+
+func ExtractBlockCapella(blockHeaderFile string) (capella.BeaconBlock, error) {
+	fileBytes, err := os.ReadFile(blockHeaderFile)
+	if err != nil {
+		return capella.BeaconBlock{}, err
+	}
+
+	// Decode JSON
+	var data InputDataBlockCapella
+	if err := json.Unmarshal(fileBytes, &data); err != nil {
+		return capella.BeaconBlock{}, err
 	}
 
 	// Extract block body
