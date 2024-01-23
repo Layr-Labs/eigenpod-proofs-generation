@@ -3,6 +3,7 @@ package eigenpodproofs
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -34,6 +35,11 @@ func GenerateWithdrawalFieldsProof(
 	var withdrawalBlock capella.BeaconBlock
 
 	oracleBeaconBlockHeader, err := ExtractBlockHeader(oracleBlockHeaderFile)
+
+	root, _ := oracleBeaconBlockHeader.HashTreeRoot()
+	fmt.Println("oracleBeaconBlockHeader: ", hex.EncodeToString(root[:]))
+	fmt.Println("validatorIndex: ", validatorIndex)
+
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
 	}
@@ -99,16 +105,21 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
 	}
-	stateRootProof, err := ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
+	stateRootProofAgainstBlockHeader, err := ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveStateRootAgainstBlockHeader", err)
+	}
+	slotProofAgainstBlockHeader, err := ProveSlotAgainstBlockHeader(&oracleBeaconBlockHeader)
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveSlotAgainstBlockHeader", err)
 	}
 	validatorProof, err := epp.ProveValidatorAgainstBeaconState(&state, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveValidatorAgainstBeaconState", err)
 	}
 	proofs := WithdrawalProofs{
-		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProof),
+		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProofAgainstBlockHeader),
+		SlotAgainstLatestBlockHeaderProof:      ConvertBytesToStrings(slotProofAgainstBlockHeader),
 		BeaconStateRoot:                        "0x" + hex.EncodeToString(beaconStateRoot[:]),
 		WithdrawalProof:                        ConvertBytesToStrings(withdrawalProof.WithdrawalProof),
 		SlotProof:                              ConvertBytesToStrings(withdrawalProof.SlotProof),

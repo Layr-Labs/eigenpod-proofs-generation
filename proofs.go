@@ -462,33 +462,10 @@ func ProveExecutionPayloadAgainstBlockBody(beaconBlockBody *capella.BeaconBlockB
 // refer to this: https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/phase0/beaconblockheader_encoding.go
 func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (Proof, error) {
 
-	beaconBlockHeaderContainerRoots := make([]phase0.Root, 5)
-	hh := ssz.NewHasher()
-
-	// Field (0) 'Slot'
-	hh.PutUint64(uint64(b.Slot))
-	copy(beaconBlockHeaderContainerRoots[0][:], hh.Hash())
-	hh.Reset()
-
-	// Field (1) 'ProposerIndex'
-	hh.PutUint64(uint64(b.ProposerIndex))
-	copy(beaconBlockHeaderContainerRoots[1][:], hh.Hash())
-	hh.Reset()
-
-	// Field (2) 'ParentRoot'
-	hh.PutBytes(b.ParentRoot[:])
-	copy(beaconBlockHeaderContainerRoots[2][:], hh.Hash())
-	hh.Reset()
-
-	// Field (3) 'StateRoot'
-	hh.PutBytes(b.StateRoot[:])
-	copy(beaconBlockHeaderContainerRoots[3][:], hh.Hash())
-	hh.Reset()
-
-	// Field (4) 'BodyRoot'
-	hh.PutBytes(b.BodyRoot[:])
-	copy(beaconBlockHeaderContainerRoots[4][:], hh.Hash())
-	hh.Reset()
+	beaconBlockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(b)
+	if err != nil {
+		return nil, err
+	}
 
 	return GetProof(beaconBlockHeaderContainerRoots, stateRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }

@@ -2,6 +2,7 @@ package eigenpodproofs
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -44,6 +45,8 @@ type WithdrawalProof struct {
 type StateRootProof struct {
 	BeaconStateRoot phase0.Root `json:"beaconStateRoot"`
 	StateRootProof  Proof       `json:"stateRootProof"`
+	Slot            phase0.Slot `json:"slot"`
+	SlotRootProof   Proof       `json:"slotRootProof"` //Note:  this slot root is oracle block root being used to prove partial withdrawals is after the specified range of blocks requested by the user
 }
 
 const FIRST_CAPELLA_SLOT_GOERLI = uint64(5193728)
@@ -97,6 +100,14 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 	}
 
 	verifyAndProcessWithdrawalCallParams.StateRootProof.StateRootProof, err = ProveStateRootAgainstBlockHeader(oracleBlockHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	// Note: this slot and slot root proof are used for partial withdrawal proofs to ensure that the oracle root slot is after the specified range of blocks requested by the user
+	verifyAndProcessWithdrawalCallParams.StateRootProof.Slot = oracleBlockHeader.Slot
+
+	verifyAndProcessWithdrawalCallParams.StateRootProof.SlotRootProof, err = ProveSlotAgainstBlockHeader(oracleBlockHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +247,8 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 
 	start = time.Now()
 	// prove the withdrawal block root against the oracle state root
+	fmt.Println("withdrawalProof.HistoricalSummaryIndex", withdrawalProof.HistoricalSummaryIndex)
+	fmt.Println("withdrawalProof.BlockRootIndex", withdrawalProof.BlockRootIndex)
 	withdrawalProof.HistoricalSummaryBlockRootProof, err = ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateTopLevelRoots, oracleBeaconState.HistoricalSummaries, historicalSummaryStateBlockRoots, withdrawalProof.HistoricalSummaryIndex, withdrawalProof.BlockRootIndex)
 	if err != nil {
 		return nil, err

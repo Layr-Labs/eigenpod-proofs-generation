@@ -20,6 +20,7 @@ import (
 
 type WithdrawalProofs struct {
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
+	SlotAgainstLatestBlockHeaderProof      []string `json:"SlotAgainstLatestBlockHeaderProof"`
 	BeaconStateRoot                        string   `json:"beaconStateRoot"`
 	WithdrawalProof                        []string `json:"WithdrawalProof"`
 	SlotProof                              []string `json:"SlotProof"`
@@ -49,11 +50,9 @@ type WithdrawalCredentialProofs struct {
 type BalanceUpdateProofs struct {
 	ValidatorIndex                         uint64   `json:"validatorIndex"`
 	BeaconStateRoot                        string   `json:"beaconStateRoot"`
-	BalanceRoot                            string   `json:"balanceRoot"`
 	LatestBlockHeaderRoot                  string   `json:"latestBlockHeaderRoot"`
-	ValidatorBalanceProof                  []string `json:"ValidatorBalanceProof"`
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
-	WithdrawalCredentialProof              []string `json:"WithdrawalCredentialProof"`
+	ValidatorFieldsProof                   []string `json:"WithdrawalCredentialProof"`
 	ValidatorFields                        []string `json:"ValidatorFields"`
 }
 
@@ -168,6 +167,8 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 	if err := json.Unmarshal(fileBytes, &inputData); err != nil {
 		return phase0.BeaconBlockHeader{}, err
 	}
+
+	fmt.Println(inputData.Data.Header.Message)
 
 	return inputData.Data.Header.Message, nil
 }
