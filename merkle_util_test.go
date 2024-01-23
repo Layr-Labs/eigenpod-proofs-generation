@@ -11,6 +11,7 @@ import (
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
@@ -273,24 +274,24 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	//this is not the beacon state of the slot containing the old withdrawal we want to proof but rather
 	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal, ie, 7421952 mod 8192 = 0
-	oldBeaconStateJSON, err := parseJSONFile("data/goerli_slot_6397952.json.json")
+	oldBeaconStateJSON, err := parseJSONFileCapella("data/goerli_slot_6397952.json")
 	if err != nil {
-		fmt.Println("error parsing oldBeaconStateJSON")
+		fmt.Println("error parsing oldBeaconStateJSON", err)
 	}
 
 	var blockHeader phase0.BeaconBlockHeader
 	//blockHeader, err = ExtractBlockHeader("data/goerli_block_header_6397852.json")
-	blockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7421951.json")
+	blockHeader, err = ExtractBlockHeader("data/goerli_block_header_6397852.json")
 
 	if err != nil {
 		fmt.Println("blockHeader.UnmarshalJSON error", err)
 	}
 
 	var currentBeaconState deneb.BeaconState
-	var oldBeaconState deneb.BeaconState
+	var oldBeaconState capella.BeaconState
 
 	ParseDenebBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
-	ParseDenebBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
+	ParseCapellaBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
 	fmt.Println("currentBeacon state historical summary lentgh is", len(currentBeaconState.HistoricalSummaries))
 
 	currentBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&currentBeaconState)
@@ -300,8 +301,8 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 		fmt.Println("error")
 	}
 
-	historicalSummaryIndex := uint64(271)
-	beaconBlockHeaderToVerifyIndex = 8191 //(7421951 mod 8192)
+	historicalSummaryIndex := uint64(146)
+	beaconBlockHeaderToVerifyIndex = 8092 //(7421951 mod 8192)
 	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
@@ -766,6 +767,25 @@ func parseJSONFile(filePath string) (*beaconStateJSON, error) {
 	}
 
 	var beaconState beaconStateVersion
+	err = json.Unmarshal(data, &beaconState)
+	if err != nil {
+		fmt.Println("error with beaconState JSON unmarshalling")
+		return nil, err
+	}
+
+	actualData := beaconState.Data
+	return &actualData, nil
+}
+
+func parseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
+	data, err := os.ReadFile(filePath)
+
+	if err != nil {
+		fmt.Println("error with reading file")
+		return nil, err
+	}
+
+	var beaconState beaconStateVersionCapella
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		fmt.Println("error with beaconState JSON unmarshalling")
