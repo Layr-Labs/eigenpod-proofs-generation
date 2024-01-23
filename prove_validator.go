@@ -90,7 +90,7 @@ func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *d
 	}
 
 	// prove the validator root against the validator list root
-	validatorProof, err := epp.ProveValidatorAgainstValidatorList(uint64(oracleBeaconState.Slot), oracleBeaconState.Validators, validatorIndex)
+	validatorProof, err := epp.ProveValidatorAgainstValidatorList(oracleBeaconState.Slot, oracleBeaconState.Validators, validatorIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(oracleBeaconState *d
 	return proof, nil
 }
 
-func (epp *EigenPodProofs) ProveValidatorAgainstValidatorList(slot uint64, validators []*phase0.Validator, validatorIndex uint64) (Proof, error) {
+func (epp *EigenPodProofs) ProveValidatorAgainstValidatorList(slot phase0.Slot, validators []*phase0.Validator, validatorIndex uint64) (Proof, error) {
 	validatorTree, err := epp.ComputeValidatorTree(slot, validators)
 	if err != nil {
 		return nil, err

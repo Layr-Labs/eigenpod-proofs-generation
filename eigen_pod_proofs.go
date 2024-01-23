@@ -41,106 +41,120 @@ func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*Eige
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState) (phase0.Root, error) {
-	// check if the beacon state root is cached
-	beaconStateRootSlice, found := epp.oracleStateCache.Get(key(BEACON_STATE_ROOT_PREFIX, uint64(beaconState.Slot)))
-	// if the beacon state root is cached, return it
-	if found {
-		var beaconStateRoot phase0.Root
-		copy(beaconStateRoot[:], beaconStateRootSlice)
-		return beaconStateRoot, nil
-	}
-
-	// compute the beacon state root
-	beaconStateRoot, err := beaconState.HashTreeRoot()
+	beaconStateRootSlice, err := epp.loadOrComputeBeaconData(
+		BEACON_STATE_ROOT_PREFIX,
+		beaconState.Slot,
+		func() ([]byte, error) {
+			stateRoot, err := beaconState.HashTreeRoot()
+			if err != nil {
+				return nil, err
+			}
+			return stateRoot[:], nil
+		},
+	)
 	if err != nil {
 		return phase0.Root{}, err
 	}
-
-	// cache the beacon state root
-	_ = epp.oracleStateCache.Add(key(BEACON_STATE_ROOT_PREFIX, uint64(beaconState.Slot)), beaconStateRoot[:])
+	var beaconStateRoot phase0.Root
+	copy(beaconStateRoot[:], beaconStateRootSlice)
 	return beaconStateRoot, nil
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
-	// check if the beacon state top level roots are cached
-	beaconStateTopLevelRootsSlice, found := epp.oracleStateCache.Get(key(BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX, uint64(beaconState.Slot)))
-	// if the beacon state top level roots are cached, return them
-	if found {
-		beaconStatbeaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
-		err := json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStatbeaconStateTopLevelRoots)
-		return beaconStatbeaconStateTopLevelRoots, err
-	}
-
-	// compute the beacon state top level roots
-	beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRoots(beaconState)
+	beaconStateTopLevelRootsSlice, err := epp.loadOrComputeBeaconData(
+		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
+		beaconState.Slot,
+		func() ([]byte, error) {
+			beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRoots(beaconState)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(beaconStateTopLevelRoots)
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	// cache the beacon state top level roots
-	beaconStateTopLevelRootsSlice, err = json.Marshal(beaconStateTopLevelRoots)
-	if err != nil {
-		return nil, err
-	}
-	_ = epp.oracleStateCache.Add(key(BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX, uint64(beaconState.Slot)), beaconStateTopLevelRootsSlice)
-	return beaconStateTopLevelRoots, nil
+	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
+	err = json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStateTopLevelRoots)
+	return beaconStateTopLevelRoots, err
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRootsCapella(beaconState *capella.BeaconState) (*BeaconStateTopLevelRoots, error) {
-	// check if the beacon state top level roots are cached
-	beaconStateTopLevelRootsSlice, found := epp.oracleStateCache.Get(key(BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX, uint64(beaconState.Slot)))
-	// if the beacon state top level roots are cached, return them
-	if found {
-		beaconStatbeaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
-		err := json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStatbeaconStateTopLevelRoots)
-		return beaconStatbeaconStateTopLevelRoots, err
-	}
-
-	// compute the beacon state top level roots
-	beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRootsCapella(beaconState)
+	beaconStateTopLevelRootsSlice, err := epp.loadOrComputeBeaconData(
+		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
+		beaconState.Slot,
+		func() ([]byte, error) {
+			beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRootsCapella(beaconState)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(beaconStateTopLevelRoots)
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	// cache the beacon state top level roots
-	beaconStateTopLevelRootsSlice, err = json.Marshal(beaconStateTopLevelRoots)
-	if err != nil {
-		return nil, err
-	}
-	_ = epp.oracleStateCache.Add(key(BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX, uint64(beaconState.Slot)), beaconStateTopLevelRootsSlice)
-	return beaconStateTopLevelRoots, nil
+	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
+	err = json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStateTopLevelRoots)
+	return beaconStateTopLevelRoots, err
 }
 
-func (epp *EigenPodProofs) ComputeValidatorTree(slot uint64, validators []*phase0.Validator) ([][]phase0.Root, error) {
-	// check if the validator tree leaves are cached
-	validatorTreeSlice, found := epp.oracleStateCache.Get(key(VALIDATOR_TREE_PREFIX, slot))
+func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*phase0.Validator) ([][]phase0.Root, error) {
+	validatorTreeSlice, err := epp.loadOrComputeBeaconData(
+		VALIDATOR_TREE_PREFIX,
+		slot,
+		func() ([]byte, error) {
+			// compute the validator tree leaves
+			validatorLeaves, err := ComputeValidatorTreeLeaves(validators)
+			if err != nil {
+				return nil, err
+			}
 
-	// if the validator tree leaves are cached, return them
-	if found {
-		var validatorTree [][]phase0.Root
-		err := json.Unmarshal(validatorTreeSlice, &validatorTree)
-		return validatorTree, err
-	}
+			// compute the validator tree
+			validatorTree, err := ComputeMerkleTreeFromLeaves(validatorLeaves, validatorListMerkleSubtreeNumLayers)
+			if err != nil {
+				return nil, err
+			}
 
-	// compute the validator tree leaves
-	validatorLeaves, err := ComputeValidatorTreeLeaves(validators)
+			// cache the validator tree
+			validatorTreeSlice, err := json.Marshal(validatorTree)
+			if err != nil {
+				return nil, err
+			}
+			return validatorTreeSlice, nil
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	// compute the validator tree
-	validatorTree, err := ComputeMerkleTreeFromLeaves(validatorLeaves, validatorListMerkleSubtreeNumLayers)
+	// unmarshal the validator tree
+	validatorTree := [][]phase0.Root{}
+	err = json.Unmarshal(validatorTreeSlice, &validatorTree)
 	if err != nil {
 		return nil, err
 	}
-
-	// cache the validator tree
-	validatorTreeSlice, err = json.Marshal(validatorTree)
-	if err != nil {
-		return nil, err
-	}
-	_ = epp.oracleStateCache.Add(key(VALIDATOR_TREE_PREFIX, slot), validatorTreeSlice)
 	return validatorTree, nil
+}
+
+func (epp *EigenPodProofs) loadOrComputeBeaconData(prefix string, slot phase0.Slot, getData func() ([]byte, error)) ([]byte, error) {
+	// check if the data is cached
+	data, found := epp.oracleStateCache.Get(key(prefix, uint64(slot)))
+	// if the data is cached, return it
+	if found {
+		return data, nil
+	}
+
+	// compute the data
+	data, err := getData()
+	if err != nil {
+		return nil, err
+	}
+
+	// cache the beacon state root
+	_ = epp.oracleStateCache.Add(key(BEACON_STATE_ROOT_PREFIX, uint64(slot)), data)
+	return data, nil
 }
 
 func key(prefix string, slot uint64) string {
