@@ -1,4 +1,4 @@
-package beacon_proofs
+package beacon
 
 const slotsPerHistoricalRoot = uint64(8192)
 
