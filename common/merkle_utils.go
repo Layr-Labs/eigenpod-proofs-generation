@@ -1,4 +1,4 @@
-package eigenpodproofs
+package common
 
 //Adapted from https://github.com/ferranbt/fastssz/blob/main/tree.go
 import (

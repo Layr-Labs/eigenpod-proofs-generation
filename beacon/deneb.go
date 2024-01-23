@@ -32,7 +32,7 @@ func ProveExecutionPayloadAgainstBlockHeaderDeneb(
 
 // Refer to beaconblockbody.go in go-eth2-client
 // https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/bellatrix/beaconblockbody_encoding.go
-func ProveExecutionPayloadAgainstBlockBodyDeneb(beaconBlockBody *deneb.BeaconBlockBody) (Proof, [32]byte, error) {
+func ProveExecutionPayloadAgainstBlockBodyDeneb(beaconBlockBody *deneb.BeaconBlockBody) (common.Proof, [32]byte, error) {
 	beaconBlockBodyContainerRoots := make([]phase0.Root, 12)
 	var err error
 
@@ -194,7 +194,7 @@ func ProveExecutionPayloadAgainstBlockBodyDeneb(beaconBlockBody *deneb.BeaconBlo
 		hh.Reset()
 	}
 
-	proof, err := GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
 
 	return proof, beaconBlockBodyContainerRoots[executionPayloadIndex], err
 }
@@ -604,7 +604,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	return beaconStateTopLevelRoots, nil
 }
 
-func GetExecutionPayloadFieldRootsDeneb(executionPayloadFields *deneb.ExecutionPayload) ([]phase0.Root, error) {
+func ComputeExecutionPayloadFieldRootsDeneb(executionPayloadFields *deneb.ExecutionPayload) ([]phase0.Root, error) {
 	executionPayloadFieldRoots := make([]phase0.Root, 17)
 	var err error
 

@@ -34,7 +34,7 @@ func ProveExecutionPayloadAgainstBlockHeaderCapella(
 
 // Refer to beaconblockbody.go in go-eth2-client
 // https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/bellatrix/beaconblockbody_encoding.go
-func ProveExecutionPayloadAgainstBlockBodyCapella(beaconBlockBody *capella.BeaconBlockBody) (Proof, [32]byte, error) {
+func ProveExecutionPayloadAgainstBlockBodyCapella(beaconBlockBody *capella.BeaconBlockBody) (common.Proof, [32]byte, error) {
 	beaconBlockBodyContainerRoots := make([]phase0.Root, 11)
 	var err error
 
@@ -181,7 +181,7 @@ func ProveExecutionPayloadAgainstBlockBodyCapella(beaconBlockBody *capella.Beaco
 		hh.Reset()
 	}
 
-	proof, err := GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(beaconBlockBodyContainerRoots, executionPayloadIndex, blockBodyMerkleSubtreeNumLayers)
 
 	return proof, beaconBlockBodyContainerRoots[executionPayloadIndex], err
 }

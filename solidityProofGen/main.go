@@ -14,6 +14,8 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
+
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 )
 
 var (
@@ -239,11 +241,11 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 	}
 	//blockHeaderProof, slotProof, withdrawalProof, validatorProof, timestampProof, executionPayloadProof, stateRootAgainstLatestBlockHeaderProof, historicalSummaryProof, err :=
 	// withdrawalProof, stateRootProof, validatorProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &oracleState, historicalSummaryState.BlockRoots, &withdrawalBlock, validatorIndex)
-	withdrawalProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &oracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
+	withdrawalProof, err := epp.ProveWithdrawalDeneb(&oracleBeaconBlockHeader, &oracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveWithdrawal error", err)
 	}
-	stateRootProof, err := eigenpodproofs.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
+	stateRootProof, err := beacon.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		fmt.Println("ProveStateRootAgainstBlockHeader error", err)
 	}
@@ -337,7 +339,7 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	if err != nil {
 		fmt.Println("ProveWithdrawal error", err)
 	}
-	stateRootProof, err := eigenpodproofs.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
+	stateRootProof, err := beacon.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		fmt.Println("ProveStateRootAgainstBlockHeader error", err)
 	}

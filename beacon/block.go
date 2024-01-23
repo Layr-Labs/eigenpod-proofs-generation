@@ -1,38 +1,39 @@
 package beacon
 
 import (
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
 )
 
-func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Proof, error) {
+func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (common.Proof, error) {
 	blockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(blockHeader)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
+	return common.GetProof(blockHeaderContainerRoots, beaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 // refer to this: https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/phase0/beaconblockheader_encoding.go
-func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (Proof, error) {
+func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (common.Proof, error) {
 
 	beaconBlockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(b)
 	if err != nil {
 		return nil, err
 	}
 
-	return GetProof(beaconBlockHeaderContainerRoots, stateRootIndex, blockHeaderMerkleSubtreeNumLayers)
+	return common.GetProof(beaconBlockHeaderContainerRoots, stateRootIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
-func ProveSlotAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (Proof, error) {
+func ProveSlotAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (common.Proof, error) {
 	blockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(blockHeader)
 	if err != nil {
 		return nil, err
 	}
 
-	return GetProof(blockHeaderContainerRoots, slotIndex, blockHeaderMerkleSubtreeNumLayers)
+	return common.GetProof(blockHeaderContainerRoots, slotIndex, blockHeaderMerkleSubtreeNumLayers)
 }
 
 func GetBlockHeaderFieldRoots(blockHeader *phase0.BeaconBlockHeader) ([]phase0.Root, error) {

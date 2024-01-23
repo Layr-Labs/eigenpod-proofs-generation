@@ -11,6 +11,9 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 )
 
 const (
@@ -60,12 +63,12 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 	return beaconStateRoot, nil
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.BeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
 	beaconStateTopLevelRootsSlice, err := epp.loadOrComputeBeaconData(
 		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
 		beaconState.Slot,
 		func() ([]byte, error) {
-			beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRoots(beaconState)
+			beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(beaconState)
 			if err != nil {
 				return nil, err
 			}
@@ -75,17 +78,17 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.Be
 	if err != nil {
 		return nil, err
 	}
-	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
+	beaconStateTopLevelRoots := &beacon.BeaconStateTopLevelRoots{}
 	err = json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStateTopLevelRoots)
 	return beaconStateTopLevelRoots, err
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRootsCapella(beaconState *capella.BeaconState) (*BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRootsCapella(beaconState *capella.BeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
 	beaconStateTopLevelRootsSlice, err := epp.loadOrComputeBeaconData(
 		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
 		beaconState.Slot,
 		func() ([]byte, error) {
-			beaconStateTopLevelRoots, err := ComputeBeaconStateTopLevelRootsCapella(beaconState)
+			beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsCapella(beaconState)
 			if err != nil {
 				return nil, err
 			}
@@ -95,7 +98,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRootsCapella(beaconState *c
 	if err != nil {
 		return nil, err
 	}
-	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
+	beaconStateTopLevelRoots := &beacon.BeaconStateTopLevelRoots{}
 	err = json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStateTopLevelRoots)
 	return beaconStateTopLevelRoots, err
 }
@@ -106,13 +109,13 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 		slot,
 		func() ([]byte, error) {
 			// compute the validator tree leaves
-			validatorLeaves, err := ComputeValidatorTreeLeaves(validators)
+			validatorLeaves, err := beacon.ComputeValidatorTreeLeaves(validators)
 			if err != nil {
 				return nil, err
 			}
 
 			// compute the validator tree
-			validatorTree, err := ComputeMerkleTreeFromLeaves(validatorLeaves, validatorListMerkleSubtreeNumLayers)
+			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, validatorListMerkleSubtreeNumLayers)
 			if err != nil {
 				return nil, err
 			}

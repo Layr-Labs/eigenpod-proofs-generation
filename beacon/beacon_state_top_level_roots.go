@@ -1,8 +1,9 @@
-package merklization
+package beacon
 
 import (
 	"reflect"
 
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
@@ -37,7 +38,7 @@ type BeaconStateTopLevelRoots struct {
 	HistoricalSummariesRoot          *phase0.Root
 }
 
-func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateTopLevelRoots, index uint64) (Proof, error) {
+func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateTopLevelRoots, index uint64) (common.Proof, error) {
 	v := reflect.ValueOf(*beaconTopLevelRoots)
 	beaconTopLevelRootsList := make([]interface{}, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
@@ -51,5 +52,5 @@ func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateT
 		roots[i] = v.(phase0.Root)
 	}
 
-	return GetProof(roots, index, beaconStateMerkleSubtreeNumLayers)
+	return common.GetProof(roots, index, beaconStateMerkleSubtreeNumLayers)
 }

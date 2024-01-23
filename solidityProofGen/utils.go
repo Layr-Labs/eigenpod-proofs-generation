@@ -14,6 +14,8 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
+
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 )
 
 type WithdrawalProofs struct {
@@ -201,7 +203,7 @@ func SetUpWithdrawalsProof(
 		blockHeaderRoot, _ := blockHeader.HashTreeRoot()
 		//set the block root in the state
 		historicalSummaryState.BlockRoots[uint64(blockHeader.Slot)%8192] = blockHeaderRoot
-		historicalSummaryStateTopLevelRoots, err := eigenpodproofs.ComputeBeaconStateTopLevelRoots(historicalSummaryState)
+		historicalSummaryStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(historicalSummaryState)
 		if err != nil {
 			fmt.Println("error in getting top level roots", err)
 		}
@@ -302,7 +304,7 @@ func SetUpWithdrawalsProofCapella(
 		blockHeaderRoot, _ := blockHeader.HashTreeRoot()
 		//set the block root in the state
 		historicalSummaryState.BlockRoots[uint64(blockHeader.Slot)%8192] = blockHeaderRoot
-		historicalSummaryStateTopLevelRoots, err := eigenpodproofs.ComputeBeaconStateTopLevelRootsCapella(historicalSummaryState)
+		historicalSummaryStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsCapella(historicalSummaryState)
 		if err != nil {
 			fmt.Println("error in getting top level roots", err)
 		}

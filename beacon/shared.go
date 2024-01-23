@@ -24,7 +24,7 @@ func ComputeValidatorTreeLeaves(validators []*phase0.Validator) ([]phase0.Root, 
 	return validatorNodeList, nil
 }
 
-func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (Proof, error) {
+func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (common.Proof, error) {
 
 	buf := []byte{}
 
@@ -46,7 +46,7 @@ func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, va
 	//refer to beaconstate_ssz.go in go-eth2-client
 	numLayers := uint64(common.GetDepth(ssz.CalculateLimit(1099511627776, uint64(len(balances)), 8)))
 	validatorBalanceIndex := uint64(validatorIndex / 4)
-	proof, err := GetProof(balanceRootList, validatorBalanceIndex, numLayers)
+	proof, err := common.GetProof(balanceRootList, validatorBalanceIndex, numLayers)
 
 	if err != nil {
 		log.Debug().AnErr("error", err).Msg("error getting proof")
@@ -98,7 +98,7 @@ func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelR
 	}
 
 	// historical block roots are incklude the really old block root you wanna prove
-	beaconBlockHeaderRootsProof, err := GetProof(historicalBlockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
+	beaconBlockHeaderRootsProof, err := common.GetProof(historicalBlockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelR
 	return blockHeaderProof, nil
 }
 
-func ProveHistoricalSummaryAgainstHistoricalSummariesList(historicalSummaries []*capella.HistoricalSummary, historicalSummaryIndex uint64) (Proof, error) {
+func ProveHistoricalSummaryAgainstHistoricalSummariesList(historicalSummaries []*capella.HistoricalSummary, historicalSummaryIndex uint64) (common.Proof, error) {
 	historicalSummaryNodeList := make([]phase0.Root, len(historicalSummaries))
 	for i := 0; i < len(historicalSummaries); i++ {
 		historicalSummaryRoot, err := historicalSummaries[i].HashTreeRoot()
@@ -120,7 +120,7 @@ func ProveHistoricalSummaryAgainstHistoricalSummariesList(historicalSummaries []
 		historicalSummaryNodeList[i] = phase0.Root(historicalSummaryRoot)
 	}
 
-	proof, err := GetProof(historicalSummaryNodeList, historicalSummaryIndex, historicalSummaryListMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(historicalSummaryNodeList, historicalSummaryIndex, historicalSummaryListMerkleSubtreeNumLayers)
 
 	if err != nil {
 		return nil, err
@@ -133,17 +133,17 @@ func ProveHistoricalSummaryAgainstHistoricalSummariesList(historicalSummaries []
 	return proof, nil
 }
 
-func ProveBlockRootListAgainstHistoricalSummary(historicalSummary *capella.HistoricalSummary) (Proof, error) {
+func ProveBlockRootListAgainstHistoricalSummary(historicalSummary *capella.HistoricalSummary) (common.Proof, error) {
 	//historical summary container is a struct with two fields - block_summary_roots and state_summary_roots.  We want to prove
 	// the block roots field so the proof is only 1 layer deep and is just the state summary root
-	proof := make(Proof, 1)
+	proof := make(common.Proof, 1)
 	proof[0] = historicalSummary.StateSummaryRoot
 
 	return proof, nil
 }
 
-func ProveBlockRootAgainstBlockRootsList(blockRoots []phase0.Root, blockRootIndex uint64) (Proof, error) {
-	proof, err := GetProof(blockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
+func ProveBlockRootAgainstBlockRootsList(blockRoots []phase0.Root, blockRootIndex uint64) (common.Proof, error) {
+	proof, err := common.GetProof(blockRoots, blockRootIndex, blockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -175,11 +175,11 @@ func ProveWithdrawalAgainstExecutionPayload(
 	return fullWithdrawalProof, nil
 }
 
-func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFieldRoots []phase0.Root) (Proof, error) {
-	return GetProof(executionPayloadFieldRoots, withdrawalsIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
+func ProveWithdrawalListAgainstExecutionPayload(executionPayloadFieldRoots []phase0.Root) (common.Proof, error) {
+	return common.GetProof(executionPayloadFieldRoots, withdrawalsIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
 }
 
-func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, withdrawalIndex uint8) (Proof, error) {
+func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, withdrawalIndex uint8) (common.Proof, error) {
 	withdrawalNodeList := make([]phase0.Root, len(withdrawals))
 	for i := 0; i < len(withdrawals); i++ {
 		withdrawalRoot, err := withdrawals[i].HashTreeRoot()
@@ -189,7 +189,7 @@ func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, wit
 		withdrawalNodeList[i] = phase0.Root(withdrawalRoot)
 	}
 
-	proof, err := GetProof(withdrawalNodeList, uint64(withdrawalIndex), withdrawalListMerkleSubtreeNumLayers)
+	proof, err := common.GetProof(withdrawalNodeList, uint64(withdrawalIndex), withdrawalListMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err
 	}
@@ -201,6 +201,6 @@ func ProveWithdrawalAgainstWithdrawalList(withdrawals []*capella.Withdrawal, wit
 	return proof, nil
 }
 
-func ProveTimestampAgainstExecutionPayload(executionPayloadFieldRoots []phase0.Root) (Proof, error) {
-	return GetProof(executionPayloadFieldRoots, timestampIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
+func ProveTimestampAgainstExecutionPayload(executionPayloadFieldRoots []phase0.Root) (common.Proof, error) {
+	return common.GetProof(executionPayloadFieldRoots, timestampIndex, common.CeilLog2(len(executionPayloadFieldRoots)))
 }
