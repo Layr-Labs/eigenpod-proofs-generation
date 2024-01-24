@@ -28,7 +28,7 @@ func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader
 	}
 
 	// Get beacon state root.
-	verifyWithdrawalCredentialsCallParams.StateRootProof.BeaconStateRoot, err = epp.ComputeBeaconStateRoot(oracleBeaconState)
+	verifyWithdrawalCredentialsCallParams.StateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.Beacon
 	}
 
 	// Get beacon state root. TODO: Combine this cheaply with compute beacon state top level roots
-	stateRootProof.BeaconStateRoot, err = epp.ComputeBeaconStateRoot(oracleBeaconState)
+	stateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
 	if err != nil {
 		return nil, nil, err
 	}

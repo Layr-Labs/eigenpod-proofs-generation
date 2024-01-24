@@ -97,7 +97,7 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 	}
 
 	// Get beacon state root.
-	verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot, err = epp.ComputeBeaconStateRoot(oracleBeaconState)
+	verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
 	if err != nil {
 		return nil, err
 	}
