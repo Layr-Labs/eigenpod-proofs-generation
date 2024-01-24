@@ -156,7 +156,7 @@ func (epp *EigenPodProofs) loadOrComputeBeaconData(prefix string, slot phase0.Sl
 	}
 
 	// cache the beacon state root
-	_ = epp.oracleStateCache.Add(key(BEACON_STATE_ROOT_PREFIX, uint64(slot)), data)
+	_ = epp.oracleStateCache.Add(key(prefix, uint64(slot)), data)
 	return data, nil
 }
 
