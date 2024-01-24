@@ -2,6 +2,7 @@ package eigenpodproofs
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -184,6 +185,116 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
+
+func TestBrokenProof(t *testing.T) {
+	currentBeaconStateJSON, err := parseJSONFile("goerli_slot_7433534.json")
+	if err != nil {
+		fmt.Println("error parsing currentBeaconStateJSON", err)
+	}
+	oldBeaconStateJSON, err := parseJSONFile("goerli_slot_7413760.json")
+	if err != nil {
+		fmt.Println("error parsing oldBeaconStateJSON", err)
+	}
+	var currentBeaconState deneb.BeaconState
+	var oldBeaconState deneb.BeaconState
+
+	ParseDenebBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
+	ParseDenebBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
+	currentBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&currentBeaconState)
+
+	root, _ := currentBeaconState.HashTreeRoot()
+	fmt.Println("current root", hex.EncodeToString(root[:]))
+
+	var blockHeader phase0.BeaconBlockHeader
+	blockHeader, err = ExtractBlockHeader("d.json")
+	root, _ = blockHeader.HashTreeRoot()
+	fmt.Println("block header", hex.EncodeToString(root[:]))
+
+	historicalSummaryIndex := uint64(270)
+	beaconBlockHeaderToVerifyIndex = 5360
+	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	oldBlockRoots := oldBeaconState.BlockRoots
+
+	historicalSummaryBlockHeaderProof, err := ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(
+		currentBeaconStateTopLevelRoots,
+		currentBeaconState.HistoricalSummaries,
+		oldBlockRoots,
+		historicalSummaryIndex,
+		beaconBlockHeaderToVerifyIndex,
+	)
+
+	if err != nil {
+		fmt.Println("error")
+	}
+
+	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
+
+	historicalBlockHeaderIndex := historicalSummaryListIndex<<((historicalSummaryListMerkleSubtreeNumLayers+1)+1+(blockRootsMerkleSubtreeNumLayers)) |
+		historicalSummaryIndex<<(1+blockRootsMerkleSubtreeNumLayers) |
+		blockSummaryRootIndex<<(blockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
+
+	flag := ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
+	if flag != true {
+		fmt.Println("error 2")
+	}
+
+	assert.True(t, flag, "Proof %v failed\n")
+}
+
+// func TestBrokenProof(t *testing.T) {
+// 	currentBeaconStateJSON, err := parseJSONFile("goerli_slot_7433534.json")
+// 	if err != nil {
+// 		fmt.Println("error parsing currentBeaconStateJSON", err)
+// 	}
+// 	oldBeaconStateJSON, err := parseJSONFile("goerli_slot_7413760.json")
+// 	if err != nil {
+// 		fmt.Println("error parsing oldBeaconStateJSON", err)
+// 	}
+// 	var currentBeaconState deneb.BeaconState
+// 	var oldBeaconState deneb.BeaconState
+
+// 	ParseDenebBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
+// 	ParseDenebBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
+// 	currentBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&currentBeaconState)
+
+// 	root, _ := currentBeaconState.HashTreeRoot()
+// 	fmt.Println("current root", hex.EncodeToString(root[:]))
+
+// 	var blockHeader phase0.BeaconBlockHeader
+// 	blockHeader, err = ExtractBlockHeader("d.json")
+// 	root, _ = blockHeader.HashTreeRoot()
+// 	fmt.Println("block header", hex.EncodeToString(root[:]))
+
+// 	historicalSummaryIndex := uint64(270)
+// 	beaconBlockHeaderToVerifyIndex = 5360
+// 	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
+// 	if err != nil {
+// 		fmt.Println("error", err)
+// 	}
+
+// 	currentBeaconStateRoot, err := hex.DecodeString("0xba92d1e2f50cfaf314d1f3637ff0a9f9e850d058ff31fc7de0397c93f94323ba")
+// 	if err != nil {
+// 		fmt.Println("error", err)
+// 	}
+
+// 	historicalSummary
+// 	historicalSummaryBlockHeaderProof = "0xbb8e740ae2225e8a810065563c36cc113093b316e52366181be3a3d6af99a0461ced5a0841f03c0bb8aff5d842acd53d786f9ce998204337252a25602b4c4d40b9859887d48d2868bf82983abd802ad700fcc8099ce39423068e6c34e73fce28755fe785579aaa8cd7e6307a5819bb4bc77081240ff32eb90ebe0db5fe2121af0cf9bb447254bdc86a4401c9b94db2a232e0d8c793de1b06b35bc92a4c23b1ad47726002ea5d9d464eb7aa09f102a54ca442b65e21b03c2016d977a3bc14a7dc1ac2aeadcf389cdce3ce238ed06c043252ec9d4761f742136e8be6e5408ff6db891d8f746e6b84a61010422afda1dcd9a290aaf58932d7628b1031b18b4153168297da8569e614077acca08bc9e2c5e25ff7374f1876ca8aee2671356999d7f36d66807add4a0383f251d7a059655fc091781d6edd3f2342e8207be37b05c5c1b2c71456e9a3b1d6c52471c3e4943d735b24c7d8729196b012ad82a5b353d7bd45d2fe42276c98cc2e466eda6a979d0b6d12d37d0a3dcb10e82ddbbe62d74e135ebbbdca08e55e8c68b05d4392d4ae38e6b54b98a19268a6df25721b56461e8bafcab561e5412feee51c1a726b04d4c81be3160473b49a01cc35dc6f03e2c967253addce3e393392b11271402adcfdbdd819e692ba4e254889b59a38b6fd32f40cad2edea11734fc388afd6bc9b9125be12edd7e4df6f05e2fdc5a622c0138fb735f927c57108d1de8547c9d49ecdbf8661a481d6374ca6e25a103ea728b1916f9513c49e7d50b6311372f787ab3ec7a112e384115d340b0d9f74bccb3562c33d3573d59f23ed8018d754c166d987e60ac4018ed6a0c187e01439c10e449511f9efde052aa15429fae05bad4d0b1d7c64da64d03d7a1854a588c2cb8430c0d30d88ddfeed400a8755596b21942c1497e114c302e6118290f91e6772976041fa187eb0ddba57e35f6d286673802a4af5975e22506c7cf4c64bb6be5ee11527f2c1ef5d0b4795711d6aaf89b6eb2e5ca1c8c729ad9acb5b58c2b700a857c3512a0506d86582d252405b840018792cad2bf1259f1ef5aa5f887e13cb2f0094f51e1ffff0ad7e659772f9534c195c815efc4014ef1e1daed4404c06385d11192e92b6cf04127db05441cd833107a52be852868890e4317e6a02ab47683aa75964220b7d05f875f140027ef5118a2247bbb84ce8f2f0f1123623085daf7960c329f5fdf6af5f5bbdb6be9ef8aa618e4bf8073960867171e29676f8b284dea6a08a85eb58d900f5e182e3c50ef74969ea16c7726c549757cc23523c369587da7293784d49a7502ffcfb0340b1d7885688500ca308161a7f96b62df9d083b71fcc8f2bb8fe6b1689256c0d385f42f5bbe2027a22c1996e110ba97c171d3e5948de92beb8d0d63c39ebade8509e0ae3c9c3876fb5fa112be18f905ecacfecb92057603ab95eec8b2e541cad4e91de38385f2e046619f54496c2382cb6cacd5b98c26f5a4f893e908917775b62bff23294dbbe3a1cd8e6cc1c35b4801887b646a6f81f17fcddba7b592e3133393c16194fac7431abf2f5485ed711db282183c819e08ebaa8a8d7fe3af8caa085a7639a832001457dfb9128a8061142ad0335629ff23ff9cfeb3c337d7a51a6fbf00b9e34c52e1c9195c969bd4e7a0bfd51d5c5bed9c1167e71f0aa83cc32edfbefa9f4d3e0174ca85182eec9f3a09f6a6c0df6377a510d71101000000000000000000000000000000000000000000000000000000000000996e09000000000000000000000000000000000000000000000000000000000076a2f4e70f7861b033af284addb4a58073afcd2c96044f66f705a72f59c6a4eedb56114e00fdd4c1f85c892bf35ac9a89289aaecb1ebd0a96cde606a748b5d71a80bd4439da6ab7287ddd68e8104faec490117726afdd5f167e96ee1854de14b37afa303ad731f00916a82d5cb9168a61f54cc40012866ccfaada74f2534f6bd"
+
+// 	historicalBlockHeaderIndex := historicalSummaryListIndex<<((historicalSummaryListMerkleSubtreeNumLayers+1)+1+(blockRootsMerkleSubtreeNumLayers)) |
+// 		historicalSummaryIndex<<(1+blockRootsMerkleSubtreeNumLayers) |
+// 		blockSummaryRootIndex<<(blockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
+
+// 	flag := ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
+// 	if flag != true {
+// 		fmt.Println("error 2")
+// 	}
+
+// 	assert.True(t, flag, "Proof %v failed\n")
+// }
 
 func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 

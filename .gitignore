@@ -6,3 +6,8 @@ data/deneb_goerli_slot_7416760.json
 data/deneb_goerli_slot_7413760.json
 data/deneb_goerli_slot_7421952.json
 data/deneb_goerli_slot_7431952.json
+
+deneb_goerli*
+goerli_slot_*
+testproofs.json
+
