@@ -57,7 +57,7 @@ type BalanceUpdateProofs struct {
 	ValidatorFields                        []string `json:"ValidatorFields"`
 }
 
-type beaconStateJSON struct {
+type beaconStateJSONDeneb struct {
 	GenesisTime                  string                        `json:"genesis_time"`
 	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
 	Slot                         string                        `json:"slot"`
@@ -120,7 +120,7 @@ type beaconStateJSONCapella struct {
 }
 
 type beaconStateVersion struct {
-	Data beaconStateJSON `json:"data"`
+	Data beaconStateJSONDeneb `json:"data"`
 }
 
 type beaconStateVersionCapella struct {
@@ -248,7 +248,7 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
-func ParseStateJSONFile(filePath string) (*beaconStateJSON, error) {
+func ParseStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -287,7 +287,7 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 }
 
 // nolint:gocyclo
-func ParseDenebBeaconStateFromJSON(data beaconStateJSON, s *deneb.BeaconState) error {
+func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {
