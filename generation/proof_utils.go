@@ -1,4 +1,4 @@
-package generation
+package main
 
 import (
 	"encoding/hex"
@@ -203,8 +203,6 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 	if err := json.Unmarshal(fileBytes, &inputData); err != nil {
 		return phase0.BeaconBlockHeader{}, err
 	}
-
-	fmt.Println(inputData.Data.Header.Message)
 
 	return inputData.Data.Header.Message, nil
 }

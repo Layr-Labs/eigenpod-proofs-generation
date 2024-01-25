@@ -1,7 +1,6 @@
 package beacon
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
@@ -161,8 +160,6 @@ func ProveWithdrawalAgainstExecutionPayload(
 		return nil, err
 	}
 
-	fmt.Println("LENGTH OF withdrawalListAgainstExecutionPayloadProof is", len(withdrawalListAgainstExecutionPayloadProof))
-
 	// prove the withdrawal against the withdrawal list
 	withdrawalAgainstWithdrawalListProof, err := ProveWithdrawalAgainstWithdrawalList(withdrawals, withdrawalIndex)
 	if err != nil {
@@ -171,7 +168,6 @@ func ProveWithdrawalAgainstExecutionPayload(
 
 	//NOTE: Ensure that these proofs are being appended in the right order
 	fullWithdrawalProof := append(withdrawalAgainstWithdrawalListProof, withdrawalListAgainstExecutionPayloadProof...)
-	fmt.Println("LENGTH OF fullWithdrawalProof is", len(fullWithdrawalProof))
 	return fullWithdrawalProof, nil
 }
 

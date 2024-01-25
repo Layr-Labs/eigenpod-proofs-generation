@@ -200,14 +200,14 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 	}
 
 	//this is not the beacon state of the slot containing the old withdrawal we want to proof but rather
-	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal, ie, 7421952 mod 8192 = 0
+	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal
+	//, ie, 7421952 mod 8192 = 0 and 7421952 - 7421951 < 8192
 	oldBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing oldBeaconStateJSON")
 	}
 
 	var blockHeader phase0.BeaconBlockHeader
-	//blockHeader, err = ExtractBlockHeader("data/goerli_block_header_6397852.json")
 	blockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7421951.json")
 
 	if err != nil {
@@ -219,26 +219,19 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	ParseDenebBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
 	ParseDenebBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
-	fmt.Println("currentBeacon state historical summary lentgh is", len(currentBeaconState.HistoricalSummaries))
 
 	currentBeaconStateTopLevelRoots, _ := beacon.ComputeBeaconStateTopLevelRootsDeneb(&currentBeaconState)
-	//oldBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&oldBeaconState)
 
 	if err != nil {
 		fmt.Println("error")
 	}
 
-	historicalSummaryIndex := uint64(271)
+	historicalSummaryIndex := uint64(271) //7421951 - FIRST_CAPELLA_SLOT_GOERLI // 8192
 	beaconBlockHeaderToVerifyIndex = 8191 //(7421951 mod 8192)
 	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
 	}
-
-	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	// fmt.Println("THE SAME", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(oldBeaconStateTopLevelRoots.BlockRootsRoot[:]))
-	// fmt.Println("THE SAME", hex.EncodeToString(currentBeaconState.HistoricalSummaries[146].BlockSummaryRoot[:]))
 
 	oldBlockRoots := oldBeaconState.BlockRoots
 
@@ -297,7 +290,6 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	ParseDenebBeaconStateFromJSON(*currentBeaconStateJSON, &currentBeaconState)
 	ParseCapellaBeaconStateFromJSON(*oldBeaconStateJSON, &oldBeaconState)
-	fmt.Println("currentBeacon state historical summary lentgh is", len(currentBeaconState.HistoricalSummaries))
 
 	currentBeaconStateTopLevelRoots, _ := beacon.ComputeBeaconStateTopLevelRootsDeneb(&currentBeaconState)
 	//oldBeaconStateTopLevelRoots, _ := ComputeBeaconStateTopLevelRoots(&oldBeaconState)
@@ -489,19 +481,17 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 
 	//the state from the prev slot which contains shit we wanna prove about
 	stateToProveJSON, err := parseJSONFile("data/deneb_goerli_slot_7413760.json")
+	if err != nil {
+		fmt.Println("error with parsing JSON state file", err)
+	}
 
 	var stateToProve deneb.BeaconState
 	ParseDenebBeaconStateFromJSON(*stateToProveJSON, &stateToProve)
 
-	roots, _ := stateToProve.HashTreeRoot()
-	fmt.Println("THIS IS ROOT", roots)
 	proof, err := beacon.ProveStateRootAgainstBlockHeader(&blockHeader)
 	if err != nil {
 		fmt.Println("Error in generating proof", err)
 	}
-
-	fmt.Println(len(stateToProve.Validators))
-
 	root, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("this error", err)
