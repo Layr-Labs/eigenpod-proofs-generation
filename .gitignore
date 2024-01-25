@@ -7,11 +7,10 @@ data/deneb_goerli_slot_7413760.json
 data/deneb_goerli_slot_7421952.json
 data/deneb_goerli_slot_7431952.json
 
-generation/proofGenCLI
+generation/generation
 
 solidityProofGen/solidityProofGen
 
-deneb_goerli_slot_7416760
 
 test
 
