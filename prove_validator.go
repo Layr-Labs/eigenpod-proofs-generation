@@ -10,7 +10,7 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 )
 
-type VerifyWithdrawalCredentialsCallParams struct {
+type VerifyValidatorFieldsCallParams struct {
 	OracleTimestamp       uint64          `json:"oracleTimestamp"`
 	StateRootProof        *StateRootProof `json:"stateRootProof"`
 	ValidatorIndices      []uint64        `json:"validatorIndices"`
@@ -18,9 +18,9 @@ type VerifyWithdrawalCredentialsCallParams struct {
 	ValidatorFields       [][]Bytes32     `json:"validatorFields"`
 }
 
-func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *deneb.BeaconState, validatorIndices []uint64) (*VerifyWithdrawalCredentialsCallParams, error) {
-	verifyWithdrawalCredentialsCallParams := &VerifyWithdrawalCredentialsCallParams{}
-	verifyWithdrawalCredentialsCallParams.StateRootProof = &StateRootProof{}
+func (epp *EigenPodProofs) ProveValidatorContainer(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *deneb.BeaconState, validatorIndices []uint64) (*VerifyValidatorFieldsCallParams, error) {
+	VerifyValidatorFieldsCallParams := &VerifyValidatorFieldsCallParams{}
+	VerifyValidatorFieldsCallParams.StateRootProof = &StateRootProof{}
 	// Get beacon state top level roots
 	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
 	if err != nil {
@@ -28,32 +28,32 @@ func (epp *EigenPodProofs) ProveValidatorWithdrawalCredentials(oracleBlockHeader
 	}
 
 	// Get beacon state root.
-	verifyWithdrawalCredentialsCallParams.StateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
+	VerifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
 	if err != nil {
 		return nil, err
 	}
 
-	verifyWithdrawalCredentialsCallParams.StateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
+	VerifyValidatorFieldsCallParams.StateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
 	if err != nil {
 		return nil, err
 	}
 
-	verifyWithdrawalCredentialsCallParams.OracleTimestamp = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
-	verifyWithdrawalCredentialsCallParams.ValidatorIndices = make([]uint64, len(validatorIndices))
-	verifyWithdrawalCredentialsCallParams.ValidatorFieldsProofs = make([]common.Proof, len(validatorIndices))
-	verifyWithdrawalCredentialsCallParams.ValidatorFields = make([][]Bytes32, len(validatorIndices))
+	VerifyValidatorFieldsCallParams.OracleTimestamp = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
+	VerifyValidatorFieldsCallParams.ValidatorIndices = make([]uint64, len(validatorIndices))
+	VerifyValidatorFieldsCallParams.ValidatorFieldsProofs = make([]common.Proof, len(validatorIndices))
+	VerifyValidatorFieldsCallParams.ValidatorFields = make([][]Bytes32, len(validatorIndices))
 	for i, validatorIndex := range validatorIndices {
-		verifyWithdrawalCredentialsCallParams.ValidatorIndices[i] = validatorIndex
+		VerifyValidatorFieldsCallParams.ValidatorIndices[i] = validatorIndex
 		// prove the validator fields against the beacon state
-		verifyWithdrawalCredentialsCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(oracleBeaconState, beaconStateTopLevelRoots, validatorIndex)
+		VerifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(oracleBeaconState, beaconStateTopLevelRoots, validatorIndex)
 		if err != nil {
 			return nil, err
 		}
 
-		verifyWithdrawalCredentialsCallParams.ValidatorFields[i] = ConvertValidatorToValidatorFields(oracleBeaconState.Validators[validatorIndex])
+		VerifyValidatorFieldsCallParams.ValidatorFields[i] = ConvertValidatorToValidatorFields(oracleBeaconState.Validators[validatorIndex])
 	}
 
-	return verifyWithdrawalCredentialsCallParams, nil
+	return VerifyValidatorFieldsCallParams, nil
 }
 
 func (epp *EigenPodProofs) ProveValidatorFields(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *deneb.BeaconState, validatorIndex uint64) (*StateRootProof, common.Proof, error) {
