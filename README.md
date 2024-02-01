@@ -61,7 +61,7 @@ Here is an example of running this command with the sample state/block files in 
 
 
 # What Are Historical Summary Proofs?
-Historical summary proofs allow us to prove withdrawals from more than 27 hours after they are included in the beacon chain. Currently we require the submission of a historical summary proof which forces any withdrawers to wait at the most 27 hours before the historical_summaries container is updated with the latest historical summary that includes the block root with the withdrawal in question.  Refer [here](https://github.com/ethereum/consensus-specs/blob/dev/specs/capella/beacon-chain.md#historicalsummary) for the beacon chain specs for historical summaries. 
+Historical summary proofs allow us to prove withdrawals from more than 27 hours (8192 slots) after they are included in the beacon chain. Currently we require the submission of a historical summary proof which forces any withdrawers to wait at the most 27 hours before the historical_summaries container is updated with the latest historical summary that includes the block root with the withdrawal in question.  Refer [here](https://github.com/ethereum/consensus-specs/blob/dev/specs/capella/beacon-chain.md#historicalsummary) for the beacon chain specs for historical summaries. 
 
 
 
