@@ -70,7 +70,10 @@ Here is an example of running this command with the sample state/block files in 
   -blockHeaderFile  "./data/goerli_block_header_6397852.json" \
   -blockBodyFile "./data/goerli_block_6397852.json" \
   -withdrawalIndex 0
+
 ```
+
+
 
 ### Generate a Balance Update Proof.  
 ```
