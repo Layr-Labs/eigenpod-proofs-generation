@@ -7,21 +7,20 @@ This repository allows users to generate the proofs necessary to prove consensus
 
 An important note is that this CLI is designed to be used with inputs that can be retrieved from a consensus layer full node, [here](https://ethereum.github.io/beacon-APIs/) is the relevant API specification.  These are the api ednpoints that are required to retrieve the 3 consensus layer object required to generate proofs with this CLI:
 
-# [Beacon State](https://docs.google.com/document/d/17MrqnkepEPQEDQoI-tu2wVWqHztoegCEC2Nw4i5hwC0/edit?usp=sharing)
-[This](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2) is the entire consensus layer state object at a given slot.  The following endpoint returns this object:
+# Beacon State
+[This](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2) is the entire consensus layer [state](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate) object at a given slot.  The following endpoint returns this object:
 ```
 /beacon/eth/v2/debug/beacon/states/[SLOT_NUMBER]
 ```
-# [Beacon Block Header](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconblockheader)
-[This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockHeader) is the block header for a beacon block.  The following endpoint returns this object:
-```
-/beacon/eth/v1/beacon/headers/[SLOT_NUMBER]
-```
-
-# [Beacon Block](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate)
-[This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2) is the beacon block object.  The following endpoint returns this object:
+# Beacon Block
+[This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2) is the [beacon block](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate) object.  The following endpoint returns this object:
 ```
 beacon/eth/v2/beacon/blocks/[SLOT_NUMBER]
+```
+# Beacon Block Header
+[This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockHeader) is the [block header](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconblockheader) for a beacon block.  The following endpoint returns this object:
+```
+/beacon/eth/v1/beacon/headers/[SLOT_NUMBER]
 ```
 
 
