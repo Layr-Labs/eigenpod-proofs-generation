@@ -62,7 +62,7 @@ Here is an example of running this command with the sample state/block files in 
   -oracleBlockHeaderFile "./data/deneb_goerli_block_header_7431952.json" \
   -stateFile "./data/deneb_goerli_slot_7431952.json" \
   -validatorIndex 200240 \
-  -outputFile "withdrawal_proof_302913.json" \
+  -outputFile "withdrawal_proof_200240.json" \
   -chainID 5 \
   -historicalSummariesIndex 271 \
   -blockHeaderIndex 8191 \
