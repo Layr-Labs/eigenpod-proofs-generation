@@ -33,8 +33,10 @@ $ ./generation/generation -command WithdrawalFieldsProof -oracleBlockHeaderFile 
 Here is an example of running this command with the sample state/block files in the `/data` folder
 
 ```
-./generation/generation -command WithdrawalFieldsProof -oracleBlockHeaderFile "../data/goerli_block_header_6399998.json" -stateFile "../data/goerli_slot_6399998.json" -validatorIndex 200240 -outputFile "withdrawal_proof_302913.json" -chainID 5 -historicalSummariesIndex 146 -blockHeaderIndex 8092 -historicalSummaryStateFile "../data/goerli_slot_6397852.json" -blockHeaderFile  "../data/goerli_block_header_6397852.json" -blockBodyFile "../data/goerli_block_6397852.json" -withdrawalIndex 0
+./generation/generation -command WithdrawalFieldsProof -oracleBlockHeaderFile data/deneb_goerli_block_header_7431952.json -stateFile data/deneb_goerli_slot_7431952.json -validatorIndex 627559 -outputFile “fullWithdrawalProof_Deneb.json” -chainID 5 -historicalSummariesIndex 271 -blockHeaderIndex 8191 -historicalSummaryStateFile data/deneb_goerli_slot_7421952.json -blockHeaderFile  data/deneb_goerli_block_header_7421951.json -blockBodyFile data/deneb_goerli_block_7421951.json -withdrawalIndex 0
 ```
+
+
 
 ### Generate a Balance Update Proof.  
 ```
