@@ -25,7 +25,7 @@ beacon/eth/v2/beacon/blocks/[SLOT_NUMBER]
 
 
 # How to Generate the Proofs with the Proof Generation library
-This package allows you to generate withdrawal credential proofs, withdrawal proofs and balance update proofs. To generate the proofs using this library, run the following commands:
+This package allows you to generate withdrawal credential proofs, withdrawal proofs and balance update proofs. Please note that in order to run the sample commands, you must unzip the state files included in the data repo.  To generate the proofs using this library, run the following commands:
 
 ## Build the Executable
 
