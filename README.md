@@ -29,15 +29,15 @@ This package allows you to generate withdrawal credential proofs, withdrawal pro
 
 ## Build the Executable
 
-```
-$cd generation
-$go build
-$cd ..
+```bash
+$ cd generation
+$ go build
+$ cd ..
 ```
 
 ### Generate Validator Withdrawal Credential Proof
 Here is the command:
-```
+```bash
 $ ./generation/generation \
     -command ValidatorFieldsProof \
     -oracleBlockHeaderFile [ORACLE_BLOCK_HEADER_FILE_PATH] \
@@ -47,7 +47,7 @@ $ ./generation/generation \
     -chainID [CHAIN_ID]
 ```
 Here is an example of running this command with the sample state/block files in the `/data` folder
-```
+```bash
 ./generation/generation \
   -command ValidatorFieldsProof \
   -oracleBlockHeaderFile "./data/deneb_goerli_block_header_7431952.json" \
@@ -58,7 +58,7 @@ Here is an example of running this command with the sample state/block files in 
 ```
 ### Generate Withdrawal Proof
 Here is the command:
-```
+```bash
 $ ./generation/generation \
   -command WithdrawalFieldsProof \
   -oracleBlockHeaderFile [ORACLE_BLOCK_HEADER_FILE_PATH] \
@@ -74,28 +74,26 @@ $ ./generation/generation \
   -withdrawalIndex [WITHDRAWAL_INDEX]
 ```
 Here is an example of running this command with the sample state/block files in the `/data` folder
-
-```
+```bash
 ./generation/generation \
   -command WithdrawalFieldsProof \
-  -oracleBlockHeaderFile "./data/deneb_goerli_block_header_7431952.json" \
-  -stateFile "./data/deneb_goerli_slot_7431952.json" \
-  -validatorIndex 200240 \
-  -outputFile "withdrawal_proof_200240.json" \
+  -oracleBlockHeaderFile ./data/deneb_goerli_block_header_7431952.json \
+  -stateFile ./data/deneb_goerli_slot_7431952.json \
+  -validatorIndex 627559 \
+  -outputFile "full_withdrawal_proof_627559.json” \
   -chainID 5 \
   -historicalSummariesIndex 271 \
   -blockHeaderIndex 8191 \
-  -historicalSummaryStateFile "./data/goerli_slot_6397852.json" \
-  -blockHeaderFile  "./data/goerli_block_header_6397852.json" \
-  -blockBodyFile "./data/goerli_block_6397852.json" \
+  -historicalSummaryStateFile ./data/deneb_goerli_slot_7421952.json \
+  -blockHeaderFile  data/deneb_goerli_block_header_7421951.json \
+  -blockBodyFile data/deneb_goerli_block_7421951.json \
   -withdrawalIndex 0
-
 ```
 
 
 
 ### Generate a Balance Update Proof.  
-```
+```bash
 $ ./generation/generation \
   - command BalanceUpdateProof \
   -oracleBlockHeaderFile [ORACLE_BLOCK_HEADER_FILE_PATH] \
@@ -105,7 +103,7 @@ $ ./generation/generation \
   -chainID [CHAIN_ID]
 ```
 Here is an example of running this command with the sample state/block files in the `/data` folder:
-```
+```bash
 ./generation/generation \
   -command BalanceUpdateProof \
   -oracleBlockHeaderFile "./data/deneb_goerli_block_header_7431952.json" \
