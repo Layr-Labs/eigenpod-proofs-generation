@@ -2,7 +2,27 @@ WARNING: Please note that this repository is a work in progress and is currently
 # Introduction
 This repository allows users to generate the proofs necessary to prove consensus layer state on EigenLayer, specifically the EigenPods system.  These proofs are used for verifying 1) that withdrawal credentials of a validator are pointed to an EigenPod, 2) that changes in balance of a validator due to slashing, etc can be propagated to EigenLayer's smart contracts 3) Prove a validator's withdrawal on the consensus layer, which then allows a staker to withdraw their validator's ETH from their EigenPod. Specifically, these proofs are passed as inputs to the verifyWithdrawalCredentials(), verifyBalanceUpdates() and verifyAndProcessWithdrawals() functions, see [here](https://github.com/Layr-Labs/eigenlayer-contracts/blob/master/src/contracts/interfaces/IEigenPod.sol) for the exact function interface definitions.
 
-An important note is that this CLI is designed to be used with inputs that can be retrieved from a consensus layer client, [here](https://ethereum.github.io/beacon-APIs/) is the relevant API specification.
+
+## How to Retrieve Data
+
+An important note is that this CLI is designed to be used with inputs that can be retrieved from a consensus layer full node, [here](https://ethereum.github.io/beacon-APIs/) is the relevant API specification.  These are the api ednpoints that are required to retrieve the 3 consensus layer object required to generate proofs with this CLI:
+
+# [Beacon State](https://docs.google.com/document/d/17MrqnkepEPQEDQoI-tu2wVWqHztoegCEC2Nw4i5hwC0/edit?usp=sharing)
+[This](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2) is the entire consensus layer state object at a given slot.  The following endpoint returns this object:
+```
+/beacon/eth/v2/debug/beacon/states/[SLOT_NUMBER]
+```
+# [Beacon Block Header](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconblockheader)
+[This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockHeader) is the block header for a beacon block.  The following endpoint returns this object:
+```
+/beacon/eth/v1/beacon/headers/[SLOT_NUMBER]
+```
+
+# [Beacon Block](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate)
+[This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2) is the beacon block object.  The following endpoint returns this object:
+```
+beacon/eth/v2/beacon/blocks/[SLOT_NUMBER]
+```
 
 
 # How to Generate the Proofs with the Proof Generation library
