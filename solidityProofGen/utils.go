@@ -46,9 +46,7 @@ type WithdrawalProofs struct {
 type WithdrawalCredentialProofs struct {
 	ValidatorIndex                         uint64   `json:"validatorIndex"`
 	BeaconStateRoot                        string   `json:"beaconStateRoot"`
-	BalanceRoot                            string   `json:"balanceRoot"`
 	LatestBlockHeaderRoot                  string   `json:"latestBlockHeaderRoot"`
-	ValidatorBalanceProof                  []string `json:"ValidatorBalanceProof"`
 	WithdrawalCredentialProof              []string `json:"WithdrawalCredentialProof"`
 	ValidatorFields                        []string `json:"ValidatorFields"`
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
