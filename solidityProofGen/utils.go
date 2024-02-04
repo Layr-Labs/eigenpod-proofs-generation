@@ -10,6 +10,7 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	ssz "github.com/ferranbt/fastssz"
 
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
@@ -482,4 +483,18 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	hh.Reset()
 
 	return withdrawalFields
+}
+
+func CreateVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
+	var versionedState spec.VersionedBeaconState
+	switch version {
+	case spec.DataVersionDeneb:
+		versionedState.Deneb = &deneb.BeaconState{}
+	case spec.DataVersionAltair:
+		versionedState.Altair = &altair.BeaconState{}
+	case spec.DataVersionCapella:
+		versionedState.Capella = &capella.BeaconState{}
+	}
+	versionedState.Version = version
+	return versionedState
 }
