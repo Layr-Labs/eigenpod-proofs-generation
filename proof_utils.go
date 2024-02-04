@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -246,6 +247,15 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	hh.Reset()
 
 	return withdrawalFields
+}
+
+func GetWithdrawalIndex(validatorIndex uint64, withdrawals []*capella.Withdrawal) uint64 {
+	for i := 0; i < len(withdrawals); i++ {
+		if uint64(withdrawals[i].ValidatorIndex) == validatorIndex {
+			return uint64(i)
+		}
+	}
+	return math.MaxUint64
 }
 
 func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {

@@ -107,7 +107,10 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ComputeBeaconStateTopLevelRoots", err)
 	}
-	withdrawalProof, err := epp.ProveDenebWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
+
+	versionedBlock := CreateVersionedBlock(spec.DataVersionDeneb)
+	versionedBlock.Deneb = &withdrawalBlock
+	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedBlock, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
 	}

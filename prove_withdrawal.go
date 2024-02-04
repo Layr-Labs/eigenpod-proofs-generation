@@ -9,7 +9,6 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
-	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
 )
@@ -135,22 +134,12 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 
 	for i := 0; i < numWithdrawals; i++ {
 		start := time.Now()
-
-		if withdrawalBlocks[i].Version == spec.DataVersionDeneb {
-			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveDenebWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i].Deneb, validatorIndices[i])
-			if err != nil {
-				return nil, err
-			}
-			verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] = ConvertWithdrawalToWithdrawalFields(withdrawalBlocks[i].Deneb.Body.ExecutionPayload.Withdrawals[verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex])
-			log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
-		} else {
-			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveCapellaWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i].Capella, validatorIndices[i])
-			if err != nil {
-				return nil, err
-			}
-			verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] = ConvertWithdrawalToWithdrawalFields(withdrawalBlocks[i].Capella.Body.ExecutionPayload.Withdrawals[verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex])
-			log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
+		//prove withdrawal
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], verifyAndProcessWithdrawalCallParams.WithdrawalFields[i], err = epp.ProveWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i], validatorIndices[i])
+		if err != nil {
+			return nil, err
 		}
+		log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
 
 		start = time.Now()
 		// prove validator
@@ -171,28 +160,44 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 // historicalSummaryState: the state whose slot at which historicalSummaryState.block_roots was hashed and added to historical_summaries
 // withdrawalBlock: the block containing the withdrawal
 // validatorIndex: the index of the validator that the withdrawal happened for
-func (epp *EigenPodProofs) ProveDenebWithdrawal(
+func (epp *EigenPodProofs) ProveWithdrawal(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
 	oracleBeaconState *spec.VersionedBeaconState,
 	oracleBeaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots,
 	historicalSummaryStateBlockRoots []phase0.Root,
-	withdrawalBlock *deneb.BeaconBlock,
+	withdrawalBlock *spec.VersionedBeaconBlock,
 	validatorIndex uint64,
-) (*WithdrawalProof, error) {
+) (*WithdrawalProof, []Bytes32, error) {
 	start := time.Now()
 	// compute the withdrawal body root
-	blockBodyRoot, err := withdrawalBlock.Body.HashTreeRoot()
+	blockBodyRoot, err := withdrawalBlock.BodyRoot()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	log.Info().Msgf("time to compute block body root: %s", time.Since(start))
 
-	// setup the withdrawal block header
+	slot, err := withdrawalBlock.Slot()
+	if err != nil {
+		return nil, nil, err
+	}
+	proposerIndex, err := withdrawalBlock.ProposerIndex()
+	if err != nil {
+		return nil, nil, err
+	}
+	parentRoot, err := withdrawalBlock.ParentRoot()
+	if err != nil {
+		return nil, nil, err
+	}
+	stateRoot, err := withdrawalBlock.StateRoot()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	withdrawalBlockHeader := &phase0.BeaconBlockHeader{
-		Slot:          withdrawalBlock.Slot,
-		ProposerIndex: withdrawalBlock.ProposerIndex,
-		ParentRoot:    withdrawalBlock.ParentRoot,
-		StateRoot:     withdrawalBlock.StateRoot,
+		Slot:          slot,
+		ProposerIndex: proposerIndex,
+		ParentRoot:    parentRoot,
+		StateRoot:     stateRoot,
 		BodyRoot:      blockBodyRoot,
 	}
 
@@ -200,23 +205,55 @@ func (epp *EigenPodProofs) ProveDenebWithdrawal(
 	withdrawalProof := &WithdrawalProof{}
 
 	start = time.Now()
-	// prove the execution payload against the withdrawal block header
-	withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(withdrawalBlockHeader, withdrawalBlock.Body)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
+	var withdrawalExecutionPayloadFieldRoots []phase0.Root
+	var withdrawals []*capella.Withdrawal
+	var withdrawalFields []Bytes32
+	var withdrawalIndex uint64
+	var timestamp uint64
+	if withdrawalBlock.Version == spec.DataVersionDeneb {
+		start = time.Now()
+		// prove the execution payload against the withdrawal block header
+		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(withdrawalBlockHeader, withdrawalBlock.Deneb.Body)
+		if err != nil {
+			return nil, nil, err
+		}
+		log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
 
-	start = time.Now()
-	// calculate execution payload field roots
-	withdrawalExecutionPayloadFieldRoots, err := beacon.ComputeExecutionPayloadFieldRootsDeneb(withdrawalBlock.Body.ExecutionPayload)
-	if err != nil {
-		return nil, err
+		// calculate execution payload field roots
+		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsDeneb(withdrawalBlock.Deneb.Body.ExecutionPayload)
+		if err != nil {
+			return nil, nil, err
+		}
+		withdrawals = withdrawalBlock.Deneb.Body.ExecutionPayload.Withdrawals
+		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
+		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Deneb.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
+		timestamp = withdrawalBlock.Deneb.Body.ExecutionPayload.Timestamp
+	} else if withdrawalBlock.Version == spec.DataVersionCapella {
+		start = time.Now()
+		// prove the execution payload against the withdrawal block header
+		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderCapella(withdrawalBlockHeader, withdrawalBlock.Capella.Body)
+		if err != nil {
+			return nil, nil, err
+		}
+		log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
+
+		// calculate execution payload field roots
+		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsCapella(withdrawalBlock.Capella.Body.ExecutionPayload)
+		if err != nil {
+			return nil, nil, err
+		}
+		withdrawals = withdrawalBlock.Capella.Body.ExecutionPayload.Withdrawals
+		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
+		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Capella.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
+
+		timestamp = withdrawalBlock.Capella.Body.ExecutionPayload.Timestamp
+	} else {
+		return nil, nil, errors.New("unsupported version")
 	}
 
 	oracleBeaconStateHistoricalSummaries, err := beacon.HistoricalSummaries(oracleBeaconState)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = epp.proveWithdrawal(
@@ -227,83 +264,17 @@ func (epp *EigenPodProofs) ProveDenebWithdrawal(
 		historicalSummaryStateBlockRoots,
 		withdrawalBlockHeader,
 		withdrawalExecutionPayloadFieldRoots,
-		withdrawalBlock.Body.ExecutionPayload.Withdrawals,
-		withdrawalBlock.Body.ExecutionPayload.Timestamp,
-		validatorIndex,
+		withdrawals,
+		timestamp,
+		withdrawalIndex,
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
 
-	return withdrawalProof, nil
-}
-
-func (epp *EigenPodProofs) ProveCapellaWithdrawal(
-	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *spec.VersionedBeaconState,
-	oracleBeaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots,
-	historicalSummaryStateBlockRoots []phase0.Root,
-	withdrawalBlock *capella.BeaconBlock,
-	validatorIndex uint64,
-) (*WithdrawalProof, error) {
-	start := time.Now()
-	// compute the withdrawal body root
-	blockBodyRoot, err := withdrawalBlock.Body.HashTreeRoot()
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Msgf("time to compute block body root: %s", time.Since(start))
-
-	// setup the withdrawal block header
-	withdrawalBlockHeader := &phase0.BeaconBlockHeader{
-		Slot:          withdrawalBlock.Slot,
-		ProposerIndex: withdrawalBlock.ProposerIndex,
-		ParentRoot:    withdrawalBlock.ParentRoot,
-		StateRoot:     withdrawalBlock.StateRoot,
-		BodyRoot:      blockBodyRoot,
-	}
-
-	// initialize the withdrawal proof
-	withdrawalProof := &WithdrawalProof{}
-
-	start = time.Now()
-	// prove the execution payload against the withdrawal block header
-	withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderCapella(withdrawalBlockHeader, withdrawalBlock.Body)
-	if err != nil {
-		return nil, err
-	}
-	log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
-
-	start = time.Now()
-	// calculate execution payload field roots
-	withdrawalExecutionPayloadFieldRoots, err := beacon.ComputeExecutionPayloadFieldRootsCapella(withdrawalBlock.Body.ExecutionPayload)
-	if err != nil {
-		return nil, err
-	}
-
-	oracleBeaconStateHistoricalSummaries, err := beacon.HistoricalSummaries(oracleBeaconState)
-	if err != nil {
-		return nil, err
-	}
-	err = epp.proveWithdrawal(
-		withdrawalProof,
-		oracleBlockHeader,
-		oracleBeaconStateHistoricalSummaries,
-		oracleBeaconStateTopLevelRoots,
-		historicalSummaryStateBlockRoots,
-		withdrawalBlockHeader,
-		withdrawalExecutionPayloadFieldRoots,
-		withdrawalBlock.Body.ExecutionPayload.Withdrawals,
-		withdrawalBlock.Body.ExecutionPayload.Timestamp,
-		validatorIndex,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return withdrawalProof, nil
+	return withdrawalProof, withdrawalFields, nil
 }
 
 func (epp *EigenPodProofs) proveWithdrawal(
@@ -316,18 +287,13 @@ func (epp *EigenPodProofs) proveWithdrawal(
 	withdrawalExecutionPayloadFieldRoots []phase0.Root,
 	withdrawals []*capella.Withdrawal,
 	withdrawalTimestamp uint64,
-	validatorIndex uint64,
+	withdrawalIndex uint64,
 ) error {
-	withdrawalProof.WithdrawalIndex = math.MaxUint64 // max uint 64 value
-	for i := 0; i < len(withdrawals); i++ {
-		if uint64(withdrawals[i].ValidatorIndex) == validatorIndex {
-			withdrawalProof.WithdrawalIndex = uint64(i)
-			break
-		}
-	}
 	if withdrawalProof.WithdrawalIndex == math.MaxUint64 {
 		return errors.New("validator index not found in withdrawal block")
 	}
+
+	withdrawalProof.WithdrawalIndex = withdrawalIndex
 
 	var FIRST_CAPELLA_SLOT uint64
 	if epp.chainID == 5 {

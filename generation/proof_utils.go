@@ -159,13 +159,25 @@ func CreateVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
 	switch version {
 	case spec.DataVersionDeneb:
 		versionedState.Deneb = &deneb.BeaconState{}
-	case spec.DataVersionAltair:
-		versionedState.Altair = &altair.BeaconState{}
 	case spec.DataVersionCapella:
 		versionedState.Capella = &capella.BeaconState{}
 	}
 	versionedState.Version = version
 	return versionedState
+}
+
+func CreateVersionedBlock(version spec.DataVersion) spec.VersionedBeaconBlock {
+	var versionedBlock spec.VersionedBeaconBlock
+	switch version {
+	case spec.DataVersionDeneb:
+		versionedBlock.Deneb = &deneb.BeaconBlock{}
+	case spec.DataVersionAltair:
+		versionedBlock.Altair = &altair.BeaconBlock{}
+	case spec.DataVersionCapella:
+		versionedBlock.Capella = &capella.BeaconBlock{}
+	}
+	versionedBlock.Version = version
+	return versionedBlock
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {
