@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
@@ -57,7 +58,7 @@ type BalanceUpdateProofs struct {
 	ValidatorFields                        []string `json:"ValidatorFields"`
 }
 
-type beaconStateJSON struct {
+type beaconStateJSONDeneb struct {
 	GenesisTime                  string                        `json:"genesis_time"`
 	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
 	Slot                         string                        `json:"slot"`
@@ -120,7 +121,7 @@ type beaconStateJSONCapella struct {
 }
 
 type beaconStateVersion struct {
-	Data beaconStateJSON `json:"data"`
+	Data beaconStateJSONDeneb `json:"data"`
 }
 
 type beaconStateVersionCapella struct {
@@ -151,6 +152,20 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 		s = append(s, "0x"+hex.EncodeToString(v[:]))
 	}
 	return s
+}
+
+func CreateVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
+	var versionedState spec.VersionedBeaconState
+	switch version {
+	case spec.DataVersionDeneb:
+		versionedState.Deneb = &deneb.BeaconState{}
+	case spec.DataVersionAltair:
+		versionedState.Altair = &altair.BeaconState{}
+	case spec.DataVersionCapella:
+		versionedState.Capella = &capella.BeaconState{}
+	}
+	versionedState.Version = version
+	return versionedState
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {
@@ -246,7 +261,7 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
-func ParseStateJSONFile(filePath string) (*beaconStateJSON, error) {
+func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -285,7 +300,7 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 }
 
 // nolint:gocyclo
-func ParseDenebBeaconStateFromJSON(data beaconStateJSON, s *deneb.BeaconState) error {
+func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {

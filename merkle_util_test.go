@@ -110,7 +110,7 @@ func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 		fmt.Println("error reading beaconStateTopLevelRoots")
 	}
 
-	proof, err := epp.ProveValidatorAgainstBeaconState(&b, beaconStateTopLevelRoots, uint64(validatorIndex))
+	proof, err := epp.ProveValidatorAgainstBeaconState(b.Slot, b.Validators, beaconStateTopLevelRoots, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -685,7 +685,7 @@ func TestGetValidatorProof(t *testing.T) {
 
 	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&b)
 
-	validatorProof, _ := epp.ProveValidatorAgainstBeaconState(&b, beaconStateTopLevelRoots, uint64(validatorIndex))
+	validatorProof, _ := epp.ProveValidatorAgainstBeaconState(b.Slot, b.Validators, beaconStateTopLevelRoots, uint64(validatorIndex))
 
 	// verify the proof
 	// get the leaf corresponding to validatorIndex

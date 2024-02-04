@@ -7,6 +7,7 @@ import (
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -82,12 +83,20 @@ func (epp *EigenPodProofs) GetWithdrawalProofParams(latestOracleBeaconSlot, with
 
 func (epp *EigenPodProofs) ProveWithdrawals(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *deneb.BeaconState,
+	oracleBeaconState *spec.VersionedBeaconState,
 	historicalSummaryStateBlockRoots [][]phase0.Root,
 	denebWithdrawalBlocks []*deneb.BeaconBlock,
 	capellaWithdrawalBlocks []*capella.BeaconBlock,
 	validatorIndices []uint64,
 ) (*VerifyAndProcessWithdrawalCallParams, error) {
+	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
+	if err != nil {
+		return nil, err
+	}
+	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
+	if err != nil {
+		return nil, err
+	}
 	verifyAndProcessWithdrawalCallParams := &VerifyAndProcessWithdrawalCallParams{}
 	verifyAndProcessWithdrawalCallParams.StateRootProof = &StateRootProof{}
 	// Get beacon state top level roots
@@ -130,7 +139,7 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 
 		if i < len(denebWithdrawalBlocks) {
 			// prove withdrawal
-			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveWithdrawalDeneb(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], denebWithdrawalBlocks[i], validatorIndices[i])
+			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveDenebWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], denebWithdrawalBlocks[i], validatorIndices[i])
 			if err != nil {
 				return nil, err
 			}
@@ -139,7 +148,7 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 		} else {
 			j := i - len(denebWithdrawalBlocks)
 			// prove withdrawal
-			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveWithdrawalCapella(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], capellaWithdrawalBlocks[j], validatorIndices[i])
+			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveCapellaWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], capellaWithdrawalBlocks[j], validatorIndices[i])
 			if err != nil {
 				return nil, err
 			}
@@ -149,11 +158,11 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 
 		start = time.Now()
 		// prove validator
-		verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(oracleBeaconState, oracleBeaconStateTopLevelRoots, validatorIndices[i])
+		verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(oracleBeaconStateSlot, oracleBeaconStateValidators, oracleBeaconStateTopLevelRoots, validatorIndices[i])
 		if err != nil {
 			return nil, err
 		}
-		verifyAndProcessWithdrawalCallParams.ValidatorFields[i] = ConvertValidatorToValidatorFields(oracleBeaconState.Validators[validatorIndices[i]])
+		verifyAndProcessWithdrawalCallParams.ValidatorFields[i] = ConvertValidatorToValidatorFields(oracleBeaconStateValidators[validatorIndices[i]])
 		log.Info().Msgf("time to prove validator: %s", time.Since(start))
 	}
 
@@ -166,9 +175,9 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 // historicalSummaryState: the state whose slot at which historicalSummaryState.block_roots was hashed and added to historical_summaries
 // withdrawalBlock: the block containing the withdrawal
 // validatorIndex: the index of the validator that the withdrawal happened for
-func (epp *EigenPodProofs) ProveWithdrawalDeneb(
+func (epp *EigenPodProofs) ProveDenebWithdrawal(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *deneb.BeaconState,
+	oracleBeaconState *spec.VersionedBeaconState,
 	oracleBeaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots,
 	historicalSummaryStateBlockRoots []phase0.Root,
 	withdrawalBlock *deneb.BeaconBlock,
@@ -209,10 +218,15 @@ func (epp *EigenPodProofs) ProveWithdrawalDeneb(
 		return nil, err
 	}
 
+	oracleBeaconStateHistoricalSummaries, err := beacon.HistoricalSummaries(oracleBeaconState)
+	if err != nil {
+		return nil, err
+	}
+
 	err = epp.proveWithdrawal(
 		withdrawalProof,
 		oracleBlockHeader,
-		oracleBeaconState,
+		oracleBeaconStateHistoricalSummaries,
 		oracleBeaconStateTopLevelRoots,
 		historicalSummaryStateBlockRoots,
 		withdrawalBlockHeader,
@@ -228,9 +242,9 @@ func (epp *EigenPodProofs) ProveWithdrawalDeneb(
 	return withdrawalProof, nil
 }
 
-func (epp *EigenPodProofs) ProveWithdrawalCapella(
+func (epp *EigenPodProofs) ProveCapellaWithdrawal(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *deneb.BeaconState,
+	oracleBeaconState *spec.VersionedBeaconState,
 	oracleBeaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots,
 	historicalSummaryStateBlockRoots []phase0.Root,
 	withdrawalBlock *capella.BeaconBlock,
@@ -271,10 +285,14 @@ func (epp *EigenPodProofs) ProveWithdrawalCapella(
 		return nil, err
 	}
 
+	oracleBeaconStateHistoricalSummaries, err := beacon.HistoricalSummaries(oracleBeaconState)
+	if err != nil {
+		return nil, err
+	}
 	err = epp.proveWithdrawal(
 		withdrawalProof,
 		oracleBlockHeader,
-		oracleBeaconState,
+		oracleBeaconStateHistoricalSummaries,
 		oracleBeaconStateTopLevelRoots,
 		historicalSummaryStateBlockRoots,
 		withdrawalBlockHeader,
@@ -293,7 +311,7 @@ func (epp *EigenPodProofs) ProveWithdrawalCapella(
 func (epp *EigenPodProofs) proveWithdrawal(
 	withdrawalProof *WithdrawalProof,
 	oracleBlockHeader *phase0.BeaconBlockHeader,
-	oracleBeaconState *deneb.BeaconState,
+	oracleBeaconStateHistoricalSummaries []*capella.HistoricalSummary,
 	oracleBeaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots,
 	historicalSummaryStateBlockRoots []phase0.Root,
 	withdrawalBlockHeader *phase0.BeaconBlockHeader,
@@ -370,7 +388,7 @@ func (epp *EigenPodProofs) proveWithdrawal(
 
 	start = time.Now()
 	// prove the withdrawal block root against the oracle state root
-	withdrawalProof.HistoricalSummaryBlockRootProof, err = beacon.ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateTopLevelRoots, oracleBeaconState.HistoricalSummaries, historicalSummaryStateBlockRoots, withdrawalProof.HistoricalSummaryIndex, withdrawalProof.BlockRootIndex)
+	withdrawalProof.HistoricalSummaryBlockRootProof, err = beacon.ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateTopLevelRoots, oracleBeaconStateHistoricalSummaries, historicalSummaryStateBlockRoots, withdrawalProof.HistoricalSummaryIndex, withdrawalProof.BlockRootIndex)
 	if err != nil {
 		return err
 	}

@@ -6,8 +6,8 @@ import (
 	"math/big"
 	"math/bits"
 
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
-	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ssz "github.com/ferranbt/fastssz"
@@ -90,8 +90,15 @@ func NextPowerOfTwo(v uint64) uint {
 	return uint(v)
 }
 
-func GetSlotTimestamp(beaconState *deneb.BeaconState, blockHeader *phase0.BeaconBlockHeader) uint64 {
-	return beaconState.GenesisTime + uint64(blockHeader.Slot)*12
+func GetSlotTimestamp(beaconState *spec.VersionedBeaconState, blockHeader *phase0.BeaconBlockHeader) uint64 {
+	var genesisTime uint64
+	switch beaconState.Version {
+	case spec.DataVersionDeneb:
+		genesisTime = beaconState.Deneb.GenesisTime
+	case spec.DataVersionCapella:
+		genesisTime = beaconState.Capella.GenesisTime
+	}
+	return genesisTime + uint64(blockHeader.Slot)*12
 }
 
 func ConvertValidatorToValidatorFields(v *phase0.Validator) []Bytes32 {

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
@@ -15,7 +16,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 
 	var state deneb.BeaconState
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
-	stateJSON, err := ParseStateJSONFile(stateFile)
+	stateJSON, err := ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().Msg("GenerateValidatorFieldsProof: error with JSON parsing")
 	}
@@ -39,7 +40,10 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 
 	}
 
-	stateRootProof, validatorFieldsProof, err := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &state, uint64(validatorIndex))
+	versionedState := CreateVersionedState(spec.DataVersionDeneb)
+	versionedState.Deneb = &state
+
+	stateRootProof, validatorFieldsProof, err := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)
 	}
