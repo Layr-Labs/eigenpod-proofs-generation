@@ -85,8 +85,7 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
 	oracleBeaconState *spec.VersionedBeaconState,
 	historicalSummaryStateBlockRoots [][]phase0.Root,
-	denebWithdrawalBlocks []*deneb.BeaconBlock,
-	capellaWithdrawalBlocks []*capella.BeaconBlock,
+	withdrawalBlocks []*spec.VersionedBeaconBlock,
 	validatorIndices []uint64,
 ) (*VerifyAndProcessWithdrawalCallParams, error) {
 	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
@@ -126,7 +125,7 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 
 	verifyAndProcessWithdrawalCallParams.OracleTimestamp = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
 
-	numWithdrawals := len(denebWithdrawalBlocks) + len(capellaWithdrawalBlocks)
+	numWithdrawals := len(withdrawalBlocks)
 
 	verifyAndProcessWithdrawalCallParams.WithdrawalProofs = make([]*WithdrawalProof, numWithdrawals)
 	verifyAndProcessWithdrawalCallParams.WithdrawalFields = make([][]Bytes32, numWithdrawals)
@@ -137,22 +136,19 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 	for i := 0; i < numWithdrawals; i++ {
 		start := time.Now()
 
-		if i < len(denebWithdrawalBlocks) {
-			// prove withdrawal
-			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveDenebWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], denebWithdrawalBlocks[i], validatorIndices[i])
+		if withdrawalBlocks[i].Version == spec.DataVersionDeneb {
+			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveDenebWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i].Deneb, validatorIndices[i])
 			if err != nil {
 				return nil, err
 			}
-			verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] = ConvertWithdrawalToWithdrawalFields(denebWithdrawalBlocks[i].Body.ExecutionPayload.Withdrawals[verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex])
+			verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] = ConvertWithdrawalToWithdrawalFields(withdrawalBlocks[i].Deneb.Body.ExecutionPayload.Withdrawals[verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex])
 			log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
 		} else {
-			j := i - len(denebWithdrawalBlocks)
-			// prove withdrawal
-			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveCapellaWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], capellaWithdrawalBlocks[j], validatorIndices[i])
+			verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i], err = epp.ProveCapellaWithdrawal(oracleBlockHeader, oracleBeaconState, oracleBeaconStateTopLevelRoots, historicalSummaryStateBlockRoots[i], withdrawalBlocks[i].Capella, validatorIndices[i])
 			if err != nil {
 				return nil, err
 			}
-			verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] = ConvertWithdrawalToWithdrawalFields(capellaWithdrawalBlocks[j].Body.ExecutionPayload.Withdrawals[verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex])
+			verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] = ConvertWithdrawalToWithdrawalFields(withdrawalBlocks[i].Capella.Body.ExecutionPayload.Withdrawals[verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex])
 			log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
 		}
 
@@ -238,6 +234,8 @@ func (epp *EigenPodProofs) ProveDenebWithdrawal(
 	if err != nil {
 		return nil, err
 	}
+
+	log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
 
 	return withdrawalProof, nil
 }
