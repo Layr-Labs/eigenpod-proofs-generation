@@ -197,7 +197,6 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
 	//this is the state with the withdrawal in it
 	var oracleState deneb.BeaconState
-	var versionedOracleState spec.VersionedBeaconState
 	var historicalSummaryState deneb.BeaconState
 	var withdrawalBlockHeader phase0.BeaconBlockHeader
 	var withdrawalBlock deneb.BeaconBlock
@@ -211,8 +210,10 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState = CreateVersionedState(spec.DataVersionDeneb)
+	versionedOracleState := CreateVersionedState(spec.DataVersionDeneb)
 	versionedOracleState.Deneb = &oracleState
+	versionedWithdrawalBlock := CreateVersionedBlock(spec.DataVersionDeneb)
+	versionedWithdrawalBlock.Deneb = &withdrawalBlock
 
 	validatorIndex := phase0.ValidatorIndex(index)
 	beaconStateRoot, _ := oracleState.HashTreeRoot()
@@ -246,7 +247,7 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 	}
 	//blockHeaderProof, slotProof, withdrawalProof, validatorProof, timestampProof, executionPayloadProof, stateRootAgainstLatestBlockHeaderProof, historicalSummaryProof, err :=
 	// withdrawalProof, stateRootProof, validatorProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &oracleState, historicalSummaryState.BlockRoots, &withdrawalBlock, validatorIndex)
-	withdrawalProof, err := epp.ProveDenebWithdrawal(&oracleBeaconBlockHeader, &versionedOracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
+	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedOracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedWithdrawalBlock, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveWithdrawal error", err)
 	}
@@ -297,7 +298,6 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
 	//this is the state with the withdrawal in it
 	var oracleState deneb.BeaconState
-	var versionedOracleState spec.VersionedBeaconState
 	var historicalSummaryState capella.BeaconState
 	var withdrawalBlockHeader phase0.BeaconBlockHeader
 	var withdrawalBlock capella.BeaconBlock
@@ -312,8 +312,10 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState = CreateVersionedState(spec.DataVersionCapella)
+	versionedOracleState := CreateVersionedState(spec.DataVersionCapella)
 	versionedOracleState.Deneb = &oracleState
+	versionedWithdrawalBlock := CreateVersionedBlock(spec.DataVersionCapella)
+	versionedWithdrawalBlock.Capella = &withdrawalBlock
 
 	validatorIndex := phase0.ValidatorIndex(index)
 	beaconStateRoot, _ := oracleState.HashTreeRoot()
@@ -344,7 +346,7 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedOracleState)
 	//blockHeaderProof, slotProof, withdrawalProof, validatorProof, timestampProof, executionPayloadProof, stateRootAgainstLatestBlockHeaderProof, historicalSummaryProof, err :=
 	// withdrawalProof, stateRootProof, validatorProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &oracleState, historicalSummaryState.BlockRoots, &withdrawalBlock, validatorIndex)
-	withdrawalProof, err := epp.ProveCapellaWithdrawal(&oracleBeaconBlockHeader, &versionedOracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
+	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedOracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedWithdrawalBlock, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveWithdrawal error", err)
 	}

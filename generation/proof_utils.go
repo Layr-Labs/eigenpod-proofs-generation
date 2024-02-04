@@ -171,8 +171,6 @@ func CreateVersionedBlock(version spec.DataVersion) spec.VersionedBeaconBlock {
 	switch version {
 	case spec.DataVersionDeneb:
 		versionedBlock.Deneb = &deneb.BeaconBlock{}
-	case spec.DataVersionAltair:
-		versionedBlock.Altair = &altair.BeaconBlock{}
 	case spec.DataVersionCapella:
 		versionedBlock.Capella = &capella.BeaconBlock{}
 	}
