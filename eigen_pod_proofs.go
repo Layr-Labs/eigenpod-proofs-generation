@@ -74,7 +74,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
 		slot,
 		func() ([]byte, error) {
-			beaconStateTopLevelRoots, err := epp.ComputeVersionedBeaconStateTopLevelRoots(beaconState)
+			beaconStateTopLevelRoots, err := epp.computeVersionedBeaconStateTopLevelRoots(beaconState)
 			if err != nil {
 				return nil, err
 			}
@@ -89,7 +89,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 	return beaconStateTopLevelRoots, err
 }
 
-func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) computeVersionedBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
 	switch beaconState.Version {
 	case spec.DataVersionDeneb:
 		return beacon.ComputeBeaconStateTopLevelRootsDeneb(beaconState.Deneb)
