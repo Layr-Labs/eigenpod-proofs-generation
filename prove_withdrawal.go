@@ -122,7 +122,10 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 		return nil, err
 	}
 
-	verifyAndProcessWithdrawalCallParams.OracleTimestamp = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
+	verifyAndProcessWithdrawalCallParams.OracleTimestamp, err = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
+	if err != nil {
+		return nil, err
+	}
 
 	numWithdrawals := len(withdrawalBlocks)
 
@@ -139,16 +142,16 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 		if err != nil {
 			return nil, err
 		}
-		log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
+		log.Debug().Msgf("time to prove withdrawal: %s", time.Since(start))
 
 		start = time.Now()
 		// prove validator
-		verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(oracleBeaconStateSlot, oracleBeaconStateValidators, oracleBeaconStateTopLevelRoots, validatorIndices[i])
+		verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(oracleBeaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndices[i])
 		if err != nil {
 			return nil, err
 		}
 		verifyAndProcessWithdrawalCallParams.ValidatorFields[i] = ConvertValidatorToValidatorFields(oracleBeaconStateValidators[validatorIndices[i]])
-		log.Info().Msgf("time to prove validator: %s", time.Since(start))
+		log.Debug().Msgf("time to prove validator: %s", time.Since(start))
 	}
 
 	return verifyAndProcessWithdrawalCallParams, nil
@@ -174,7 +177,7 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Info().Msgf("time to compute block body root: %s", time.Since(start))
+	log.Debug().Msgf("time to compute block body root: %s", time.Since(start))
 
 	slot, err := withdrawalBlock.Slot()
 	if err != nil {
@@ -217,13 +220,16 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 		if err != nil {
 			return nil, nil, err
 		}
-		log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
+		log.Debug().Msgf("time to prove execution payload against block header: %s", time.Since(start))
 
+		start = time.Now()
 		// calculate execution payload field roots
 		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsDeneb(withdrawalBlock.Deneb.Body.ExecutionPayload)
 		if err != nil {
 			return nil, nil, err
 		}
+		log.Debug().Msgf("time to compute execution payload field roots: %s", time.Since(start))
+
 		withdrawals = withdrawalBlock.Deneb.Body.ExecutionPayload.Withdrawals
 		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
 		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Deneb.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
@@ -235,13 +241,16 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 		if err != nil {
 			return nil, nil, err
 		}
-		log.Info().Msgf("time to prove execution payload against block header: %s", time.Since(start))
+		log.Debug().Msgf("time to prove execution payload against block header: %s", time.Since(start))
 
+		start = time.Now()
 		// calculate execution payload field roots
 		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsCapella(withdrawalBlock.Capella.Body.ExecutionPayload)
 		if err != nil {
 			return nil, nil, err
 		}
+		log.Debug().Msgf("time to compute execution payload field roots: %s", time.Since(start))
+
 		withdrawals = withdrawalBlock.Capella.Body.ExecutionPayload.Withdrawals
 		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
 		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Capella.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
@@ -272,7 +281,7 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 		return nil, nil, err
 	}
 
-	log.Info().Msgf("time to prove withdrawal: %s", time.Since(start))
+	log.Debug().Msgf("time to prove withdrawal: %s", time.Since(start))
 
 	return withdrawalProof, withdrawalFields, nil
 }
@@ -317,7 +326,7 @@ func (epp *EigenPodProofs) proveWithdrawal(
 	}
 
 	// log the time it takes to compute each proof
-	log.Info().Msg("computing withdrawal proof")
+	log.Debug().Msg("computing withdrawal proof")
 
 	var err error
 	start := time.Now()
@@ -330,7 +339,7 @@ func (epp *EigenPodProofs) proveWithdrawal(
 	if err != nil {
 		return err
 	}
-	log.Info().Msgf("time to prove withdrawal against execution payload: %s", time.Since(start))
+	log.Debug().Msgf("time to prove withdrawal against execution payload: %s", time.Since(start))
 
 	start = time.Now()
 	// prove the slot against the withdrawal block header
@@ -338,7 +347,7 @@ func (epp *EigenPodProofs) proveWithdrawal(
 	if err != nil {
 		return err
 	}
-	log.Info().Msgf("time to prove slot against block header: %s", time.Since(start))
+	log.Debug().Msgf("time to prove slot against block header: %s", time.Since(start))
 	withdrawalProof.SlotRoot = ConvertUint64ToRoot(uint64(withdrawalBlockHeader.Slot))
 
 	start = time.Now()
@@ -348,7 +357,7 @@ func (epp *EigenPodProofs) proveWithdrawal(
 		return err
 	}
 	withdrawalProof.TimestampRoot = ConvertUint64ToRoot(withdrawalTimestamp)
-	log.Info().Msgf("time to prove timestamp against execution payload: %s", time.Since(start))
+	log.Debug().Msgf("time to prove timestamp against execution payload: %s", time.Since(start))
 
 	start = time.Now()
 	// prove the withdrawal block root against the oracle state root
@@ -356,7 +365,7 @@ func (epp *EigenPodProofs) proveWithdrawal(
 	if err != nil {
 		return err
 	}
-	log.Info().Msgf("time to prove block root against beacon state via historical summaries: %s", time.Since(start))
+	log.Debug().Msgf("time to prove block root against beacon state via historical summaries: %s", time.Since(start))
 
 	return nil
 }

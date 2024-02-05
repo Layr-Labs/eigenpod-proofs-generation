@@ -154,7 +154,7 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 	return s
 }
 
-func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
+func createVersionedState(state interface{}) spec.VersionedBeaconState {
 	var versionedState spec.VersionedBeaconState
 
 	switch s := state.(type) {
@@ -168,7 +168,7 @@ func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
 	return versionedState
 }
 
-func CreateVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
+func createVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
 	var versionedBlock spec.VersionedBeaconBlock
 	switch s := block.(type) {
 	case *deneb.BeaconBlock:

@@ -39,18 +39,20 @@ func main() {
 		return
 	}
 
+	var err error
 	// Handling commands based on the 'command' flag
 	switch *command {
 	case "ValidatorFieldsProof":
-		GenerateValidatorFieldsProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
+		err = GenerateValidatorFieldsProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
 
 	case "WithdrawalFieldsProof":
-		GenerateWithdrawalFieldsProof(*oracleBlockHeaderFile, *stateFile, *historicalSummaryStateFile, *blockHeaderFile, *blockBodyFile, *validatorIndex, *withdrawalIndex, *historicalSummariesIndex, *blockHeaderIndex, *chainID, *outputFile)
+		err = GenerateWithdrawalFieldsProof(*oracleBlockHeaderFile, *stateFile, *historicalSummaryStateFile, *blockHeaderFile, *blockBodyFile, *validatorIndex, *withdrawalIndex, *historicalSummariesIndex, *blockHeaderIndex, *chainID, *outputFile)
 
 	case "BalanceUpdateProof":
-		GenerateBalanceUpdateProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
+		err = GenerateBalanceUpdateProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
 
 	default:
 		log.Debug().Str("Unknown command:", *command)
 	}
+	log.Debug().AnErr("Error: ", err)
 }

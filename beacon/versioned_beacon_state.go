@@ -17,3 +17,14 @@ func HistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.Historica
 		return nil, errors.New("unsupported beacon state version")
 	}
 }
+
+func GenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
+	switch state.Version {
+	case spec.DataVersionCapella:
+		return state.Capella.GenesisTime, nil
+	case spec.DataVersionDeneb:
+		return state.Deneb.GenesisTime, nil
+	default:
+		return 0, errors.New("unsupported beacon state version")
+	}
+}

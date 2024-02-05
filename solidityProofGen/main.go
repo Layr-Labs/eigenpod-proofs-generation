@@ -115,11 +115,11 @@ func main() {
 		GenerateValidatorFieldsProof(oracleStateFile, stateFile, index, changeBalance, uint64(newBalance), outputFile)
 	default:
 		fmt.Println("Unknown command:", args[0])
+		os.Exit(0)
 	}
 }
 
-// TODO: Get this working
-func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string, index uint64, changeBalance bool, newBalance uint64, output string) {
+func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string, index uint64, changeBalance bool, newBalance uint64, output string) error {
 	var state deneb.BeaconState
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
 	SetupValidatorProof(oracleBlockHeaderFile, stateFile, index, changeBalance, newBalance, 0, &state, &oracleBeaconBlockHeader)
@@ -131,12 +131,13 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 	latestBlockHeaderRoot, err := oracleBeaconBlockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("Error with HashTreeRoot of latestBlockHeader", err)
+		return err
 	}
 
 	epp, err := eigenpodproofs.NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
 	if err != nil {
 		fmt.Println("Error creating EPP object", err)
-
+		return err
 	}
 
 	var versionedState spec.VersionedBeaconState
@@ -156,13 +157,15 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 	proofData, err := json.Marshal(proofs)
 	if err != nil {
 		fmt.Println("error")
+		return err
 	}
 
 	_ = ioutil.WriteFile(output, proofData, 0644)
 
+	return nil
 }
 
-func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderIndex uint64, oracleBlockHeaderFile, stateFile, historicalSummaryStateFile, headerFile, bodyFile, outputFile string, modifyStateToIncludeFullWithdrawal bool, partialWithdrawalProof bool, advanceSlotOfWithdrawal bool) {
+func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderIndex uint64, oracleBlockHeaderFile, stateFile, historicalSummaryStateFile, headerFile, bodyFile, outputFile string, modifyStateToIncludeFullWithdrawal bool, partialWithdrawalProof bool, advanceSlotOfWithdrawal bool) error {
 
 	//this is the oracle provided state
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
@@ -181,13 +184,17 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState := CreateVersionedState(spec.DataVersionDeneb)
+	versionedOracleState := createVersionedState(spec.DataVersionDeneb)
 	versionedOracleState.Deneb = &oracleState
-	versionedWithdrawalBlock := CreateVersionedBlock(spec.DataVersionDeneb)
+	versionedWithdrawalBlock := createVersionedBlock(spec.DataVersionDeneb)
 	versionedWithdrawalBlock.Deneb = &withdrawalBlock
 
 	validatorIndex := phase0.ValidatorIndex(index)
-	beaconStateRoot, _ := oracleState.HashTreeRoot()
+	beaconStateRoot, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("Error with HashTreeRoot of oracleState", err)
+		return err
+	}
 
 	fmt.Println("beaconStateRoot", hex.EncodeToString(beaconStateRoot[:]))
 
@@ -198,6 +205,7 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 	latestBlockHeaderRoot, err := oracleBeaconBlockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("Error with HashTreeRoot of latestBlockHeader", err)
+		return err
 	}
 
 	timestamp := withdrawalBlock.Body.ExecutionPayload.Timestamp
@@ -211,24 +219,29 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 	epp, err := eigenpodproofs.NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
 	if err != nil {
 		fmt.Println("Error creating EPP object", err)
+		return err
 	}
 	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedOracleState)
 	if err != nil {
 		fmt.Println("Error computing beacon state top level roots", err)
+		return err
 	}
 	//blockHeaderProof, slotProof, withdrawalProof, validatorProof, timestampProof, executionPayloadProof, stateRootAgainstLatestBlockHeaderProof, historicalSummaryProof, err :=
 	// withdrawalProof, stateRootProof, validatorProof, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &oracleState, historicalSummaryState.BlockRoots, &withdrawalBlock, validatorIndex)
 	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedOracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedWithdrawalBlock, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveWithdrawal error", err)
+		return err
 	}
 	stateRootProof, err := beacon.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		fmt.Println("ProveStateRootAgainstBlockHeader error", err)
+		return err
 	}
-	validatorProof, err := epp.ProveValidatorAgainstBeaconState(oracleState.Slot, oracleState.Validators, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
+	validatorProof, err := epp.ProveValidatorAgainstBeaconState(oracleBeaconStateTopLevelRoots, oracleState.Slot, oracleState.Validators, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveValidatorAgainstBeaconState error", err)
+		return err
 	}
 
 	proofs := WithdrawalProofs{
@@ -257,13 +270,14 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 	proofData, err := json.Marshal(proofs)
 	if err != nil {
 		fmt.Println("error")
+		return err
 	}
 
 	_ = os.WriteFile(outputFile, proofData, 0644)
-
+	return nil
 }
 
-func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, blockHeaderIndex uint64, oracleBlockHeaderFile, stateFile, historicalSummaryStateFile, headerFile, bodyFile, outputFile string, modifyStateToIncludeFullWithdrawal bool, partialWithdrawalProof bool, advanceSlotOfWithdrawal bool) {
+func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, blockHeaderIndex uint64, oracleBlockHeaderFile, stateFile, historicalSummaryStateFile, headerFile, bodyFile, outputFile string, modifyStateToIncludeFullWithdrawal bool, partialWithdrawalProof bool, advanceSlotOfWithdrawal bool) error {
 
 	//this is the oracle provided state
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
@@ -283,9 +297,9 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState := CreateVersionedState(spec.DataVersionCapella)
+	versionedOracleState := createVersionedState(spec.DataVersionCapella)
 	versionedOracleState.Deneb = &oracleState
-	versionedWithdrawalBlock := CreateVersionedBlock(spec.DataVersionCapella)
+	versionedWithdrawalBlock := createVersionedBlock(spec.DataVersionCapella)
 	versionedWithdrawalBlock.Capella = &withdrawalBlock
 
 	validatorIndex := phase0.ValidatorIndex(index)
@@ -300,6 +314,7 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	latestBlockHeaderRoot, err := oracleBeaconBlockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("Error with HashTreeRoot of latestBlockHeader", err)
+		return err
 	}
 
 	timestamp := withdrawalBlock.Body.ExecutionPayload.Timestamp
@@ -313,6 +328,7 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	epp, err := eigenpodproofs.NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
 	if err != nil {
 		fmt.Println("Error creating EPP object", err)
+		return err
 	}
 	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedOracleState)
 	//blockHeaderProof, slotProof, withdrawalProof, validatorProof, timestampProof, executionPayloadProof, stateRootAgainstLatestBlockHeaderProof, historicalSummaryProof, err :=
@@ -320,14 +336,17 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedOracleState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedWithdrawalBlock, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveWithdrawal error", err)
+		return err
 	}
 	stateRootProof, err := beacon.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		fmt.Println("ProveStateRootAgainstBlockHeader error", err)
+		return err
 	}
-	validatorProof, err := epp.ProveValidatorAgainstBeaconState(oracleState.Slot, oracleState.Validators, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
+	validatorProof, err := epp.ProveValidatorAgainstBeaconState(oracleBeaconStateTopLevelRoots, oracleState.Slot, oracleState.Validators, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println("ProveValidatorAgainstBeaconState error", err)
+		return err
 	}
 	proofs := WithdrawalProofs{
 		Slot:                                   uint64(slot),
@@ -360,4 +379,5 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 
 	_ = os.WriteFile(outputFile, proofData, 0644)
 
+	return nil
 }

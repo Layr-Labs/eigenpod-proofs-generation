@@ -483,7 +483,7 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
-func CreateVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
+func createVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
 	var versionedState spec.VersionedBeaconState
 	switch version {
 	case spec.DataVersionDeneb:
@@ -497,7 +497,7 @@ func CreateVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
 	return versionedState
 }
 
-func CreateVersionedBlock(version spec.DataVersion) spec.VersionedBeaconBlock {
+func createVersionedBlock(version spec.DataVersion) spec.VersionedBeaconBlock {
 	var versionedBlock spec.VersionedBeaconBlock
 	switch version {
 	case spec.DataVersionDeneb:

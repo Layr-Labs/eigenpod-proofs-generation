@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"math/bits"
 
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -90,15 +91,12 @@ func NextPowerOfTwo(v uint64) uint {
 	return uint(v)
 }
 
-func GetSlotTimestamp(beaconState *spec.VersionedBeaconState, blockHeader *phase0.BeaconBlockHeader) uint64 {
-	var genesisTime uint64
-	switch beaconState.Version {
-	case spec.DataVersionDeneb:
-		genesisTime = beaconState.Deneb.GenesisTime
-	case spec.DataVersionCapella:
-		genesisTime = beaconState.Capella.GenesisTime
+func GetSlotTimestamp(beaconState *spec.VersionedBeaconState, blockHeader *phase0.BeaconBlockHeader) (uint64, error) {
+	genesisTime, err := beacon.GenesisTime(beaconState)
+	if err != nil {
+		return 0, err
 	}
-	return genesisTime + uint64(blockHeader.Slot)*12
+	return genesisTime + uint64(blockHeader.Slot)*12, nil
 }
 
 func ConvertValidatorToValidatorFields(v *phase0.Validator) []Bytes32 {

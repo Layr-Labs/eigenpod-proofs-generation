@@ -28,7 +28,7 @@ func GenerateWithdrawalFieldsProof(
 	blockHeaderIndex,
 	chainID uint64,
 	outputFile string,
-) {
+) error {
 
 	//this is the oracle provided state
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
@@ -46,28 +46,33 @@ func GenerateWithdrawalFieldsProof(
 
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
+		return err
 	}
 
 	stateJSON, err := ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
+		return err
 	}
 	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
 	historicalSummaryJSON, err := ParseDenebStateJSONFile(historicalSummaryStateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
+		return err
 	}
 	ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
 
 	withdrawalBlockHeader, err = ExtractBlockHeader(blockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing header file", err)
+		return err
 	}
 
 	withdrawalBlock, err = ExtractBlock(blockBodyFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing body file", err)
+		return err
 	}
 
 	hh := ssz.NewHasher()
@@ -78,6 +83,7 @@ func GenerateWithdrawalFieldsProof(
 	beaconStateRoot, err := state.HashTreeRoot()
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with HashTreeRoot of state", err)
+		return err
 	}
 
 	slot := withdrawalBlockHeader.Slot
@@ -91,39 +97,47 @@ func GenerateWithdrawalFieldsProof(
 	blockHeaderRoot, err := withdrawalBlockHeader.HashTreeRoot()
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with HashTreeRoot of blockHeader", err)
+		return err
 	}
 	executionPayloadRoot, err := withdrawalBlock.Body.ExecutionPayload.HashTreeRoot()
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with HashTreeRoot of executionPayload", err)
+		return err
 	}
 
 	epp, err := eigenpodproofs.NewEigenPodProofs(chainID, 1000)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error creating EPP object", err)
+		return err
 	}
-	versionedState = CreateVersionedState(state)
+	versionedState = createVersionedState(state)
 	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedState)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ComputeBeaconStateTopLevelRoots", err)
+		return err
 	}
 
-	versionedBlock := CreateVersionedBlock(withdrawalBlock)
+	versionedBlock := createVersionedBlock(withdrawalBlock)
 	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedBlock, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
+		return err
 	}
 	stateRootProofAgainstBlockHeader, err := beacon.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveStateRootAgainstBlockHeader", err)
+		return err
 	}
 	slotProofAgainstBlockHeader, err := beacon.ProveSlotAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveSlotAgainstBlockHeader", err)
+		return err
 	}
 
-	validatorProof, err := epp.ProveValidatorAgainstBeaconState(state.Slot, state.Validators, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
+	validatorProof, err := epp.ProveValidatorAgainstBeaconState(oracleBeaconStateTopLevelRoots, state.Slot, state.Validators, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveValidatorAgainstBeaconState", err)
+		return err
 	}
 	proofs := WithdrawalProofs{
 		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProofAgainstBlockHeader),
@@ -153,4 +167,5 @@ func GenerateWithdrawalFieldsProof(
 
 	_ = os.WriteFile(outputFile, proofData, 0644)
 
+	return nil
 }
