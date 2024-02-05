@@ -95,7 +95,7 @@ type beaconStateJSONDeneb struct {
 	HistoricalSummaries          []*capella.HistoricalSummary  `json:"historical_summaries"`
 }
 
-type beaconStateVersion struct {
+type beaconStateVersionDeneb struct {
 	Data beaconStateJSONDeneb `json:"data"`
 }
 

@@ -120,7 +120,7 @@ type beaconStateJSONCapella struct {
 	HistoricalSummaries          []*capella.HistoricalSummary    `json:"historical_summaries"`
 }
 
-type beaconStateVersion struct {
+type beaconStateVersionDeneb struct {
 	Data beaconStateJSONDeneb `json:"data"`
 }
 
@@ -279,7 +279,7 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 		return nil, err
 	}
 
-	var beaconState beaconStateVersion
+	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		log.Debug().Msg("error with JSON unmarshalling")

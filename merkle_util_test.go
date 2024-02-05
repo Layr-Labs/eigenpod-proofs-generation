@@ -761,7 +761,7 @@ func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 		return nil, err
 	}
 
-	var beaconState beaconStateVersion
+	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		fmt.Println("error with beaconState JSON unmarshalling")
