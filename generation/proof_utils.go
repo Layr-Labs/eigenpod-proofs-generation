@@ -154,15 +154,17 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 	return s
 }
 
-func CreateVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
+func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
 	var versionedState spec.VersionedBeaconState
-	switch version {
-	case spec.DataVersionDeneb:
-		versionedState.Deneb = &deneb.BeaconState{}
-	case spec.DataVersionCapella:
-		versionedState.Capella = &capella.BeaconState{}
+
+	switch s := state.(type) {
+	case *deneb.BeaconState:
+		versionedState.Deneb = s
+		versionedState.Version = spec.DataVersionDeneb
+	case *capella.BeaconState:
+		versionedState.Capella = s
+		versionedState.Version = spec.DataVersionCapella
 	}
-	versionedState.Version = version
 	return versionedState
 }
 

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
@@ -38,8 +37,7 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 		log.Debug().AnErr("Error creating EPP object", err)
 	}
 
-	versionedState := CreateVersionedState(spec.DataVersionDeneb)
-	versionedState.Deneb = &state
+	versionedState := CreateVersionedState(state)
 	stateRootProof, validatorFieldsProof, err := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)

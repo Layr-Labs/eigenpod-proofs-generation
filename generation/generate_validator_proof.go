@@ -6,7 +6,6 @@ import (
 	"os"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
@@ -40,8 +39,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 
 	}
 
-	versionedState := CreateVersionedState(spec.DataVersionDeneb)
-	versionedState.Deneb = &state
+	versionedState := CreateVersionedState(state)
 
 	stateRootProof, validatorFieldsProof, err := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {

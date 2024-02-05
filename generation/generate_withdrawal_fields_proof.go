@@ -101,8 +101,7 @@ func GenerateWithdrawalFieldsProof(
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error creating EPP object", err)
 	}
-	versionedState = CreateVersionedState(spec.DataVersionDeneb)
-	versionedState.Deneb = &state
+	versionedState = CreateVersionedState(state)
 	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedState)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ComputeBeaconStateTopLevelRoots", err)
