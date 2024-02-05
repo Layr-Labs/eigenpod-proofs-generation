@@ -18,6 +18,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
+	generation "github.com/Layr-Labs/eigenpod-proofs-generation/generation"
 )
 
 var (
@@ -143,7 +144,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 	var versionedState spec.VersionedBeaconState
 	versionedState.Deneb = &state
 
-	stateRootProof, validatorFieldsProof, _ := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
+	stateRootProof, validatorFieldsProof, _ := generation.ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 
 	proofs := WithdrawalCredentialProofs{
 		ValidatorIndex:                         uint64(validatorIndex),

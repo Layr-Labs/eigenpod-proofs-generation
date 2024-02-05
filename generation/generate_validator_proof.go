@@ -43,7 +43,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 
 	versionedState := createVersionedState(state)
 
-	stateRootProof, validatorFieldsProof, err := epp.ProveValidatorFields(&oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
+	stateRootProof, validatorFieldsProof, err := ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)
 		return err

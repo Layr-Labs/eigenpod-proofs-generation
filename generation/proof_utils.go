@@ -1,4 +1,4 @@
-package main
+package generation
 
 import (
 	"encoding/hex"
@@ -9,10 +9,13 @@ import (
 	"strconv"
 	"strings"
 
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -166,6 +169,44 @@ func createVersionedState(state interface{}) spec.VersionedBeaconState {
 		versionedState.Version = spec.DataVersionCapella
 	}
 	return versionedState
+}
+
+func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndex uint64) (*eigenpodproofs.StateRootProof, common.Proof, error) {
+	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
+	if err != nil {
+		return nil, nil, err
+	}
+	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRootProof := &eigenpodproofs.StateRootProof{}
+	// Get beacon state top level roots
+	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get beacon state root. TODO: Combine this cheaply with compute beacon state top level roots
+	stateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	validatorFieldsProof, err := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return stateRootProof, validatorFieldsProof, nil
 }
 
 func createVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
