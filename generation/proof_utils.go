@@ -168,15 +168,16 @@ func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
 	return versionedState
 }
 
-func CreateVersionedBlock(version spec.DataVersion) spec.VersionedBeaconBlock {
+func CreateVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
 	var versionedBlock spec.VersionedBeaconBlock
-	switch version {
-	case spec.DataVersionDeneb:
-		versionedBlock.Deneb = &deneb.BeaconBlock{}
-	case spec.DataVersionCapella:
-		versionedBlock.Capella = &capella.BeaconBlock{}
+	switch s := block.(type) {
+	case *deneb.BeaconBlock:
+		versionedBlock.Deneb = s
+		versionedBlock.Version = spec.DataVersionDeneb
+	case *capella.BeaconBlock:
+		versionedBlock.Capella = s
+		versionedBlock.Version = spec.DataVersionCapella
 	}
-	versionedBlock.Version = version
 	return versionedBlock
 }
 
