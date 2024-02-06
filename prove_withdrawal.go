@@ -260,7 +260,7 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 		return nil, nil, errors.New("unsupported version")
 	}
 
-	oracleBeaconStateHistoricalSummaries, err := beacon.HistoricalSummaries(oracleBeaconState)
+	oracleBeaconStateHistoricalSummaries, err := beacon.GetHistoricalSummaries(oracleBeaconState)
 	if err != nil {
 		return nil, nil, err
 	}

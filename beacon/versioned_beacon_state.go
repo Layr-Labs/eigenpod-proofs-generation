@@ -8,7 +8,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 )
 
-func HistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.HistoricalSummary, error) {
+func GetHistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.HistoricalSummary, error) {
 	switch state.Version {
 	case spec.DataVersionCapella:
 		return state.Capella.HistoricalSummaries, nil
@@ -19,7 +19,7 @@ func HistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.Historica
 	}
 }
 
-func GenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
+func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	switch state.Version {
 	case spec.DataVersionCapella:
 		return state.Capella.GenesisTime, nil
