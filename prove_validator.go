@@ -18,6 +18,10 @@ type VerifyValidatorFieldsCallParams struct {
 	ValidatorFields       [][]Bytes32     `json:"validatorFields"`
 }
 
+// We define these two aliases here, since calls to verifyWithdrawalCredentials and verifyBalanceUpdates use the same inputs
+type VerifyWithdrawalCredentialsCallParams = VerifyValidatorFieldsCallParams
+type VerifyBalanceUpdatesCallParams = VerifyValidatorFieldsCallParams
+
 func (epp *EigenPodProofs) ProveValidatorContainers(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndices []uint64) (*VerifyValidatorFieldsCallParams, error) {
 
 	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
