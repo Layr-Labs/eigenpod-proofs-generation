@@ -5,6 +5,7 @@ import (
 
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
 )
 
 func HistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.HistoricalSummary, error) {
@@ -27,4 +28,31 @@ func GenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	default:
 		return 0, errors.New("unsupported beacon state version")
 	}
+}
+
+func CreateVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
+	var versionedBlock spec.VersionedBeaconBlock
+	switch s := block.(type) {
+	case *deneb.BeaconBlock:
+		versionedBlock.Deneb = s
+		versionedBlock.Version = spec.DataVersionDeneb
+	case *capella.BeaconBlock:
+		versionedBlock.Capella = s
+		versionedBlock.Version = spec.DataVersionCapella
+	}
+	return versionedBlock
+}
+
+func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
+	var versionedState spec.VersionedBeaconState
+
+	switch s := state.(type) {
+	case *deneb.BeaconState:
+		versionedState.Deneb = s
+		versionedState.Version = spec.DataVersionDeneb
+	case *capella.BeaconState:
+		versionedState.Capella = s
+		versionedState.Version = spec.DataVersionCapella
+	}
+	return versionedState
 }

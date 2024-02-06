@@ -157,20 +157,6 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 	return s
 }
 
-func createVersionedState(state interface{}) spec.VersionedBeaconState {
-	var versionedState spec.VersionedBeaconState
-
-	switch s := state.(type) {
-	case *deneb.BeaconState:
-		versionedState.Deneb = s
-		versionedState.Version = spec.DataVersionDeneb
-	case *capella.BeaconState:
-		versionedState.Capella = s
-		versionedState.Version = spec.DataVersionCapella
-	}
-	return versionedState
-}
-
 func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndex uint64) (*eigenpodproofs.StateRootProof, common.Proof, error) {
 	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
 	if err != nil {
@@ -207,19 +193,6 @@ func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader 
 	}
 
 	return stateRootProof, validatorFieldsProof, nil
-}
-
-func createVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
-	var versionedBlock spec.VersionedBeaconBlock
-	switch s := block.(type) {
-	case *deneb.BeaconBlock:
-		versionedBlock.Deneb = s
-		versionedBlock.Version = spec.DataVersionDeneb
-	case *capella.BeaconBlock:
-		versionedBlock.Capella = s
-		versionedBlock.Version = spec.DataVersionCapella
-	}
-	return versionedBlock
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {

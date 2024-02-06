@@ -6,6 +6,7 @@ import (
 	"os"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
@@ -41,7 +42,7 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 		return err
 	}
 
-	versionedState := createVersionedState(state)
+	versionedState := beacon.CreateVersionedState(state)
 	stateRootProof, validatorFieldsProof, err := ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)
