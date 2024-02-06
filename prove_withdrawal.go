@@ -84,7 +84,7 @@ func (epp *EigenPodProofs) ProveWithdrawals(
 	oracleBlockHeader *phase0.BeaconBlockHeader,
 	oracleBeaconState *spec.VersionedBeaconState,
 	historicalSummaryStateBlockRoots [][]phase0.Root,
-	withdrawalBlocks []*spec.VersionedBeaconBlock,
+	withdrawalBlocks []*spec.VersionedSignedBeaconBlock,
 	validatorIndices []uint64,
 ) (*VerifyAndProcessWithdrawalCallParams, error) {
 	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
@@ -168,7 +168,7 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	oracleBeaconState *spec.VersionedBeaconState,
 	oracleBeaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots,
 	historicalSummaryStateBlockRoots []phase0.Root,
-	withdrawalBlock *spec.VersionedBeaconBlock,
+	withdrawalBlock *spec.VersionedSignedBeaconBlock,
 	validatorIndex uint64,
 ) (*WithdrawalProof, []Bytes32, error) {
 	start := time.Now()
@@ -216,7 +216,7 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	if withdrawalBlock.Version == spec.DataVersionDeneb {
 		start = time.Now()
 		// prove the execution payload against the withdrawal block header
-		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(withdrawalBlockHeader, withdrawalBlock.Deneb.Body)
+		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(withdrawalBlockHeader, withdrawalBlock.Deneb.Message.Body)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -224,20 +224,20 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 
 		start = time.Now()
 		// calculate execution payload field roots
-		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsDeneb(withdrawalBlock.Deneb.Body.ExecutionPayload)
+		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsDeneb(withdrawalBlock.Deneb.Message.Body.ExecutionPayload)
 		if err != nil {
 			return nil, nil, err
 		}
 		log.Debug().Msgf("time to compute execution payload field roots: %s", time.Since(start))
 
-		withdrawals = withdrawalBlock.Deneb.Body.ExecutionPayload.Withdrawals
+		withdrawals = withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Withdrawals
 		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
-		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Deneb.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
-		timestamp = withdrawalBlock.Deneb.Body.ExecutionPayload.Timestamp
+		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
+		timestamp = withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Timestamp
 	} else if withdrawalBlock.Version == spec.DataVersionCapella {
 		start = time.Now()
 		// prove the execution payload against the withdrawal block header
-		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderCapella(withdrawalBlockHeader, withdrawalBlock.Capella.Body)
+		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderCapella(withdrawalBlockHeader, withdrawalBlock.Capella.Message.Body)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -245,17 +245,17 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 
 		start = time.Now()
 		// calculate execution payload field roots
-		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsCapella(withdrawalBlock.Capella.Body.ExecutionPayload)
+		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsCapella(withdrawalBlock.Capella.Message.Body.ExecutionPayload)
 		if err != nil {
 			return nil, nil, err
 		}
 		log.Debug().Msgf("time to compute execution payload field roots: %s", time.Since(start))
 
-		withdrawals = withdrawalBlock.Capella.Body.ExecutionPayload.Withdrawals
+		withdrawals = withdrawalBlock.Capella.Message.Body.ExecutionPayload.Withdrawals
 		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
-		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Capella.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
+		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Capella.Message.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
 
-		timestamp = withdrawalBlock.Capella.Body.ExecutionPayload.Timestamp
+		timestamp = withdrawalBlock.Capella.Message.Body.ExecutionPayload.Timestamp
 	} else {
 		return nil, nil, errors.New("unsupported version")
 	}

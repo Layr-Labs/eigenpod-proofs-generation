@@ -29,15 +29,14 @@ func GenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 		return 0, errors.New("unsupported beacon state version")
 	}
 }
-
-func CreateVersionedBlock(block interface{}) spec.VersionedBeaconBlock {
-	var versionedBlock spec.VersionedBeaconBlock
+func CreateVersionedSignedBlock(block interface{}) spec.VersionedSignedBeaconBlock {
+	var versionedBlock spec.VersionedSignedBeaconBlock
 	switch s := block.(type) {
 	case *deneb.BeaconBlock:
-		versionedBlock.Deneb = s
+		versionedBlock.Deneb.Message = s
 		versionedBlock.Version = spec.DataVersionDeneb
 	case *capella.BeaconBlock:
-		versionedBlock.Capella = s
+		versionedBlock.Capella.Message = s
 		versionedBlock.Version = spec.DataVersionCapella
 	}
 	return versionedBlock

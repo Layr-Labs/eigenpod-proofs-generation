@@ -497,13 +497,13 @@ func createVersionedState(version spec.DataVersion) spec.VersionedBeaconState {
 	return versionedState
 }
 
-func createVersionedBlock(version spec.DataVersion) spec.VersionedBeaconBlock {
-	var versionedBlock spec.VersionedBeaconBlock
+func createVersionedSignedBlock(version spec.DataVersion) spec.VersionedSignedBeaconBlock {
+	var versionedBlock spec.VersionedSignedBeaconBlock
 	switch version {
 	case spec.DataVersionDeneb:
-		versionedBlock.Deneb = &deneb.BeaconBlock{}
+		versionedBlock.Deneb.Message = &deneb.BeaconBlock{}
 	case spec.DataVersionCapella:
-		versionedBlock.Capella = &capella.BeaconBlock{}
+		versionedBlock.Capella.Message = &capella.BeaconBlock{}
 	}
 	versionedBlock.Version = version
 	return versionedBlock

@@ -117,8 +117,8 @@ func GenerateWithdrawalFieldsProof(
 		return err
 	}
 
-	versionedBlock := beacon.CreateVersionedBlock(withdrawalBlock)
-	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedBlock, uint64(validatorIndex))
+	versionedSignedBlock := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedSignedBlock, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
 		return err

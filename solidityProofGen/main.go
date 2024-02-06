@@ -187,8 +187,8 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 
 	versionedOracleState := createVersionedState(spec.DataVersionDeneb)
 	versionedOracleState.Deneb = &oracleState
-	versionedWithdrawalBlock := createVersionedBlock(spec.DataVersionDeneb)
-	versionedWithdrawalBlock.Deneb = &withdrawalBlock
+	versionedWithdrawalBlock := createVersionedSignedBlock(spec.DataVersionDeneb)
+	versionedWithdrawalBlock.Deneb.Message = &withdrawalBlock
 
 	validatorIndex := phase0.ValidatorIndex(index)
 	beaconStateRoot, err := oracleState.HashTreeRoot()
@@ -300,8 +300,8 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 
 	versionedOracleState := createVersionedState(spec.DataVersionCapella)
 	versionedOracleState.Deneb = &oracleState
-	versionedWithdrawalBlock := createVersionedBlock(spec.DataVersionCapella)
-	versionedWithdrawalBlock.Capella = &withdrawalBlock
+	versionedWithdrawalBlock := createVersionedSignedBlock(spec.DataVersionCapella)
+	versionedWithdrawalBlock.Capella.Message = &withdrawalBlock
 
 	validatorIndex := phase0.ValidatorIndex(index)
 	beaconStateRoot, _ := oracleState.HashTreeRoot()
