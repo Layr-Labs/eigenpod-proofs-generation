@@ -92,7 +92,7 @@ func NextPowerOfTwo(v uint64) uint {
 }
 
 func GetSlotTimestamp(beaconState *spec.VersionedBeaconState, blockHeader *phase0.BeaconBlockHeader) (uint64, error) {
-	genesisTime, err := beacon.GenesisTime(beaconState)
+	genesisTime, err := beacon.GetGenesisTime(beaconState)
 	if err != nil {
 		return 0, err
 	}
