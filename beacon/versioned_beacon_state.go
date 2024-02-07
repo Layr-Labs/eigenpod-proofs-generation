@@ -29,8 +29,9 @@ func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 		return 0, errors.New("unsupported beacon state version")
 	}
 }
-func CreateVersionedSignedBlock(block interface{}) spec.VersionedSignedBeaconBlock {
+func CreateVersionedSignedBlock(block interface{}) (spec.VersionedSignedBeaconBlock, error) {
 	var versionedBlock spec.VersionedSignedBeaconBlock
+
 	switch s := block.(type) {
 	case *deneb.BeaconBlock:
 		versionedBlock.Deneb.Message = s
@@ -38,11 +39,13 @@ func CreateVersionedSignedBlock(block interface{}) spec.VersionedSignedBeaconBlo
 	case *capella.BeaconBlock:
 		versionedBlock.Capella.Message = s
 		versionedBlock.Version = spec.DataVersionCapella
+	default:
+		return versionedBlock, errors.New("unsupported beacon block version")
 	}
-	return versionedBlock
+	return versionedBlock, nil
 }
 
-func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
+func CreateVersionedState(state interface{}) (spec.VersionedBeaconState, error) {
 	var versionedState spec.VersionedBeaconState
 
 	switch s := state.(type) {
@@ -52,6 +55,8 @@ func CreateVersionedState(state interface{}) spec.VersionedBeaconState {
 	case *capella.BeaconState:
 		versionedState.Capella = s
 		versionedState.Version = spec.DataVersionCapella
+	default:
+		return versionedState, errors.New("unsupported beacon state version")
 	}
-	return versionedState
+	return versionedState, nil
 }

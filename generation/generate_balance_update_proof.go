@@ -42,7 +42,12 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 		return err
 	}
 
-	versionedState := beacon.CreateVersionedState(state)
+	versionedState, err := beacon.CreateVersionedState(state)
+	if err != nil {
+		log.Debug().AnErr("Error with CreateVersionedState", err)
+		return err
+	}
+
 	stateRootProof, validatorFieldsProof, err := ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)

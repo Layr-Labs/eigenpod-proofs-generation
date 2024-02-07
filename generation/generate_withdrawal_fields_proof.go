@@ -110,14 +110,24 @@ func GenerateWithdrawalFieldsProof(
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error creating EPP object", err)
 		return err
 	}
-	versionedState = beacon.CreateVersionedState(state)
+	versionedState, err = beacon.CreateVersionedState(state)
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with CreateVersionedState", err)
+		return err
+	}
+
 	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedState)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ComputeBeaconStateTopLevelRoots", err)
 		return err
 	}
 
-	versionedSignedBlock := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	versionedSignedBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with CreateVersionedSignedBlock", err)
+		return err
+	}
+
 	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedSignedBlock, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)

@@ -185,8 +185,17 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState := beacon.CreateVersionedState(oracleState)
-	versionedWithdrawalBlock := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	versionedOracleState, err := beacon.CreateVersionedState(oracleState)
+	if err != nil {
+		fmt.Println("Error creating versioned state", err)
+		return err
+	}
+
+	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		fmt.Println("Error creating versioned signed block", err)
+		return err
+	}
 
 	validatorIndex := phase0.ValidatorIndex(index)
 	beaconStateRoot, err := oracleState.HashTreeRoot()
@@ -296,8 +305,16 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState := beacon.CreateVersionedState(oracleState)
-	versionedWithdrawalBlock := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	versionedOracleState, err := beacon.CreateVersionedState(oracleState)
+	if err != nil {
+		fmt.Println("Error creating versioned state", err)
+		return err
+	}
+	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		fmt.Println("Error creating versioned signed block", err)
+		return err
+	}
 
 	validatorIndex := phase0.ValidatorIndex(index)
 	beaconStateRoot, _ := oracleState.HashTreeRoot()
