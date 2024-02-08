@@ -148,10 +148,13 @@ func TestProveWithdrawals(t *testing.T) {
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 
-	var withdrawalBlock deneb.BeaconBlock
-	withdrawalBlock, err = ExtractBlock("data/deneb_goerli_block_7421951.json")
+	withdrawalBlock, err := ExtractBlock("data/deneb_goerli_block_7421951.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
+	}
+	withdrawalBlockHeader, err := ExtractBlockHeader("data/deneb_goerli_block_header_7421951.json")
+	if err != nil {
+		fmt.Println("blockHeader.UnmarshalJSON error", err)
 	}
 
 	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
@@ -179,6 +182,12 @@ func TestProveWithdrawals(t *testing.T) {
 		fmt.Println("error", err)
 	}
 
+	oracleStateRoot, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
 	flag := verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader, oracleState, verifyAndProcessWithdrawalCallParams.StateRootProof.StateRootProof)
 	assert.True(t, flag, "State Root Proof %v failed")
 
@@ -190,6 +199,15 @@ func TestProveWithdrawals(t *testing.T) {
 
 	flag = verifyTimestampAgainstExecutionPayload(executionPayloadRoot, verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampProof, withdrawalBlock.Body.ExecutionPayload.Timestamp)
 	assert.True(t, flag, "Timestamp Proof %v failed")
+
+	flag = verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(
+		oracleStateRoot,
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryBlockRootProof,
+		withdrawalBlockHeader,
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRootIndex,
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryIndex,
+	)
+	assert.True(t, flag, "Historical Summary Block Root Proof %v failed")
 }
 
 func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
@@ -306,7 +324,6 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	historicalSummaryIndex := uint64(271) //7421951 - FIRST_CAPELLA_SLOT_GOERLI // 8192
 	beaconBlockHeaderToVerifyIndex = 8191 //(7421951 mod 8192)
-	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
 	}
@@ -327,14 +344,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
-		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
-		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
-
-	flag := common.ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
-	if flag != true {
-		fmt.Println("error 2")
-	}
+	flag := verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, blockHeader, beaconBlockHeaderToVerifyIndex, historicalSummaryIndex)
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
@@ -378,15 +388,9 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	historicalSummaryIndex := uint64(146)
 	beaconBlockHeaderToVerifyIndex = 8092 //(7421951 mod 8192)
-	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
 	}
-
-	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	// fmt.Println("THE SAME", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(oldBeaconStateTopLevelRoots.BlockRootsRoot[:]))
-	// fmt.Println("THE SAME", hex.EncodeToString(currentBeaconState.HistoricalSummaries[146].BlockSummaryRoot[:]))
 
 	oldBlockRoots := oldBeaconState.BlockRoots
 
@@ -404,14 +408,7 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
-		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
-		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
-
-	flag := common.ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
-	if flag != true {
-		fmt.Println("error 2")
-	}
+	flag := verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, blockHeader, beaconBlockHeaderToVerifyIndex, historicalSummaryIndex)
 
 	assert.True(t, flag, "Proof %v failed\n")
 
@@ -879,4 +876,17 @@ func verifyTimestampAgainstExecutionPayload(executionPayloadRoot phase0.Root, pr
 	leaf := ConvertTo32ByteArray(hh.Hash())
 
 	return common.ValidateProof(executionPayloadRoot, proof, leaf, beacon.TimestampIndex)
+}
+
+func verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateRoot phase0.Root, proof common.Proof, beaconBlockHeaderToVerify phase0.BeaconBlockHeader, beaconBlockHeaderToVerifyIndex uint64, historicalSummaryIndex uint64) bool {
+	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
+		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
+		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
+
+	beaconBlockHeaderToVerifyRoot, err := beaconBlockHeaderToVerify.HashTreeRoot()
+	if err != nil {
+		fmt.Println("beaconBlockHeaderToVerifyRoot error", err)
+		return false
+	}
+	return common.ValidateProof(oracleBeaconStateRoot, proof, beaconBlockHeaderToVerifyRoot, historicalBlockHeaderIndex)
 }
