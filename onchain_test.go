@@ -1,17 +1,22 @@
 package eigenpodproofs_test
 
 import (
+	"context"
 	"log"
+	"math/big"
 	"os"
 	"testing"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 var (
-	chainClient *eigenpodproofs.ChainClient
-	ctx 	   context.Context
+	chainClient     *eigenpodproofs.ChainClient
+	ctx             context.Context
+	contractAddress common.Address
 )
 
 func TestMain(m *testing.M) {
@@ -39,11 +44,12 @@ func setupSuite() {
 		log.Panicf("failed to connect to the Ethereum client: %s", err)
 	}
 
-	chainClient, err := eigenpodproofs.NewChainClient(ethClient, PrivateKey)
+	chainClient, err = eigenpodproofs.NewChainClient(ethClient, PrivateKey)
 	if err != nil {
 		log.Panicf("failed to create chain client: %s", err)
 	}
 	ctx = context.Background()
+	contractAddress = common.HexToAddress("0xd42a10709f0cc83855Af9B9fFeAa40dcE56D8fF6")
 
 }
 
@@ -52,10 +58,20 @@ func teardownSuite() {
 }
 
 func TestValidatorContainersProofOnChain(t *testing.T) {
-	
+	var transaction *types.Transaction
 
-	chainClient.EstimateGasPriceAndLimitAndSendTx(ctx, 
+	txData := &types.DynamicFeeTx{
+		ChainID:   big.NewInt(5),
+		Nonce:     uint64(32),
+		GasTipCap: big.NewInt(2e9),
+		GasFeeCap: big.NewInt(100e9),
+		Gas:       uint64(3000000),
+		To:        &contractAddress, // The address of the contract
+		Value:     big.NewInt(0),    // Value sent with the transaction (0 for a call)
+		Data:      data,
+	}
+
+	chainClient.EstimateGasPriceAndLimitAndSendTx(ctx, transacton, "prove validator fields")
 }
-
 
 func generateValidatorFieldsProofTransaction()
