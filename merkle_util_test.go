@@ -170,7 +170,11 @@ func TestProveWithdrawals(t *testing.T) {
 		[]*spec.VersionedSignedBeaconBlock{&versionedWithdrawalBlock},
 		[]uint64{withdrawalValidatorIndex},
 	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
 
+	executionPayloadRoot, err := withdrawalBlock.Body.ExecutionPayload.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
 	}
@@ -181,12 +185,11 @@ func TestProveWithdrawals(t *testing.T) {
 	flag = verifyValidatorAgainstBeaconState(&oracleState, verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[0], withdrawalValidatorIndex)
 	assert.True(t, flag, "Validator Fields Proof %v failed")
 
-	executionPayloadRoot, err := withdrawalBlock.Body.ExecutionPayload.HashTreeRoot()
-	if err != nil {
-		fmt.Println("error", err)
-	}
 	flag = verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot, verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalProof, withdrawalIndex, withdrawalBlock.Body.ExecutionPayload.Withdrawals[0])
 	assert.True(t, flag, "Withdrawal Proof %v failed")
+
+	flag = verifyTimestampAgainstExecutionPayload(executionPayloadRoot, verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampProof, withdrawalBlock.Body.ExecutionPayload.Timestamp)
+	assert.True(t, flag, "Timestamp Proof %v failed")
 }
 
 func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
@@ -567,19 +570,8 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	if err != nil {
 		fmt.Println("Error in generating proof", err)
 	}
-	root, err := blockHeader.HashTreeRoot()
-	if err != nil {
-		fmt.Println("this error", err)
-	}
-	leaf, err := stateToProve.HashTreeRoot()
-	if err != nil {
-		fmt.Println("this error", err)
-	}
 
-	flag := common.ValidateProof(root, proof, leaf, 3)
-	if flag != true {
-		fmt.Println("this error")
-	}
+	flag := verifyStateRootAgainstBlockHeaderProof(blockHeader, stateToProve, proof)
 	assert.True(t, flag, "Proof %v failed")
 }
 
@@ -721,21 +713,12 @@ func TestGetTimestampProof(t *testing.T) {
 	// get the Merkle proof for inclusion
 	timestampProof, _ := beacon.ProveTimestampAgainstExecutionPayload(executionPayloadFieldRoots)
 
-	hh := ssz.NewHasher()
-	hh.PutUint64(uint64(executionPayloadFields.Timestamp))
-
-	leaf := ConvertTo32ByteArray(hh.Hash())
-
 	root, err := block.Body.ExecutionPayload.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error")
 	}
 
-	// calling the proof verification func
-	flag := common.ValidateProof(root, timestampProof, leaf, beacon.TimestampIndex)
-	if flag != true {
-		fmt.Println("proof failed")
-	}
+	flag := verifyTimestampAgainstExecutionPayload(root, timestampProof, executionPayloadFields.Timestamp)
 
 	assert.True(t, flag, "Proof %v failed")
 }
@@ -888,4 +871,12 @@ func verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot phase0.Root, p
 
 	return common.ValidateProof(executionPayloadRoot, proof, leaf, withdrawalRelativeToELPayloadIndex)
 
+}
+
+func verifyTimestampAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof common.Proof, timestamp uint64) bool {
+	hh := ssz.NewHasher()
+	hh.PutUint64(timestamp)
+	leaf := ConvertTo32ByteArray(hh.Hash())
+
+	return common.ValidateProof(executionPayloadRoot, proof, leaf, beacon.TimestampIndex)
 }
