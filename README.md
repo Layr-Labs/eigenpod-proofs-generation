@@ -130,7 +130,7 @@ Here is an example of running this command with the sample state/block files in 
 ```
 
 # Proof Generation Input Glossary
-- `oracleBlockHeaderFile` is the block header of the oracle block heade root being used to make the proof
+- `oracleBlockHeaderFile` is the block header of the oracle block header root being used to make the proof
 - `stateFile` is the associated state file of the oracle block being used
 - `validatorIndex` is the index of the validator being proven for in the consensus layer
 - `outputFile` is the location where the generated proof will be written to

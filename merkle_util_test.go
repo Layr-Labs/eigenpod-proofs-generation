@@ -512,7 +512,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 
 	// get the proof for execution payload in the block body
 
-	exectionPayloadProof, _, _ := beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(&blockHeader, block.Body)
+	executionPayloadProof, _, _ := beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(&blockHeader, block.Body)
 
 	// get the hash root of the actual execution payload
 	var executionPayloadHashRoot, _ = block.Body.ExecutionPayload.HashTreeRoot()
@@ -523,7 +523,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 	index := beacon.BeaconBlockBodyRootIndex<<(beacon.BlockBodyMerkleSubtreeNumLayers) | beacon.ExecutionPayloadIndex
 
 	// calling the proof verification function
-	flag := common.ValidateProof(root, exectionPayloadProof, executionPayloadHashRoot, index)
+	flag := common.ValidateProof(root, executionPayloadProof, executionPayloadHashRoot, index)
 	if flag != true {
 		fmt.Println("error")
 	}
