@@ -126,37 +126,10 @@ func TestProveValidatorContainers(t *testing.T) {
 	validatorFieldsProofs := verifyValidatorFieldsCallParams.ValidatorFieldsProofs
 	validatorIndices := verifyValidatorFieldsCallParams.ValidatorIndices
 
-	root, err := oracleBlockHeader.HashTreeRoot()
-	if err != nil {
-		fmt.Println("this error", err)
-	}
-	leaf, err := oracleState.HashTreeRoot()
-	if err != nil {
-		fmt.Println("this error", err)
-	}
-
-	flag := common.ValidateProof(root, stateRootProof.StateRootProof, leaf, 3)
-	if flag != true {
-		fmt.Println("this error")
-	}
-	assert.True(t, flag, "Proof %v failed")
-
-	leaf, err = oracleState.Validators[validatorIndices[0]].HashTreeRoot()
-	if err != nil {
-		fmt.Println("error with hash tree root")
-	}
-
-	root, err = oracleState.HashTreeRoot()
-	if err != nil {
-		fmt.Println("error with hash tree root of beacon state")
-	}
-
-	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | validatorIndices[0]
-
-	flag = common.ValidateProof(root, validatorFieldsProofs[0], leaf, index)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader, oracleState, stateRootProof.StateRootProof)
+	assert.True(t, flag, "State Root Proof %v failed")
+	flag = verifyValidatorAgainstBeaconState(&oracleState, validatorFieldsProofs[0], validatorIndices[0])
+	assert.True(t, flag, "State Root Proof %v failed")
 }
 
 func TestProveWithdrawals(t *testing.T) {
@@ -171,18 +144,12 @@ func TestProveWithdrawals(t *testing.T) {
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
-	fmt.Println("historicalSummaryStateJSON", historicalSummaryStateJSON.Slot)
-	fmt.Println("versionedOracleState", versionedOracleState.Deneb.Slot)
 	var historicalSummaryState deneb.BeaconState
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 
-	fmt.Println("historicalSummaryStateJSON", len(historicalSummaryStateBlockRoots))
-
 	var withdrawalBlock deneb.BeaconBlock
 	withdrawalBlock, err = ExtractBlock("data/deneb_goerli_block_7421951.json")
-	fmt.Println("withdrawalBlock", withdrawalBlock.Slot)
-
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
@@ -192,8 +159,8 @@ func TestProveWithdrawals(t *testing.T) {
 		fmt.Println("error", err)
 		return
 	}
-	// fmt.Print("versionedWithdrawalBlock", versionedWithdrawalBlock.Deneb.Message.Slot)
 
+	withdrawalIndex := uint64(0)
 	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
 
 	verifyAndProcessWithdrawalCallParams, err := epp.ProveWithdrawals(
@@ -208,8 +175,18 @@ func TestProveWithdrawals(t *testing.T) {
 		fmt.Println("error", err)
 	}
 
-	fmt.Println("verifyAndProcessWithdrawalCallParams", verifyAndProcessWithdrawalCallParams.OracleTimestamp)
+	flag := verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader, oracleState, verifyAndProcessWithdrawalCallParams.StateRootProof.StateRootProof)
+	assert.True(t, flag, "State Root Proof %v failed")
 
+	flag = verifyValidatorAgainstBeaconState(&oracleState, verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[0], withdrawalValidatorIndex)
+	assert.True(t, flag, "Validator Fields Proof %v failed")
+
+	executionPayloadRoot, err := withdrawalBlock.Body.ExecutionPayload.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	flag = verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot, verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalProof, withdrawalIndex, withdrawalBlock.Body.ExecutionPayload.Withdrawals[0])
+	assert.True(t, flag, "Withdrawal Proof %v failed")
 }
 
 func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
@@ -226,22 +203,8 @@ func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	leaf, err := oracleState.Validators[validatorIndex].HashTreeRoot()
-	if err != nil {
-		fmt.Println("error with hash tree root")
-	}
 
-	root, err := oracleState.HashTreeRoot()
-	if err != nil {
-		fmt.Println("error with hash tree root of beacon state")
-	}
-
-	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
-
-	flag := common.ValidateProof(root, proof, leaf, index)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyValidatorAgainstBeaconState(&oracleState, proof, uint64(validatorIndex))
 
 	assert.True(t, flag, "Proof %v failed")
 }
@@ -738,25 +701,14 @@ func TestComputeIndividualWithdrawalProof(t *testing.T) {
 func TestGetWithdrawalProof(t *testing.T) {
 
 	// picking up one random validator index
-	withdrawalIndex := uint8(0)
+	withdrawalIndex := 0
 
-	withdrawalProof, _ := beacon.ProveWithdrawalAgainstExecutionPayload(executionPayloadFieldRoots, block.Body.ExecutionPayload.Withdrawals, withdrawalIndex)
+	withdrawalProof, _ := beacon.ProveWithdrawalAgainstExecutionPayload(executionPayloadFieldRoots, block.Body.ExecutionPayload.Withdrawals, uint8(withdrawalIndex))
 
 	executionPayloadRoot, _ := block.Body.ExecutionPayload.HashTreeRoot()
 
-	leaf, err := block.Body.ExecutionPayload.Withdrawals[withdrawalIndex].HashTreeRoot()
-	if err != nil {
-		fmt.Println("error")
-	}
-	// withdrawalIndex = beacon.BeaconBlockBodyRootIndex<<( beacon.BlockBodyMerkleSubtreeNumLayers+ executionPayloadMerkleSubtreeNumLayers+( beacon.WithdrawalListMerkleSubtreeNumLayers+1)) | beacon.ExecutionPayloadIndex<<( executionPayloadMerkleSubtreeNumLayers+( beacon.WithdrawalListMerkleSubtreeNumLayers+1)) | beacon.WithdrawalsIndex<<( beacon.WithdrawalListMerkleSubtreeNumLayers+1) | withdrawalIndex
-
-	withdrawalRelativeToELPayloadIndex := beacon.WithdrawalsIndex<<(beacon.WithdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
-
 	// calling the proof verification func
-	flag := common.ValidateProof(executionPayloadRoot, withdrawalProof, leaf, withdrawalRelativeToELPayloadIndex)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot, withdrawalProof, uint64(withdrawalIndex), block.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
@@ -792,29 +744,14 @@ func TestGetValidatorProof(t *testing.T) {
 	// picking up one random validator index
 	validatorIndex := uint64(VALIDATOR_INDEX)
 
-	// get the validators field
-	validators := oracleState.Validators
-
 	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
+	if err != nil {
+		fmt.Println("error reading beaconStateTopLevelRoots")
+	}
 
 	validatorProof, _ := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleState.Slot, oracleState.Validators, uint64(validatorIndex))
 
-	// verify the proof
-	// get the leaf corresponding to validatorIndex
-	leaf, err := validators[validatorIndex].HashTreeRoot()
-	if err != nil {
-		fmt.Println("error")
-	}
-
-	// calling the proof verification func
-	beaconRoot, _ := oracleState.HashTreeRoot()
-
-	validatorIndex = beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
-
-	flag := common.ValidateProof(beaconRoot, validatorProof, leaf, validatorIndex)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyValidatorAgainstBeaconState(&oracleState, validatorProof, validatorIndex)
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
@@ -901,4 +838,54 @@ func parseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
 
 	actualData := beaconState.Data
 	return &actualData, nil
+}
+
+func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlockHeader, oracleState deneb.BeaconState, proof common.Proof) bool {
+	root, err := oracleBlockHeader.HashTreeRoot()
+	if err != nil {
+		fmt.Println("this error", err)
+	}
+	leaf, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("this error", err)
+	}
+
+	flag := common.ValidateProof(root, proof, leaf, 3)
+	if flag != true {
+		fmt.Println("this error")
+	}
+	return flag
+
+}
+
+func verifyValidatorAgainstBeaconState(oracleState *deneb.BeaconState, proof common.Proof, validatorIndex uint64) bool {
+	leaf, err := oracleState.Validators[validatorIndex].HashTreeRoot()
+	if err != nil {
+		fmt.Println("error with hash tree root")
+	}
+
+	root, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error with hash tree root of beacon state")
+	}
+
+	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | validatorIndex
+
+	flag := common.ValidateProof(root, proof, leaf, index)
+	if flag != true {
+		fmt.Println("error")
+	}
+	return flag
+}
+
+func verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof common.Proof, withdrawalIndex uint64, withdrawal *capella.Withdrawal) bool {
+	leaf, err := withdrawal.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error")
+	}
+
+	withdrawalRelativeToELPayloadIndex := beacon.WithdrawalsIndex<<(beacon.WithdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
+
+	return common.ValidateProof(executionPayloadRoot, proof, leaf, withdrawalRelativeToELPayloadIndex)
+
 }
