@@ -11,6 +11,7 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	contractBeaconChainProofs "github.com/Layr-Labs/eigenpod-proofs-generation/bindings"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/stretchr/testify/assert"
@@ -167,4 +168,77 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 		fmt.Println("error", err)
 	}
 	assert.Nil(t, err)
+}
+
+func TestWithdrawalProofOnChain(t *testing.T) {
+
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error creating versioned state", err)
+		return
+	}
+
+	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileDeneb("../data/deneb_goerli_slot_7421952.json")
+	if err != nil {
+		fmt.Println("error parsing historicalSummaryState JSON")
+	}
+	var historicalSummaryState deneb.BeaconState
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
+	eigenpodproofs.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+
+	withdrawalBlock, err := eigenpodproofs.ExtractBlock("../data/deneb_goerli_block_7421951.json")
+	if err != nil {
+		fmt.Println("block.UnmarshalJSON error", err)
+	}
+
+	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
+	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
+
+	verifyAndProcessWithdrawalCallParams, err := epp.ProveWithdrawals(
+		&oracleBlockHeader,
+		&versionedOracleState,
+		[][]phase0.Root{historicalSummaryStateBlockRoots},
+		[]*spec.VersionedSignedBeaconBlock{&versionedWithdrawalBlock},
+		[]uint64{withdrawalValidatorIndex},
+	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	var withdrawalFields [][32]byte
+	for _, field := range verifyAndProcessWithdrawalCallParams.WithdrawalFields[0] {
+		withdrawalFields = append(withdrawalFields, field)
+	}
+
+	withdrawalProof := contractBeaconChainProofs.BeaconChainProofsWithdrawalProof{
+		WithdrawalProof:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalProof.ToByteSlice(),
+		SlotProof:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].SlotProof.ToByteSlice(),
+		ExecutionPayloadProof:           verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadProof.ToByteSlice(),
+		TimestampProof:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampProof.ToByteSlice(),
+		HistoricalSummaryBlockRootProof: verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryBlockRootProof.ToByteSlice(),
+		BlockRootIndex:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRootIndex,
+		HistoricalSummaryIndex:          verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryIndex,
+		WithdrawalIndex:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalIndex,
+		BlockRoot:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRoot,
+		SlotRoot:                        verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].SlotRoot,
+		TimestampRoot:                   verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampRoot,
+		ExecutionPayloadRoot:            verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadRoot,
+	}
+
+	err = beaconChainProofs.VerifyWithdrawal(
+		&bind.CallOpts{},
+		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
+		withdrawalFields,
+		withdrawalProof,
+	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Nil(t, err)
+
 }
