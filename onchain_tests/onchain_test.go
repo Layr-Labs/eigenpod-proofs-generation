@@ -58,7 +58,7 @@ func TestMain(m *testing.M) {
 
 func setupSuite() {
 	RPC := "https://rpc.ankr.com/eth_goerli"
-	PrivateKey := "c5871389c9221e91d776f355c852f374156bf7799f3f63a361e12d0cb075a479"
+	PrivateKey := os.Getenv("PRIVATE_KEY")
 
 	ethClient, err := ethclient.Dial(RPC)
 	if err != nil {
