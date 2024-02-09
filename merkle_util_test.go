@@ -86,7 +86,7 @@ func setupSuite() {
 		fmt.Println("error with oracle block header", err)
 	}
 
-	block, err = ExtractBlock(bodyFile)
+	block, err = ExtractBlockDeneb(bodyFile)
 	if err != nil {
 		fmt.Println("error with block body", err)
 	}
@@ -148,7 +148,7 @@ func TestProveWithdrawals(t *testing.T) {
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 
-	withdrawalBlock, err := ExtractBlock("data/deneb_goerli_block_7421951.json")
+	withdrawalBlock, err := ExtractBlockDeneb("data/deneb_goerli_block_7421951.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
@@ -801,25 +801,6 @@ func ParseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	return &actualData, nil
 }
 
-func ParseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
-	data, err := os.ReadFile(filePath)
-
-	if err != nil {
-		fmt.Println("error with reading file")
-		return nil, err
-	}
-
-	var beaconState beaconStateVersionCapella
-	err = json.Unmarshal(data, &beaconState)
-	if err != nil {
-		fmt.Println("error with beaconState JSON unmarshalling")
-		return nil, err
-	}
-
-	actualData := beaconState.Data
-	return &actualData, nil
-}
-
 func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlockHeader, oracleState deneb.BeaconState, proof common.Proof) bool {
 	root, err := oracleBlockHeader.HashTreeRoot()
 	if err != nil {
@@ -835,7 +816,6 @@ func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlock
 		fmt.Println("this error")
 	}
 	return flag
-
 }
 
 func verifyValidatorAgainstBeaconState(oracleState *deneb.BeaconState, proof common.Proof, validatorIndex uint64) bool {
