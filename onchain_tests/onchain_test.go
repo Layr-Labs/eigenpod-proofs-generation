@@ -116,7 +116,8 @@ func setupSuite() {
 }
 
 func teardownSuite() {
-
+	// Any cleanup you want to perform should go here
+	fmt.Println("all done!")
 }
 
 func TestValidatorContainersProofOnChain(t *testing.T) {
@@ -134,16 +135,30 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 
 	validatorFieldsProof := verifyValidatorFieldsCallParams.ValidatorFieldsProofs[0].ToByteSlice()
 	validatorIndex := new(big.Int).SetUint64(verifyValidatorFieldsCallParams.ValidatorIndices[0])
-	versionedOracleStateRoot, err := versionedOracleState.Deneb.HashTreeRoot()
-	var validatorFields [][32]byte
+	oracleBlockHeaderRoot, err := oracleBlockHeader.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error", err)
+	}
 
+	err = beaconChainProofs.VerifyStateRootAgainstLatestBlockRoot(
+		&bind.CallOpts{},
+		oracleBlockHeaderRoot,
+		verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
+		verifyValidatorFieldsCallParams.StateRootProof.StateRootProof.ToByteSlice(),
+	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Nil(t, err)
+
+	var validatorFields [][32]byte
 	for _, field := range verifyValidatorFieldsCallParams.ValidatorFields[0] {
 		validatorFields = append(validatorFields, field)
 	}
 
 	err = beaconChainProofs.VerifyValidatorFields(
 		&bind.CallOpts{},
-		versionedOracleStateRoot,
+		verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
 		validatorFields,
 		validatorFieldsProof,
 		validatorIndex,
@@ -153,5 +168,3 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 	}
 	assert.Nil(t, err)
 }
-
-// func generateValidatorFieldsProofTransaction()
