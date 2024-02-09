@@ -146,6 +146,25 @@ type InputDataBlock struct {
 	Finalized            bool `json:"finalized"`
 }
 
+func ParseJSONFileDeneb(filePath string) (*beaconStateJSONDeneb, error) {
+	data, err := os.ReadFile(filePath)
+
+	if err != nil {
+		fmt.Println("error with reading file")
+		return nil, err
+	}
+
+	var beaconState beaconStateVersionDeneb
+	err = json.Unmarshal(data, &beaconState)
+	if err != nil {
+		fmt.Println("error with beaconState JSON unmarshalling")
+		return nil, err
+	}
+
+	actualData := beaconState.Data
+	return &actualData, nil
+}
+
 func ConvertBytesToStrings(b [][32]byte) []string {
 	var s []string
 	for _, v := range b {

@@ -70,7 +70,7 @@ func setupSuite() {
 
 	//ParseCapellaBeaconState(stateFile)
 
-	stateJSON, err := parseJSONFile(stateFile)
+	stateJSON, err := ParseJSONFile(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
@@ -140,7 +140,7 @@ func TestProveWithdrawals(t *testing.T) {
 		return
 	}
 
-	historicalSummaryStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7421952.json")
+	historicalSummaryStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
@@ -289,7 +289,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	//curl -H "Accept: application/json" https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/7431952 -o deneb_goerli_slot_7431952.json --header 'X-API-Key: 343035|8b6ddd9b31f54c07b3fc18282b30f61c'
-	currentBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7431952.json")
+	currentBeaconStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7431952.json")
 
 	if err != nil {
 		fmt.Println("error parsing currentBeaconStateJSON")
@@ -298,7 +298,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 	//this is not the beacon state of the slot containing the old withdrawal we want to prove but rather
 	// its the state that was merkleized to create a historical summary containing the slot that has that withdrawal
 	//, ie, 7421952 mod 8192 = 0 and 7421952 - 7421951 < 8192
-	oldBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7421952.json")
+	oldBeaconStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing oldBeaconStateJSON")
 	}
@@ -352,7 +352,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testing.T) {
 
 	//curl -H "Accept: application/json" https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/7431952 -o deneb_goerli_slot_7431952.json --header 'X-API-Key: 343035|8b6ddd9b31f54c07b3fc18282b30f61c'
-	currentBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7431952.json")
+	currentBeaconStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7431952.json")
 
 	if err != nil {
 		fmt.Println("error parsing currentBeaconStateJSON")
@@ -360,7 +360,7 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	//this is not the beacon state of the slot containing the old withdrawal we want to proof but rather
 	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal, ie, 7421952 mod 8192 = 0
-	oldBeaconStateJSON, err := parseJSONFileCapella("data/goerli_slot_6397952.json")
+	oldBeaconStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6397952.json")
 	if err != nil {
 		fmt.Println("error parsing oldBeaconStateJSON", err)
 	}
@@ -544,7 +544,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 
 	// this is the state where the latest block header from the oracle was taken.  This is the next slot after
 	// the state we want to prove things about (remember latestBlockHeader.state_root = previous slot's state root)
-	// oracleStateJSON, err := parseJSONFile("data/historical_summary_proof/goerli_slot_6399999.json")
+	// oracleStateJSON, err := ParseJSONFile("data/historical_summary_proof/goerli_slot_6399999.json")
 	// var oracleState deneb.BeaconState
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
@@ -555,7 +555,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	}
 
 	//the state from the prev slot which contains shit we wanna prove about
-	stateToProveJSON, err := parseJSONFile("data/deneb_goerli_slot_7413760.json")
+	stateToProveJSON, err := ParseJSONFile("data/deneb_goerli_slot_7413760.json")
 	if err != nil {
 		fmt.Println("error with parsing JSON state file", err)
 	}
@@ -782,7 +782,7 @@ type Proofs struct {
 	WithdrawalFields      []string `json:"WithdrawalFields"`
 }
 
-func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
+func ParseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := os.ReadFile(filePath)
 
 	if err != nil {
@@ -801,7 +801,7 @@ func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	return &actualData, nil
 }
 
-func parseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
+func ParseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
 	data, err := os.ReadFile(filePath)
 
 	if err != nil {
