@@ -314,5 +314,84 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error", err)
 	}
 	assert.Nil(t, err)
+}
+
+func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
+	stateFile := "../data/goerli_slot_6409723.json"
+	stateJSON, err := eigenpodproofs.ParseJSONFileCapella(stateFile)
+	if err != nil {
+		fmt.Println("error with JSON parsing beacon state")
+	}
+	state := capella.BeaconState{}
+	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*stateJSON, &state)
+
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error creating versioned state", err)
+		return
+	}
+
+	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileCapella("../data/goerli_slot_6397952.json")
+	if err != nil {
+		fmt.Println("error parsing historicalSummaryState JSON")
+	}
+	var historicalSummaryState capella.BeaconState
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
+	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+
+	withdrawalBlock, err := eigenpodproofs.ExtractBlockCapella("../data/goerli_block_6397852.json")
+	if err != nil {
+		fmt.Println("block.UnmarshalJSON error", err)
+	}
+
+	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
+	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
+
+	verifyAndProcessWithdrawalCallParams, err := epp.ProveWithdrawals(
+		&oracleBlockHeader,
+		&versionedOracleState,
+		[][]phase0.Root{historicalSummaryStateBlockRoots},
+		[]*spec.VersionedSignedBeaconBlock{&versionedWithdrawalBlock},
+		[]uint64{withdrawalValidatorIndex},
+	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	var withdrawalFields [][32]byte
+	for _, field := range verifyAndProcessWithdrawalCallParams.WithdrawalFields[0] {
+		withdrawalFields = append(withdrawalFields, field)
+	}
+
+	withdrawalProof := contractBeaconChainProofs.BeaconChainProofsWithdrawalProof{
+		WithdrawalProof:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalProof.ToByteSlice(),
+		SlotProof:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].SlotProof.ToByteSlice(),
+		ExecutionPayloadProof:           verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadProof.ToByteSlice(),
+		TimestampProof:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampProof.ToByteSlice(),
+		HistoricalSummaryBlockRootProof: verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryBlockRootProof.ToByteSlice(),
+		BlockRootIndex:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRootIndex,
+		HistoricalSummaryIndex:          verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryIndex,
+		WithdrawalIndex:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalIndex,
+		BlockRoot:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRoot,
+		SlotRoot:                        verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].SlotRoot,
+		TimestampRoot:                   verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampRoot,
+		ExecutionPayloadRoot:            verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadRoot,
+	}
+
+	err = beaconChainProofs.VerifyWithdrawal(
+		&bind.CallOpts{},
+		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
+		withdrawalFields,
+		withdrawalProof,
+	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Nil(t, err)
 
 }
