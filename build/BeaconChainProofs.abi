@@ -128,6 +128,11 @@
                 "internalType": "struct BeaconChainProofs.WithdrawalProof",
                 "name": "withdrawalProof",
                 "type": "tuple"
+            },
+            {
+                "internalType": "uint64",
+                "name": "denebForkTimestamp",
+                "type": "uint64"
             }
         ],
         "name": "verifyWithdrawal",

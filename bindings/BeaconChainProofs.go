@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package contractBeaconChainProofs
+package beaconchainproofs
 
 import (
 	"errors"
@@ -47,7 +47,7 @@ type BeaconChainProofsWithdrawalProof struct {
 
 // BeaconChainProofsMetaData contains all meta data concerning the BeaconChainProofs contract.
 var BeaconChainProofsMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"latestBlockRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"beaconStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"stateRootProof\",\"type\":\"bytes\"}],\"name\":\"verifyStateRootAgainstLatestBlockRoot\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"beaconStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32[]\",\"name\":\"validatorFields\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes\",\"name\":\"validatorFieldsProof\",\"type\":\"bytes\"},{\"internalType\":\"uint40\",\"name\":\"validatorIndex\",\"type\":\"uint40\"}],\"name\":\"verifyValidatorFields\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"beaconStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32[]\",\"name\":\"withdrawalFields\",\"type\":\"bytes32[]\"},{\"components\":[{\"internalType\":\"bytes\",\"name\":\"withdrawalProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"slotProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"executionPayloadProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"timestampProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"historicalSummaryBlockRootProof\",\"type\":\"bytes\"},{\"internalType\":\"uint64\",\"name\":\"blockRootIndex\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"historicalSummaryIndex\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"withdrawalIndex\",\"type\":\"uint64\"},{\"internalType\":\"bytes32\",\"name\":\"blockRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"slotRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"timestampRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"executionPayloadRoot\",\"type\":\"bytes32\"}],\"internalType\":\"structBeaconChainProofs.WithdrawalProof\",\"name\":\"withdrawalProof\",\"type\":\"tuple\"}],\"name\":\"verifyWithdrawal\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"latestBlockRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"beaconStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"stateRootProof\",\"type\":\"bytes\"}],\"name\":\"verifyStateRootAgainstLatestBlockRoot\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"beaconStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32[]\",\"name\":\"validatorFields\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes\",\"name\":\"validatorFieldsProof\",\"type\":\"bytes\"},{\"internalType\":\"uint40\",\"name\":\"validatorIndex\",\"type\":\"uint40\"}],\"name\":\"verifyValidatorFields\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"beaconStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32[]\",\"name\":\"withdrawalFields\",\"type\":\"bytes32[]\"},{\"components\":[{\"internalType\":\"bytes\",\"name\":\"withdrawalProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"slotProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"executionPayloadProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"timestampProof\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"historicalSummaryBlockRootProof\",\"type\":\"bytes\"},{\"internalType\":\"uint64\",\"name\":\"blockRootIndex\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"historicalSummaryIndex\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"withdrawalIndex\",\"type\":\"uint64\"},{\"internalType\":\"bytes32\",\"name\":\"blockRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"slotRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"timestampRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"executionPayloadRoot\",\"type\":\"bytes32\"}],\"internalType\":\"structBeaconChainProofs.WithdrawalProof\",\"name\":\"withdrawalProof\",\"type\":\"tuple\"},{\"internalType\":\"uint64\",\"name\":\"denebForkTimestamp\",\"type\":\"uint64\"}],\"name\":\"verifyWithdrawal\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"}]",
 }
 
 // BeaconChainProofsABI is the input ABI used to generate the binding from.
@@ -254,12 +254,12 @@ func (_BeaconChainProofs *BeaconChainProofsCallerSession) VerifyValidatorFields(
 	return _BeaconChainProofs.Contract.VerifyValidatorFields(&_BeaconChainProofs.CallOpts, beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
 }
 
-// VerifyWithdrawal is a free data retrieval call binding the contract method 0xbf03617a.
+// VerifyWithdrawal is a free data retrieval call binding the contract method 0x17941319.
 //
-// Solidity: function verifyWithdrawal(bytes32 beaconStateRoot, bytes32[] withdrawalFields, (bytes,bytes,bytes,bytes,bytes,uint64,uint64,uint64,bytes32,bytes32,bytes32,bytes32) withdrawalProof) view returns()
-func (_BeaconChainProofs *BeaconChainProofsCaller) VerifyWithdrawal(opts *bind.CallOpts, beaconStateRoot [32]byte, withdrawalFields [][32]byte, withdrawalProof BeaconChainProofsWithdrawalProof) error {
+// Solidity: function verifyWithdrawal(bytes32 beaconStateRoot, bytes32[] withdrawalFields, (bytes,bytes,bytes,bytes,bytes,uint64,uint64,uint64,bytes32,bytes32,bytes32,bytes32) withdrawalProof, uint64 denebForkTimestamp) view returns()
+func (_BeaconChainProofs *BeaconChainProofsCaller) VerifyWithdrawal(opts *bind.CallOpts, beaconStateRoot [32]byte, withdrawalFields [][32]byte, withdrawalProof BeaconChainProofsWithdrawalProof, denebForkTimestamp uint64) error {
 	var out []interface{}
-	err := _BeaconChainProofs.contract.Call(opts, &out, "verifyWithdrawal", beaconStateRoot, withdrawalFields, withdrawalProof)
+	err := _BeaconChainProofs.contract.Call(opts, &out, "verifyWithdrawal", beaconStateRoot, withdrawalFields, withdrawalProof, denebForkTimestamp)
 
 	if err != nil {
 		return err
@@ -269,16 +269,16 @@ func (_BeaconChainProofs *BeaconChainProofsCaller) VerifyWithdrawal(opts *bind.C
 
 }
 
-// VerifyWithdrawal is a free data retrieval call binding the contract method 0xbf03617a.
+// VerifyWithdrawal is a free data retrieval call binding the contract method 0x17941319.
 //
-// Solidity: function verifyWithdrawal(bytes32 beaconStateRoot, bytes32[] withdrawalFields, (bytes,bytes,bytes,bytes,bytes,uint64,uint64,uint64,bytes32,bytes32,bytes32,bytes32) withdrawalProof) view returns()
-func (_BeaconChainProofs *BeaconChainProofsSession) VerifyWithdrawal(beaconStateRoot [32]byte, withdrawalFields [][32]byte, withdrawalProof BeaconChainProofsWithdrawalProof) error {
-	return _BeaconChainProofs.Contract.VerifyWithdrawal(&_BeaconChainProofs.CallOpts, beaconStateRoot, withdrawalFields, withdrawalProof)
+// Solidity: function verifyWithdrawal(bytes32 beaconStateRoot, bytes32[] withdrawalFields, (bytes,bytes,bytes,bytes,bytes,uint64,uint64,uint64,bytes32,bytes32,bytes32,bytes32) withdrawalProof, uint64 denebForkTimestamp) view returns()
+func (_BeaconChainProofs *BeaconChainProofsSession) VerifyWithdrawal(beaconStateRoot [32]byte, withdrawalFields [][32]byte, withdrawalProof BeaconChainProofsWithdrawalProof, denebForkTimestamp uint64) error {
+	return _BeaconChainProofs.Contract.VerifyWithdrawal(&_BeaconChainProofs.CallOpts, beaconStateRoot, withdrawalFields, withdrawalProof, denebForkTimestamp)
 }
 
-// VerifyWithdrawal is a free data retrieval call binding the contract method 0xbf03617a.
+// VerifyWithdrawal is a free data retrieval call binding the contract method 0x17941319.
 //
-// Solidity: function verifyWithdrawal(bytes32 beaconStateRoot, bytes32[] withdrawalFields, (bytes,bytes,bytes,bytes,bytes,uint64,uint64,uint64,bytes32,bytes32,bytes32,bytes32) withdrawalProof) view returns()
-func (_BeaconChainProofs *BeaconChainProofsCallerSession) VerifyWithdrawal(beaconStateRoot [32]byte, withdrawalFields [][32]byte, withdrawalProof BeaconChainProofsWithdrawalProof) error {
-	return _BeaconChainProofs.Contract.VerifyWithdrawal(&_BeaconChainProofs.CallOpts, beaconStateRoot, withdrawalFields, withdrawalProof)
+// Solidity: function verifyWithdrawal(bytes32 beaconStateRoot, bytes32[] withdrawalFields, (bytes,bytes,bytes,bytes,bytes,uint64,uint64,uint64,bytes32,bytes32,bytes32,bytes32) withdrawalProof, uint64 denebForkTimestamp) view returns()
+func (_BeaconChainProofs *BeaconChainProofsCallerSession) VerifyWithdrawal(beaconStateRoot [32]byte, withdrawalFields [][32]byte, withdrawalProof BeaconChainProofsWithdrawalProof, denebForkTimestamp uint64) error {
+	return _BeaconChainProofs.Contract.VerifyWithdrawal(&_BeaconChainProofs.CallOpts, beaconStateRoot, withdrawalFields, withdrawalProof, denebForkTimestamp)
 }

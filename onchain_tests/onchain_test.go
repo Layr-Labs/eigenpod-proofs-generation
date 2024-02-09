@@ -41,6 +41,7 @@ var (
 
 const GOERLI_CHAIN_ID = uint64(5)
 const VALIDATOR_INDEX = uint64(61336)
+const DENEB_FORK_TIMESTAMP_GOERLI = uint64(1705473120)
 
 func TestMain(m *testing.M) {
 	// Setup
@@ -72,7 +73,8 @@ func setupSuite() {
 		log.Panicf("failed to create chain client: %s", err)
 	}
 	ctx = context.Background()
-	contractAddress = common.HexToAddress("0xd42a10709f0cc83855Af9B9fFeAa40dcE56D8fF6")
+	//BeaconChainProofs.sol deployment: https://goerli.etherscan.io/address/0xcb5e2cbd8df189aff1e94cf471a869e220e95c85#code
+	contractAddress = common.HexToAddress("0xCb5e2Cbd8dF189aFF1e94CF471A869E220E95C85")
 	beaconChainProofs, err = contractBeaconChainProofs.NewBeaconChainProofs(contractAddress, chainClient)
 	if err != nil {
 		log.Panicf("failed to create contract instance: %s", err)
@@ -231,11 +233,15 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		ExecutionPayloadRoot:            verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadRoot,
 	}
 
+	verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot[0] = 1
+	// oracleBlockHeaderRoot
+
 	err = beaconChainProofs.VerifyWithdrawal(
 		&bind.CallOpts{},
 		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
 		withdrawalFields,
 		withdrawalProof,
+		DENEB_FORK_TIMESTAMP_GOERLI,
 	)
 	if err != nil {
 		fmt.Println("error", err)
@@ -271,7 +277,7 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		return
 	}
 
-	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
+	withdrawalValidatorIndex := uint64(200240) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
 
 	verifyAndProcessWithdrawalCallParams, err := epp.ProveWithdrawals(
 		&oracleBlockHeader,
@@ -309,6 +315,7 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
 		withdrawalFields,
 		withdrawalProof,
+		DENEB_FORK_TIMESTAMP_GOERLI,
 	)
 	if err != nil {
 		fmt.Println("error", err)
@@ -388,6 +395,7 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
 		withdrawalFields,
 		withdrawalProof,
+		DENEB_FORK_TIMESTAMP_GOERLI,
 	)
 	if err != nil {
 		fmt.Println("error", err)
