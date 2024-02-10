@@ -251,7 +251,7 @@ func TestProveWithdrawals(t *testing.T) {
 	assert.True(t, flag, "Historical Summary Block Root Proof %v failed")
 }
 
-func TestUnmarshalSSZVersionedBeaconState(t *testing.T) {
+func TestUnmarshalSSZVersionedBeaconStateDeneb(t *testing.T) {
 	oracleStateBytes, err := oracleState.MarshalSSZ()
 	if err != nil {
 		fmt.Println("error", err)
@@ -262,19 +262,82 @@ func TestUnmarshalSSZVersionedBeaconState(t *testing.T) {
 		fmt.Println("error", err)
 	}
 	assert.Equal(t, versionedBeaconState.Version, spec.DataVersionDeneb, "Version %v failed")
+
+	versionedBeaconStateBytes, err := versionedBeaconState.Deneb.MarshalSSZ()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBeaconStateBytes, oracleStateBytes, "Version %v failed")
 	assert.Nil(t, err, "Error %v failed")
 }
 
-func TestMarshalSSZVersionedBeaconState(t *testing.T) {
+func TestUnmarshalSSZVersionedBeaconStateCapella(t *testing.T) {
+	capellaState := capella.BeaconState{}
+	capellaStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6409723.json")
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	ParseCapellaBeaconStateFromJSON(*capellaStateJSON, &capellaState)
+
+	capellaStateBytes, err := capellaState.MarshalSSZ()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	versionedBeaconState, err := beacon.UnmarshalSSZVersionedBeaconState(capellaStateBytes)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBeaconState.Version, spec.DataVersionCapella, "Version %v failed")
+
+	versionedBeaconStateBytes, err := versionedBeaconState.Capella.MarshalSSZ()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBeaconStateBytes, capellaStateBytes, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestMarshalSSZVersionedBeaconStateDeneb(t *testing.T) {
+	oracleStateBytes, err := oracleState.MarshalSSZ()
+	if err != nil {
+		fmt.Println("error", err)
+	}
 	versionedBeaconState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("error", err)
 	}
 
-	_, err = beacon.MarshalSSZVersionedBeaconState(versionedBeaconState)
+	versionedBeaconStateBytes, err := beacon.MarshalSSZVersionedBeaconState(versionedBeaconState)
 	if err != nil {
 		fmt.Println("error", err)
 	}
+	assert.Equal(t, versionedBeaconStateBytes, oracleStateBytes, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestMarshalSSZVersionedBeaconStateCapella(t *testing.T) {
+	capellaState := capella.BeaconState{}
+	capellaStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6409723.json")
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	ParseCapellaBeaconStateFromJSON(*capellaStateJSON, &capellaState)
+
+	capellaStateBytes, err := capellaState.MarshalSSZ()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	versionedBeaconState, err := beacon.CreateVersionedState(&capellaState)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	versionedBeaconStateBytes, err := beacon.MarshalSSZVersionedBeaconState(versionedBeaconState)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBeaconStateBytes, capellaStateBytes, "Version %v failed")
 	assert.Nil(t, err, "Error %v failed")
 }
 
