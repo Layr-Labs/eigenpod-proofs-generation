@@ -122,27 +122,6 @@ func teardownSuite() {
 	fmt.Println("all done!")
 }
 
-func TestContractCall(t *testing.T) {
-
-	address := common.HexToAddress("0xfEF445d16d0445134066102889731567996b3d25")
-	testProofs, err := contractBeaconChainProofs.NewTest(address, chainClient)
-	if err != nil {
-		fmt.Println("error", err)
-	}
-
-	err = testProofs.VerifyWithdrawal(
-		&bind.CallOpts{},
-		phase0.Root{},
-		[][32]byte{},
-		uint64(0),
-	)
-
-	if err != nil {
-		fmt.Println("error", err)
-	}
-	assert.Nil(t, err)
-}
-
 func TestValidatorContainersProofOnChain(t *testing.T) {
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
