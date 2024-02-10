@@ -272,7 +272,7 @@ func TestUnmarshalSSZVersionedBeaconStateDeneb(t *testing.T) {
 }
 
 func TestUnmarshalSSZVersionedBeaconStateCapella(t *testing.T) {
-	capellaState := capella.BeaconState{}
+	var capellaState capella.BeaconState
 	capellaStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6409723.json")
 	if err != nil {
 		fmt.Println("error", err)
@@ -317,7 +317,7 @@ func TestMarshalSSZVersionedBeaconStateDeneb(t *testing.T) {
 }
 
 func TestMarshalSSZVersionedBeaconStateCapella(t *testing.T) {
-	capellaState := capella.BeaconState{}
+	var capellaState capella.BeaconState
 	capellaStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6409723.json")
 	if err != nil {
 		fmt.Println("error", err)
