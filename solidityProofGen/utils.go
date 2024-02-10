@@ -45,9 +45,7 @@ type WithdrawalProofs struct {
 type WithdrawalCredentialProofs struct {
 	ValidatorIndex                         uint64   `json:"validatorIndex"`
 	BeaconStateRoot                        string   `json:"beaconStateRoot"`
-	BalanceRoot                            string   `json:"balanceRoot"`
 	LatestBlockHeaderRoot                  string   `json:"latestBlockHeaderRoot"`
-	ValidatorBalanceProof                  []string `json:"ValidatorBalanceProof"`
 	WithdrawalCredentialProof              []string `json:"WithdrawalCredentialProof"`
 	ValidatorFields                        []string `json:"ValidatorFields"`
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
@@ -65,7 +63,7 @@ type BalanceUpdateProofs struct {
 	WithdrawalCredentialProof              []string `json:"WithdrawalCredentialProof"`
 }
 
-type beaconStateJSON struct {
+type beaconStateJSONDeneb struct {
 	GenesisTime                  string                        `json:"genesis_time"`
 	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
 	Slot                         string                        `json:"slot"`
@@ -96,8 +94,8 @@ type beaconStateJSON struct {
 	HistoricalSummaries          []*capella.HistoricalSummary  `json:"historical_summaries"`
 }
 
-type beaconStateVersion struct {
-	Data beaconStateJSON `json:"data"`
+type beaconStateVersionDeneb struct {
+	Data beaconStateJSONDeneb `json:"data"`
 }
 
 type InputDataBlockHeader struct {
@@ -159,13 +157,13 @@ func SetUpWithdrawalsProof(
 		fmt.Println("read error with header file")
 	}
 
-	stateJSON, err := eigenpodproofs.ParseStateJSONFile(stateFile)
+	stateJSON, err := eigenpodproofs.ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing state file")
 	}
 	eigenpodproofs.ParseDenebBeaconStateFromJSON(*stateJSON, state)
 
-	historicalSummaryJSON, err := eigenpodproofs.ParseStateJSONFile(historicalSummaryStateFile)
+	historicalSummaryJSON, err := eigenpodproofs.ParseDenebStateJSONFile(historicalSummaryStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing historical summary state file")
 	}
@@ -260,7 +258,7 @@ func SetUpWithdrawalsProofCapella(
 		fmt.Println("SetUpWithdrawalsProofCapella: read error with header file")
 	}
 
-	stateJSON, err := eigenpodproofs.ParseStateJSONFile(stateFile)
+	stateJSON, err := eigenpodproofs.ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		fmt.Println("SetUpWithdrawalsProofCapella: error with JSON parsing state file")
 	}
@@ -333,7 +331,7 @@ func SetupValidatorProof(oracleBlockHeaderFile string, stateFile string, validat
 	//filename1 := "data/slot_58000/oracle_capella_beacon_state_58100.ssz" //this is the file for the repointed validator (either 61336 or 61068)
 	//filename1 := "data/slot_209635/oracle_capella_beacon_state_209635.ssz" //this is the file for the slashed validator 61511
 
-	stateJSON, err := eigenpodproofs.ParseStateJSONFile(stateFile)
+	stateJSON, err := eigenpodproofs.ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing")
 	}

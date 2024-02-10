@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -63,12 +63,18 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 	return beaconStateRoot, nil
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.BeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
+	//get the versioned beacon state's slot
+	slot, err := beaconState.Slot()
+	if err != nil {
+		return nil, err
+	}
+
 	beaconStateTopLevelRootsSlice, err := epp.loadOrComputeBeaconData(
 		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
-		beaconState.Slot,
+		slot,
 		func() ([]byte, error) {
-			beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(beaconState)
+			beaconStateTopLevelRoots, err := epp.ComputeVersionedBeaconStateTopLevelRoots(beaconState)
 			if err != nil {
 				return nil, err
 			}
@@ -83,24 +89,15 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *deneb.Be
 	return beaconStateTopLevelRoots, err
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRootsCapella(beaconState *capella.BeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
-	beaconStateTopLevelRootsSlice, err := epp.loadOrComputeBeaconData(
-		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
-		beaconState.Slot,
-		func() ([]byte, error) {
-			beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsCapella(beaconState)
-			if err != nil {
-				return nil, err
-			}
-			return json.Marshal(beaconStateTopLevelRoots)
-		},
-	)
-	if err != nil {
-		return nil, err
+func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
+	switch beaconState.Version {
+	case spec.DataVersionDeneb:
+		return beacon.ComputeBeaconStateTopLevelRootsDeneb(beaconState.Deneb)
+	case spec.DataVersionCapella:
+		return beacon.ComputeBeaconStateTopLevelRootsCapella(beaconState.Capella)
+	default:
+		return nil, errors.New("unsupported beacon state version")
 	}
-	beaconStateTopLevelRoots := &beacon.BeaconStateTopLevelRoots{}
-	err = json.Unmarshal(beaconStateTopLevelRootsSlice, beaconStateTopLevelRoots)
-	return beaconStateTopLevelRoots, err
 }
 
 func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*phase0.Validator) ([][]phase0.Root, error) {

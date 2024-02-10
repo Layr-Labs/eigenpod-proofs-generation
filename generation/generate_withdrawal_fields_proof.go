@@ -1,4 +1,4 @@
-package main
+package generation
 
 import (
 	"encoding/hex"
@@ -9,6 +9,7 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
@@ -27,12 +28,13 @@ func GenerateWithdrawalFieldsProof(
 	blockHeaderIndex,
 	chainID uint64,
 	outputFile string,
-) {
+) error {
 
 	//this is the oracle provided state
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
 	//this is the state with the withdrawal in it
 	var state deneb.BeaconState
+	var versionedState spec.VersionedBeaconState
 	var historicalSummaryState deneb.BeaconState
 	var withdrawalBlockHeader phase0.BeaconBlockHeader
 	var withdrawalBlock deneb.BeaconBlock
@@ -44,28 +46,33 @@ func GenerateWithdrawalFieldsProof(
 
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
+		return err
 	}
 
-	stateJSON, err := ParseStateJSONFile(stateFile)
+	stateJSON, err := ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
+		return err
 	}
 	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
-	historicalSummaryJSON, err := ParseStateJSONFile(historicalSummaryStateFile)
+	historicalSummaryJSON, err := ParseDenebStateJSONFile(historicalSummaryStateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
+		return err
 	}
 	ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
 
 	withdrawalBlockHeader, err = ExtractBlockHeader(blockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing header file", err)
+		return err
 	}
 
 	withdrawalBlock, err = ExtractBlock(blockBodyFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing body file", err)
+		return err
 	}
 
 	hh := ssz.NewHasher()
@@ -76,6 +83,7 @@ func GenerateWithdrawalFieldsProof(
 	beaconStateRoot, err := state.HashTreeRoot()
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with HashTreeRoot of state", err)
+		return err
 	}
 
 	slot := withdrawalBlockHeader.Slot
@@ -89,35 +97,57 @@ func GenerateWithdrawalFieldsProof(
 	blockHeaderRoot, err := withdrawalBlockHeader.HashTreeRoot()
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with HashTreeRoot of blockHeader", err)
+		return err
 	}
 	executionPayloadRoot, err := withdrawalBlock.Body.ExecutionPayload.HashTreeRoot()
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with HashTreeRoot of executionPayload", err)
+		return err
 	}
 
 	epp, err := eigenpodproofs.NewEigenPodProofs(chainID, 1000)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error creating EPP object", err)
+		return err
 	}
-	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&state)
+	versionedState, err = beacon.CreateVersionedState(&state)
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with CreateVersionedState", err)
+		return err
+	}
+
+	oracleBeaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(&versionedState)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ComputeBeaconStateTopLevelRoots", err)
+		return err
 	}
-	withdrawalProof, err := epp.ProveWithdrawalDeneb(&oracleBeaconBlockHeader, &state, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &withdrawalBlock, uint64(validatorIndex))
+
+	versionedSignedBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with CreateVersionedSignedBlock", err)
+		return err
+	}
+
+	withdrawalProof, _, err := epp.ProveWithdrawal(&oracleBeaconBlockHeader, &versionedState, oracleBeaconStateTopLevelRoots, historicalSummaryState.BlockRoots, &versionedSignedBlock, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveWithdrawal", err)
+		return err
 	}
 	stateRootProofAgainstBlockHeader, err := beacon.ProveStateRootAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveStateRootAgainstBlockHeader", err)
+		return err
 	}
 	slotProofAgainstBlockHeader, err := beacon.ProveSlotAgainstBlockHeader(&oracleBeaconBlockHeader)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveSlotAgainstBlockHeader", err)
+		return err
 	}
-	validatorProof, err := epp.ProveValidatorAgainstBeaconState(&state, oracleBeaconStateTopLevelRoots, uint64(validatorIndex))
+
+	validatorProof, err := epp.ProveValidatorAgainstBeaconState(oracleBeaconStateTopLevelRoots, state.Slot, state.Validators, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveValidatorAgainstBeaconState", err)
+		return err
 	}
 	proofs := WithdrawalProofs{
 		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProofAgainstBlockHeader),
@@ -147,4 +177,5 @@ func GenerateWithdrawalFieldsProof(
 
 	_ = os.WriteFile(outputFile, proofData, 0644)
 
+	return nil
 }

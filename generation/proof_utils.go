@@ -1,4 +1,4 @@
-package main
+package generation
 
 import (
 	"encoding/hex"
@@ -9,10 +9,14 @@ import (
 	"strconv"
 	"strings"
 
+	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
@@ -57,7 +61,7 @@ type BalanceUpdateProofs struct {
 	ValidatorFields                        []string `json:"ValidatorFields"`
 }
 
-type beaconStateJSON struct {
+type beaconStateJSONDeneb struct {
 	GenesisTime                  string                        `json:"genesis_time"`
 	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
 	Slot                         string                        `json:"slot"`
@@ -119,8 +123,8 @@ type beaconStateJSONCapella struct {
 	HistoricalSummaries          []*capella.HistoricalSummary    `json:"historical_summaries"`
 }
 
-type beaconStateVersion struct {
-	Data beaconStateJSON `json:"data"`
+type beaconStateVersionDeneb struct {
+	Data beaconStateJSONDeneb `json:"data"`
 }
 
 type beaconStateVersionCapella struct {
@@ -151,6 +155,44 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 		s = append(s, "0x"+hex.EncodeToString(v[:]))
 	}
 	return s
+}
+
+func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndex uint64) (*eigenpodproofs.StateRootProof, common.Proof, error) {
+	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
+	if err != nil {
+		return nil, nil, err
+	}
+	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRootProof := &eigenpodproofs.StateRootProof{}
+	// Get beacon state top level roots
+	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get beacon state root. TODO: Combine this cheaply with compute beacon state top level roots
+	stateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	validatorFieldsProof, err := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return stateRootProof, validatorFieldsProof, nil
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {
@@ -246,7 +288,7 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
-func ParseStateJSONFile(filePath string) (*beaconStateJSON, error) {
+func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -254,7 +296,7 @@ func ParseStateJSONFile(filePath string) (*beaconStateJSON, error) {
 		return nil, err
 	}
 
-	var beaconState beaconStateVersion
+	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		log.Debug().Msg("error with JSON unmarshalling")
@@ -285,7 +327,7 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 }
 
 // nolint:gocyclo
-func ParseDenebBeaconStateFromJSON(data beaconStateJSON, s *deneb.BeaconState) error {
+func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {

@@ -1,6 +1,7 @@
 package eigenpodproofs
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -8,19 +9,25 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	contractBeaconChainProofs "github.com/Layr-Labs/eigenpod-proofs-generation/bindings"
+	epgcommon "github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	common "github.com/ethereum/go-ethereum/common"
 )
 
 var (
-	b                              deneb.BeaconState
+	ctx                            context.Context
+	oracleState                    deneb.BeaconState
+	oracleBlockHeader              phase0.BeaconBlockHeader
 	blockHeader                    phase0.BeaconBlockHeader
 	blockHeaderIndex               uint64
 	block                          deneb.BeaconBlock
@@ -29,6 +36,8 @@ var (
 	executionPayload               deneb.ExecutionPayload
 	epp                            *EigenPodProofs
 	executionPayloadFieldRoots     []phase0.Root
+	chainClient                    *ChainClient
+	beaconChainProofs              *contractBeaconChainProofs.BeaconChainProofsTest
 )
 
 // var VALIDATOR_INDEX uint64 = 61068 //this is the index of a validator that has a partial withdrawal
@@ -40,6 +49,8 @@ var REPOINTED_VALIDATOR_INDEX uint64 = 61511 //this is the index of a validator 
 
 // var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 656
 var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 2262
+
+const DENEB_FORK_TIMESTAMP_GOERLI = uint64(1705473120)
 
 var GOERLI_CHAIN_ID uint64 = 5
 
@@ -61,24 +72,49 @@ func TestMain(m *testing.M) {
 
 func setupSuite() {
 	log.Println("Setting up suite")
+	rpc := "https://rpc.ankr.com/eth_goerli"
+	privateKey := os.Getenv("PRIVATE_KEY")
+	ethClient, err := ethclient.Dial(rpc)
+	if err != nil {
+		log.Panicf("failed to connect to the Ethereum client: %s", err)
+	}
+
+	chainClient, err = NewChainClient(ethClient, privateKey)
+	if err != nil {
+		log.Panicf("failed to create chain client: %s", err)
+	}
+
+	//BeaconChainProofs.sol deployment: https://goerli.etherscan.io/address/0xd132dD701d3980bb5d66A21e2340f263765e4a19#code
+	contractAddress := common.HexToAddress("0xd132dD701d3980bb5d66A21e2340f263765e4a19")
+	beaconChainProofs, err = contractBeaconChainProofs.NewBeaconChainProofsTest(contractAddress, chainClient)
+	if err != nil {
+		log.Panicf("failed to create beacon chain proofs contract: %s", err)
+	}
+
 	stateFile := "data/deneb_goerli_slot_7413760.json"
+	oracleHeaderFile := "data/deneb_goerli_block_header_7413760.json"
 	headerFile := "data/deneb_goerli_block_header_7426113.json"
 	bodyFile := "data/deneb_goerli_block_7426113.json"
 
 	//ParseCapellaBeaconState(stateFile)
 
-	stateJSON, err := parseJSONFile(stateFile)
+	stateJSON, err := ParseJSONFile(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
-	ParseDenebBeaconStateFromJSON(*stateJSON, &b)
+	ParseDenebBeaconStateFromJSON(*stateJSON, &oracleState)
 
 	blockHeader, err = ExtractBlockHeader(headerFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
 	}
 
-	block, err = ExtractBlock(bodyFile)
+	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
+	if err != nil {
+		fmt.Println("error with oracle block header", err)
+	}
+
+	block, err = ExtractBlockDeneb(bodyFile)
 	if err != nil {
 		fmt.Println("error with block body", err)
 	}
@@ -100,36 +136,136 @@ func teardownSuite() {
 	fmt.Println("all done!")
 }
 
+// verifies that the "ProveValidatorContainers" call, which the backend calls, returns valid proofs
+func TestProveValidatorContainers(t *testing.T) {
+
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
+	verifyValidatorFieldsCallParams, err := epp.ProveValidatorContainers(&oracleBlockHeader, &versionedOracleState, []uint64{VALIDATOR_INDEX})
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	stateRootProof := verifyValidatorFieldsCallParams.StateRootProof
+	validatorFieldsProofs := verifyValidatorFieldsCallParams.ValidatorFieldsProofs
+	validatorIndices := verifyValidatorFieldsCallParams.ValidatorIndices
+
+	flag := verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader, oracleState, stateRootProof.StateRootProof)
+	assert.True(t, flag, "State Root Proof %v failed")
+	flag = verifyValidatorAgainstBeaconState(&oracleState, validatorFieldsProofs[0], validatorIndices[0])
+	assert.True(t, flag, "State Root Proof %v failed")
+}
+
+func TestProveWithdrawals(t *testing.T) {
+	oracleStateFile := "data/deneb_goerli_slot_7431952.json"
+	oracleHeaderFile := "data/deneb_goerli_block_header_7431952.json"
+	oracleStateJSON, err := ParseJSONFile(oracleStateFile)
+	if err != nil {
+		fmt.Println("error with JSON parsing beacon state")
+	}
+	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
+	if err != nil {
+		fmt.Println("error with block header", err)
+	}
+
+	ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error creating versioned state", err)
+		return
+	}
+
+	historicalSummaryStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7421952.json")
+	if err != nil {
+		fmt.Println("error parsing historicalSummaryState JSON")
+	}
+	var historicalSummaryState deneb.BeaconState
+	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
+
+	withdrawalBlock, err := ExtractBlockDeneb("data/deneb_goerli_block_7421951.json")
+	if err != nil {
+		fmt.Println("block.UnmarshalJSON error", err)
+	}
+	withdrawalBlockHeader, err := ExtractBlockHeader("data/deneb_goerli_block_header_7421951.json")
+	if err != nil {
+		fmt.Println("blockHeader.UnmarshalJSON error", err)
+	}
+
+	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
+	withdrawalIndex := uint64(0)
+	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
+
+	verifyAndProcessWithdrawalCallParams, err := epp.ProveWithdrawals(
+		&oracleBlockHeader,
+		&versionedOracleState,
+		[][]phase0.Root{historicalSummaryStateBlockRoots},
+		[]*spec.VersionedSignedBeaconBlock{&versionedWithdrawalBlock},
+		[]uint64{withdrawalValidatorIndex},
+	)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	executionPayloadRoot, err := withdrawalBlock.Body.ExecutionPayload.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	oracleStateRoot, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error", err)
+		return
+	}
+
+	flag := verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader, oracleState, verifyAndProcessWithdrawalCallParams.StateRootProof.StateRootProof)
+	assert.True(t, flag, "State Root Proof %v failed")
+
+	flag = verifyValidatorAgainstBeaconState(&oracleState, verifyAndProcessWithdrawalCallParams.ValidatorFieldsProofs[0], withdrawalValidatorIndex)
+	assert.True(t, flag, "Validator Fields Proof %v failed")
+
+	flag = verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot, verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalProof, withdrawalIndex, withdrawalBlock.Body.ExecutionPayload.Withdrawals[0])
+	assert.True(t, flag, "Withdrawal Proof %v failed")
+
+	flag = verifyTimestampAgainstExecutionPayload(executionPayloadRoot, verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampProof, withdrawalBlock.Body.ExecutionPayload.Timestamp)
+	assert.True(t, flag, "Timestamp Proof %v failed")
+
+	flag = verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(
+		oracleStateRoot,
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryBlockRootProof,
+		withdrawalBlockHeader,
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRootIndex,
+		verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryIndex,
+	)
+	assert.True(t, flag, "Historical Summary Block Root Proof %v failed")
+}
+
 func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 
 	// picking up one random validator index
 	validatorIndex := phase0.ValidatorIndex(REPOINTED_VALIDATOR_INDEX)
 
-	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&b)
+	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
 	if err != nil {
 		fmt.Println("error reading beaconStateTopLevelRoots")
 	}
 
-	proof, err := epp.ProveValidatorAgainstBeaconState(&b, beaconStateTopLevelRoots, uint64(validatorIndex))
+	proof, err := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleState.Slot, oracleState.Validators, uint64(validatorIndex))
 	if err != nil {
 		fmt.Println(err)
 	}
-	leaf, err := b.Validators[validatorIndex].HashTreeRoot()
-	if err != nil {
-		fmt.Println("error with hash tree root")
-	}
 
-	root, err := b.HashTreeRoot()
-	if err != nil {
-		fmt.Println("error with hash tree root of beacon state")
-	}
-
-	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
-
-	flag := common.ValidateProof(root, proof, leaf, index)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyValidatorAgainstBeaconState(&oracleState, proof, uint64(validatorIndex))
 
 	assert.True(t, flag, "Proof %v failed")
 }
@@ -137,12 +273,12 @@ func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 func TestProveValidatorBalanceAgainstValidatorBalanceList(t *testing.T) {
 
 	validatorIndex := phase0.ValidatorIndex(REPOINTED_VALIDATOR_INDEX)
-	proof, _ := beacon.ProveValidatorBalanceAgainstValidatorBalanceList(b.Balances, uint64(validatorIndex))
+	proof, _ := beacon.ProveValidatorBalanceAgainstValidatorBalanceList(oracleState.Balances, uint64(validatorIndex))
 
-	beaconStateTopLevelRoots, _ := beacon.ComputeBeaconStateTopLevelRootsDeneb(&b)
+	beaconStateTopLevelRoots, _ := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
 	root := beaconStateTopLevelRoots.BalancesRoot
 
-	balanceRootList, err := beacon.GetBalanceRoots(b.Balances)
+	balanceRootList, err := beacon.GetBalanceRoots(oracleState.Balances)
 	if err != nil {
 		fmt.Println("error", err)
 	}
@@ -151,7 +287,7 @@ func TestProveValidatorBalanceAgainstValidatorBalanceList(t *testing.T) {
 
 	leaf := balanceRootList[balanceIndex]
 
-	flag := common.ValidateProof(*root, proof, leaf, uint64(balanceIndex))
+	flag := epgcommon.ValidateProof(*root, proof, leaf, uint64(balanceIndex))
 	if flag != true {
 		fmt.Println("balance proof failed")
 	}
@@ -161,7 +297,7 @@ func TestProveValidatorBalanceAgainstValidatorBalanceList(t *testing.T) {
 func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 
 	// get the oracle state root for a merkle tree with top level roots as the leaves
-	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&b)
+	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
 	if err != nil {
 		fmt.Println("error")
 	}
@@ -173,7 +309,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 	}
 
 	// getting Merkle root of the BeaconStateRoot Merkle tree from attestation's code
-	beaconStateRoot, err := b.HashTreeRoot()
+	beaconStateRoot, err := oracleState.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error")
 	}
@@ -181,7 +317,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 	// validation of the proof
 	// get the leaf denoting the validatorsRoot in the BeaconStateRoot Merkle tree
 	leaf := beaconStateTopLevelRoots.ValidatorsRoot
-	flag := common.ValidateProof(beaconStateRoot, validatorsRootProof, *leaf, beacon.ValidatorListIndex)
+	flag := epgcommon.ValidateProof(beaconStateRoot, validatorsRootProof, *leaf, beacon.ValidatorListIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -193,16 +329,16 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	//curl -H "Accept: application/json" https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/7431952 -o deneb_goerli_slot_7431952.json --header 'X-API-Key: 343035|8b6ddd9b31f54c07b3fc18282b30f61c'
-	currentBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7431952.json")
+	currentBeaconStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7431952.json")
 
 	if err != nil {
 		fmt.Println("error parsing currentBeaconStateJSON")
 	}
 
-	//this is not the beacon state of the slot containing the old withdrawal we want to proof but rather
-	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal
+	//this is not the beacon state of the slot containing the old withdrawal we want to prove but rather
+	// its the state that was merkleized to create a historical summary containing the slot that has that withdrawal
 	//, ie, 7421952 mod 8192 = 0 and 7421952 - 7421951 < 8192
-	oldBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7421952.json")
+	oldBeaconStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing oldBeaconStateJSON")
 	}
@@ -228,7 +364,6 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	historicalSummaryIndex := uint64(271) //7421951 - FIRST_CAPELLA_SLOT_GOERLI // 8192
 	beaconBlockHeaderToVerifyIndex = 8191 //(7421951 mod 8192)
-	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
 	}
@@ -249,14 +384,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
-		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
-		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
-
-	flag := common.ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
-	if flag != true {
-		fmt.Println("error 2")
-	}
+	flag := verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, blockHeader, beaconBlockHeaderToVerifyIndex, historicalSummaryIndex)
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
@@ -264,7 +392,7 @@ func TestGetHistoricalSummariesBlockRootsProofProof(t *testing.T) {
 func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testing.T) {
 
 	//curl -H "Accept: application/json" https://data.spiceai.io/goerli/beacon/eth/v2/debug/beacon/states/7431952 -o deneb_goerli_slot_7431952.json --header 'X-API-Key: 343035|8b6ddd9b31f54c07b3fc18282b30f61c'
-	currentBeaconStateJSON, err := parseJSONFile("data/deneb_goerli_slot_7431952.json")
+	currentBeaconStateJSON, err := ParseJSONFile("data/deneb_goerli_slot_7431952.json")
 
 	if err != nil {
 		fmt.Println("error parsing currentBeaconStateJSON")
@@ -272,7 +400,7 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	//this is not the beacon state of the slot containing the old withdrawal we want to proof but rather
 	// its the state that was merklized to create a historical summary containing the slot that has that withdrawal, ie, 7421952 mod 8192 = 0
-	oldBeaconStateJSON, err := parseJSONFileCapella("data/goerli_slot_6397952.json")
+	oldBeaconStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6397952.json")
 	if err != nil {
 		fmt.Println("error parsing oldBeaconStateJSON", err)
 	}
@@ -300,15 +428,9 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	historicalSummaryIndex := uint64(146)
 	beaconBlockHeaderToVerifyIndex = 8092 //(7421951 mod 8192)
-	beaconBlockHeaderToVerify, err := blockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error", err)
 	}
-
-	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	// fmt.Println("THE SAME", hex.EncodeToString(beaconBlockHeaderToVerify[:]))
-	// fmt.Println("THESE SHOULD BE", hex.EncodeToString(oldBeaconStateTopLevelRoots.BlockRootsRoot[:]))
-	// fmt.Println("THE SAME", hex.EncodeToString(currentBeaconState.HistoricalSummaries[146].BlockSummaryRoot[:]))
 
 	oldBlockRoots := oldBeaconState.BlockRoots
 
@@ -326,14 +448,7 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 
 	currentBeaconStateRoot, _ := currentBeaconState.HashTreeRoot()
 
-	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
-		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
-		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
-
-	flag := common.ValidateProof(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, beaconBlockHeaderToVerify, historicalBlockHeaderIndex)
-	if flag != true {
-		fmt.Println("error 2")
-	}
+	flag := verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(currentBeaconStateRoot, historicalSummaryBlockHeaderProof, blockHeader, beaconBlockHeaderToVerifyIndex, historicalSummaryIndex)
 
 	assert.True(t, flag, "Proof %v failed\n")
 
@@ -345,7 +460,7 @@ func TestProveValidatorAgainstValidatorList(t *testing.T) {
 	validatorIndex := phase0.ValidatorIndex(10000)
 
 	// get the validators field
-	validators := b.Validators
+	validators := oracleState.Validators
 
 	// get the Merkle proof for inclusion
 	validatorProof, err := epp.ProveValidatorAgainstValidatorList(0, validators, uint64(validatorIndex))
@@ -361,13 +476,13 @@ func TestProveValidatorAgainstValidatorList(t *testing.T) {
 	}
 
 	// get the oracle state root for a merkle tree with top level roots as the leaves
-	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&b)
+	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
 	if err != nil {
 		fmt.Println("error")
 	}
 
 	// calling the proof verification func
-	flag := common.ValidateProof(*beaconStateTopLevelRoots.ValidatorsRoot, validatorProof, leaf, uint64(validatorIndex))
+	flag := epgcommon.ValidateProof(*beaconStateTopLevelRoots.ValidatorsRoot, validatorProof, leaf, uint64(validatorIndex))
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -397,7 +512,7 @@ func TestComputeBlockSlotProof(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, beacon.SlotIndex)
+	flag := epgcommon.ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, beacon.SlotIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -427,7 +542,7 @@ func TestProveBlockBodyAgainstBlockHeader(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderBlockBodyProof, blockBodyHashRoot, beacon.BeaconBlockBodyRootIndex)
+	flag := epgcommon.ValidateProof(beaconBlockHeaderRoot, blockHeaderBlockBodyProof, blockBodyHashRoot, beacon.BeaconBlockBodyRootIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -457,7 +572,7 @@ func TestComputeExecutionPayloadHeader(t *testing.T) {
 	blockHeaderBodyRoot := blockHeader.BodyRoot
 
 	// calling the proof verification function
-	flag := common.ValidateProof(blockHeaderBodyRoot, beaconBlockBodyProof, executionPayloadHashRoot, beacon.ExecutionPayloadIndex)
+	flag := epgcommon.ValidateProof(blockHeaderBodyRoot, beaconBlockBodyProof, executionPayloadHashRoot, beacon.ExecutionPayloadIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -469,7 +584,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 
 	// this is the state where the latest block header from the oracle was taken.  This is the next slot after
 	// the state we want to prove things about (remember latestBlockHeader.state_root = previous slot's state root)
-	// oracleStateJSON, err := parseJSONFile("data/historical_summary_proof/goerli_slot_6399999.json")
+	// oracleStateJSON, err := ParseJSONFile("data/historical_summary_proof/goerli_slot_6399999.json")
 	// var oracleState deneb.BeaconState
 	// ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
@@ -480,7 +595,7 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	}
 
 	//the state from the prev slot which contains shit we wanna prove about
-	stateToProveJSON, err := parseJSONFile("data/deneb_goerli_slot_7413760.json")
+	stateToProveJSON, err := ParseJSONFile("data/deneb_goerli_slot_7413760.json")
 	if err != nil {
 		fmt.Println("error with parsing JSON state file", err)
 	}
@@ -492,19 +607,8 @@ func TestStateRootAgainstLatestBlockHeaderProof(t *testing.T) {
 	if err != nil {
 		fmt.Println("Error in generating proof", err)
 	}
-	root, err := blockHeader.HashTreeRoot()
-	if err != nil {
-		fmt.Println("this error", err)
-	}
-	leaf, err := stateToProve.HashTreeRoot()
-	if err != nil {
-		fmt.Println("this error", err)
-	}
 
-	flag := common.ValidateProof(root, proof, leaf, 3)
-	if flag != true {
-		fmt.Println("this error")
-	}
+	flag := verifyStateRootAgainstBlockHeaderProof(blockHeader, stateToProve, proof)
 	assert.True(t, flag, "Proof %v failed")
 }
 
@@ -523,7 +627,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 	index := beacon.BeaconBlockBodyRootIndex<<(beacon.BlockBodyMerkleSubtreeNumLayers) | beacon.ExecutionPayloadIndex
 
 	// calling the proof verification function
-	flag := common.ValidateProof(root, executionPayloadProof, executionPayloadHashRoot, index)
+	flag := epgcommon.ValidateProof(root, executionPayloadProof, executionPayloadHashRoot, index)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -565,7 +669,7 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 		}
 		copy(executionPayloadHashRoot[:], hh.Hash())
 	}
-	flag := common.ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, beacon.WithdrawalsIndex)
+	flag := epgcommon.ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, beacon.WithdrawalsIndex)
 	if flag != true {
 		fmt.Println("Proof Failed")
 	}
@@ -615,7 +719,7 @@ func TestComputeIndividualWithdrawalProof(t *testing.T) {
 	}
 
 	// calling the proof verification func
-	flag := common.ValidateProof(withdrawalsHashRoot, withdrawalProof, leaf, uint64(withdrawalIndex))
+	flag := epgcommon.ValidateProof(withdrawalsHashRoot, withdrawalProof, leaf, uint64(withdrawalIndex))
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -626,25 +730,14 @@ func TestComputeIndividualWithdrawalProof(t *testing.T) {
 func TestGetWithdrawalProof(t *testing.T) {
 
 	// picking up one random validator index
-	withdrawalIndex := uint8(0)
+	withdrawalIndex := 0
 
-	withdrawalProof, _ := beacon.ProveWithdrawalAgainstExecutionPayload(executionPayloadFieldRoots, block.Body.ExecutionPayload.Withdrawals, withdrawalIndex)
+	withdrawalProof, _ := beacon.ProveWithdrawalAgainstExecutionPayload(executionPayloadFieldRoots, block.Body.ExecutionPayload.Withdrawals, uint8(withdrawalIndex))
 
 	executionPayloadRoot, _ := block.Body.ExecutionPayload.HashTreeRoot()
 
-	leaf, err := block.Body.ExecutionPayload.Withdrawals[withdrawalIndex].HashTreeRoot()
-	if err != nil {
-		fmt.Println("error")
-	}
-	// withdrawalIndex = beacon.BeaconBlockBodyRootIndex<<( beacon.BlockBodyMerkleSubtreeNumLayers+ executionPayloadMerkleSubtreeNumLayers+( beacon.WithdrawalListMerkleSubtreeNumLayers+1)) | beacon.ExecutionPayloadIndex<<( executionPayloadMerkleSubtreeNumLayers+( beacon.WithdrawalListMerkleSubtreeNumLayers+1)) | beacon.WithdrawalsIndex<<( beacon.WithdrawalListMerkleSubtreeNumLayers+1) | withdrawalIndex
-
-	withdrawalRelativeToELPayloadIndex := beacon.WithdrawalsIndex<<(beacon.WithdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
-
 	// calling the proof verification func
-	flag := common.ValidateProof(executionPayloadRoot, withdrawalProof, leaf, withdrawalRelativeToELPayloadIndex)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot, withdrawalProof, uint64(withdrawalIndex), block.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
@@ -657,21 +750,12 @@ func TestGetTimestampProof(t *testing.T) {
 	// get the Merkle proof for inclusion
 	timestampProof, _ := beacon.ProveTimestampAgainstExecutionPayload(executionPayloadFieldRoots)
 
-	hh := ssz.NewHasher()
-	hh.PutUint64(uint64(executionPayloadFields.Timestamp))
-
-	leaf := ConvertTo32ByteArray(hh.Hash())
-
 	root, err := block.Body.ExecutionPayload.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error")
 	}
 
-	// calling the proof verification func
-	flag := common.ValidateProof(root, timestampProof, leaf, beacon.TimestampIndex)
-	if flag != true {
-		fmt.Println("proof failed")
-	}
+	flag := verifyTimestampAgainstExecutionPayload(root, timestampProof, executionPayloadFields.Timestamp)
 
 	assert.True(t, flag, "Proof %v failed")
 }
@@ -680,29 +764,14 @@ func TestGetValidatorProof(t *testing.T) {
 	// picking up one random validator index
 	validatorIndex := uint64(VALIDATOR_INDEX)
 
-	// get the validators field
-	validators := b.Validators
-
-	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&b)
-
-	validatorProof, _ := epp.ProveValidatorAgainstBeaconState(&b, beaconStateTopLevelRoots, uint64(validatorIndex))
-
-	// verify the proof
-	// get the leaf corresponding to validatorIndex
-	leaf, err := validators[validatorIndex].HashTreeRoot()
+	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
 	if err != nil {
-		fmt.Println("error")
+		fmt.Println("error reading beaconStateTopLevelRoots")
 	}
 
-	// calling the proof verification func
-	beaconRoot, _ := b.HashTreeRoot()
+	validatorProof, _ := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleState.Slot, oracleState.Validators, uint64(validatorIndex))
 
-	validatorIndex = beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | uint64(validatorIndex)
-
-	flag := common.ValidateProof(beaconRoot, validatorProof, leaf, validatorIndex)
-	if flag != true {
-		fmt.Println("error")
-	}
+	flag := verifyValidatorAgainstBeaconState(&oracleState, validatorProof, validatorIndex)
 
 	assert.True(t, flag, "Proof %v failed\n")
 }
@@ -725,7 +794,7 @@ func TestGetSlotProof(t *testing.T) {
 
 	leaf := ConvertTo32ByteArray(hh.Hash())
 
-	flag := common.ValidateProof(root, proof, leaf, 0)
+	flag := epgcommon.ValidateProof(root, proof, leaf, 0)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -753,7 +822,7 @@ type Proofs struct {
 	WithdrawalFields      []string `json:"WithdrawalFields"`
 }
 
-func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
+func ParseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := os.ReadFile(filePath)
 
 	if err != nil {
@@ -761,7 +830,7 @@ func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 		return nil, err
 	}
 
-	var beaconState beaconStateVersion
+	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		fmt.Println("error with beaconState JSON unmarshalling")
@@ -772,21 +841,72 @@ func parseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	return &actualData, nil
 }
 
-func parseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
-	data, err := os.ReadFile(filePath)
-
+func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlockHeader, oracleState deneb.BeaconState, proof epgcommon.Proof) bool {
+	root, err := oracleBlockHeader.HashTreeRoot()
 	if err != nil {
-		fmt.Println("error with reading file")
-		return nil, err
+		fmt.Println("this error", err)
+	}
+	leaf, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("this error", err)
 	}
 
-	var beaconState beaconStateVersionCapella
-	err = json.Unmarshal(data, &beaconState)
+	flag := epgcommon.ValidateProof(root, proof, leaf, 3)
+	if flag != true {
+		fmt.Println("this error")
+	}
+	return flag
+}
+
+func verifyValidatorAgainstBeaconState(oracleState *deneb.BeaconState, proof epgcommon.Proof, validatorIndex uint64) bool {
+	leaf, err := oracleState.Validators[validatorIndex].HashTreeRoot()
 	if err != nil {
-		fmt.Println("error with beaconState JSON unmarshalling")
-		return nil, err
+		fmt.Println("error with hash tree root")
 	}
 
-	actualData := beaconState.Data
-	return &actualData, nil
+	root, err := oracleState.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error with hash tree root of beacon state")
+	}
+
+	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | validatorIndex
+
+	flag := epgcommon.ValidateProof(root, proof, leaf, index)
+	if flag != true {
+		fmt.Println("error")
+	}
+	return flag
+}
+
+func verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof epgcommon.Proof, withdrawalIndex uint64, withdrawal *capella.Withdrawal) bool {
+	leaf, err := withdrawal.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error")
+	}
+
+	withdrawalRelativeToELPayloadIndex := beacon.WithdrawalsIndex<<(beacon.WithdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
+
+	return epgcommon.ValidateProof(executionPayloadRoot, proof, leaf, withdrawalRelativeToELPayloadIndex)
+
+}
+
+func verifyTimestampAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof epgcommon.Proof, timestamp uint64) bool {
+	hh := ssz.NewHasher()
+	hh.PutUint64(timestamp)
+	leaf := ConvertTo32ByteArray(hh.Hash())
+
+	return epgcommon.ValidateProof(executionPayloadRoot, proof, leaf, beacon.TimestampIndex)
+}
+
+func verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateRoot phase0.Root, proof epgcommon.Proof, beaconBlockHeaderToVerify phase0.BeaconBlockHeader, beaconBlockHeaderToVerifyIndex uint64, historicalSummaryIndex uint64) bool {
+	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
+		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
+		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
+
+	beaconBlockHeaderToVerifyRoot, err := beaconBlockHeaderToVerify.HashTreeRoot()
+	if err != nil {
+		fmt.Println("beaconBlockHeaderToVerifyRoot error", err)
+		return false
+	}
+	return epgcommon.ValidateProof(oracleBeaconStateRoot, proof, beaconBlockHeaderToVerifyRoot, historicalBlockHeaderIndex)
 }

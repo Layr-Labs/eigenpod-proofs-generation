@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -119,7 +120,7 @@ type beaconStateJSONCapella struct {
 	HistoricalSummaries          []*capella.HistoricalSummary    `json:"historical_summaries"`
 }
 
-type beaconStateVersion struct {
+type beaconStateVersionDeneb struct {
 	Data beaconStateJSONDeneb `json:"data"`
 }
 
@@ -135,7 +136,7 @@ type InputDataBlockHeader struct {
 	} `json:"data"`
 }
 
-type InputDataBlock struct {
+type InputDataBlockDeneb struct {
 	Version string `json:"version"`
 	Data    struct {
 		Message   deneb.BeaconBlock `json:"message"`
@@ -143,6 +144,54 @@ type InputDataBlock struct {
 	} `json:"data"`
 	Execution_optimistic bool `json:"execution_optimistic"`
 	Finalized            bool `json:"finalized"`
+}
+
+type InputDataBlockCapella struct {
+	Version string `json:"version"`
+	Data    struct {
+		Message   capella.BeaconBlock `json:"message"`
+		Signature string              `json:"signature"`
+	} `json:"data"`
+	Execution_optimistic bool `json:"execution_optimistic"`
+	Finalized            bool `json:"finalized"`
+}
+
+func ParseJSONFileDeneb(filePath string) (*beaconStateJSONDeneb, error) {
+	data, err := os.ReadFile(filePath)
+
+	if err != nil {
+		fmt.Println("error with reading file")
+		return nil, err
+	}
+
+	var beaconState beaconStateVersionDeneb
+	err = json.Unmarshal(data, &beaconState)
+	if err != nil {
+		fmt.Println("error with beaconState JSON unmarshalling")
+		return nil, err
+	}
+
+	actualData := beaconState.Data
+	return &actualData, nil
+}
+
+func ParseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
+	data, err := os.ReadFile(filePath)
+
+	if err != nil {
+		fmt.Println("error with reading file")
+		return nil, err
+	}
+
+	var beaconState beaconStateVersionCapella
+	err = json.Unmarshal(data, &beaconState)
+	if err != nil {
+		fmt.Println("error with beaconState JSON unmarshalling")
+		return nil, err
+	}
+
+	actualData := beaconState.Data
+	return &actualData, nil
 }
 
 func ConvertBytesToStrings(b [][32]byte) []string {
@@ -204,21 +253,35 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 		return phase0.BeaconBlockHeader{}, err
 	}
 
-	fmt.Println(inputData.Data.Header.Message)
-
 	return inputData.Data.Header.Message, nil
 }
 
-func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
+func ExtractBlockDeneb(blockHeaderFile string) (deneb.BeaconBlock, error) {
 	fileBytes, err := os.ReadFile(blockHeaderFile)
 	if err != nil {
 		return deneb.BeaconBlock{}, err
 	}
 
 	// Decode JSON
-	var data InputDataBlock
+	var data InputDataBlockDeneb
 	if err := json.Unmarshal(fileBytes, &data); err != nil {
 		return deneb.BeaconBlock{}, err
+	}
+
+	// Extract block body
+	return data.Data.Message, nil
+}
+
+func ExtractBlockCapella(blockHeaderFile string) (capella.BeaconBlock, error) {
+	fileBytes, err := os.ReadFile(blockHeaderFile)
+	if err != nil {
+		return capella.BeaconBlock{}, err
+	}
+
+	// Decode JSON
+	var data InputDataBlockCapella
+	if err := json.Unmarshal(fileBytes, &data); err != nil {
+		return capella.BeaconBlock{}, err
 	}
 
 	// Extract block body
@@ -248,7 +311,16 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
-func ParseStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
+func GetWithdrawalIndex(validatorIndex uint64, withdrawals []*capella.Withdrawal) uint64 {
+	for i := 0; i < len(withdrawals); i++ {
+		if uint64(withdrawals[i].ValidatorIndex) == validatorIndex {
+			return uint64(i)
+		}
+	}
+	return math.MaxUint64
+}
+
+func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -256,7 +328,7 @@ func ParseStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 		return nil, err
 	}
 
-	var beaconState beaconStateVersion
+	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		log.Debug().Msg("error with JSON unmarshalling")
