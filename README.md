@@ -51,7 +51,7 @@ Here is a breakdown of the inputs here:
 - “oracleBlockHeaderFile” is the path to the oracle block header file, that we are proving all of this against
 - “stateFile” is the consensus state from that slot, containing the validator information
 - “validatorIndex” is the index of the validator being proven inside state.validators
-- “outtputFile” - setting this will write the proofs to a json file
+- “outputFile” - setting this will write the proofs to a json file
 - “chainID” this parameter allows certain constants to be set depending on whether the proof is being generated for a goerli or mainnet state.
 
 Here is an example of running this command with the sample state/block files in the `/data` folder
@@ -88,7 +88,7 @@ Here is an example of running this command with the sample state/block files in 
   -oracleBlockHeaderFile ./data/deneb_goerli_block_header_7431952.json \
   -stateFile ./data/deneb_goerli_slot_7431952.json \
   -validatorIndex 627559 \
-  -outputFile "full_withdrawal_proof_627559.json” \
+  -outputFile full_withdrawal_proof_627559.json \
   -chainID 5 \
   -historicalSummariesIndex 271 \
   -blockHeaderIndex 8191 \
@@ -115,7 +115,7 @@ Here is a breakdown of the inputs here:
 - “oracleBlockHeaderFile” is the path to the oracle block header file, that we are proving all of this against
 - “stateFile” is the consensus state from that slot, containing the validator information
 - “validatorIndex” is the index of the validator being proven inside state.validators
-- “outtputFile” - setting this will write the proofs to a json file
+- “outputFile” - setting this will write the proofs to a json file
 - “chainID” this parameter allows certain constants to be set depending on whether the proof is being generated for a goerli or mainnet state.
 
 Here is an example of running this command with the sample state/block files in the `/data` folder:
@@ -130,7 +130,7 @@ Here is an example of running this command with the sample state/block files in 
 ```
 
 # Proof Generation Input Glossary
-- `oracleBlockHeaderFile` is the block header of the oracle block heade root being used to make the proof
+- `oracleBlockHeaderFile` is the block header of the oracle block header root being used to make the proof
 - `stateFile` is the associated state file of the oracle block being used
 - `validatorIndex` is the index of the validator being proven for in the consensus layer
 - `outputFile` is the location where the generated proof will be written to

@@ -616,7 +616,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 
 	// get the proof for execution payload in the block body
 
-	exectionPayloadProof, _, _ := beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(&blockHeader, block.Body)
+	executionPayloadProof, _, _ := beacon.ProveExecutionPayloadAgainstBlockHeaderDeneb(&blockHeader, block.Body)
 
 	// get the hash root of the actual execution payload
 	var executionPayloadHashRoot, _ = block.Body.ExecutionPayload.HashTreeRoot()
@@ -628,6 +628,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 
 	// calling the proof verification function
 	flag := epgcommon.ValidateProof(root, exectionPayloadProof, executionPayloadHashRoot, index)
+
 	if flag != true {
 		fmt.Println("error")
 	}
