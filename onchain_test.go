@@ -19,7 +19,7 @@ import (
 
 func TestValidatorContainersProofOnChain(t *testing.T) {
 	var oracleState deneb.BeaconState
-	stateFile := "../data/deneb_goerli_slot_7413760.json"
+	stateFile := "data/deneb_goerli_slot_7413760.json"
 	stateJSON, err := ParseJSONFileDeneb(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
@@ -31,7 +31,7 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 		fmt.Println("error", err)
 	}
 
-	oracleBlockHeader, err = ExtractBlockHeader("../data/deneb_goerli_block_header_7413760.json")
+	oracleBlockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7413760.json")
 	if err != nil {
 		fmt.Println("error", err)
 	}
@@ -80,7 +80,7 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 // TODO: get these tests working
 func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
-	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
+	oracleStateFile := "data/deneb_goerli_slot_7431952.json"
 	oracleStateJSON, err := ParseJSONFileDeneb(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
@@ -88,7 +88,7 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 	oracleState := deneb.BeaconState{}
 	ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
-	oracleHeaderFile := "../data/deneb_goerli_block_header_7431952.json"
+	oracleHeaderFile := "data/deneb_goerli_block_header_7431952.json"
 	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
@@ -99,7 +99,7 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error creating versioned state", err)
 	}
 
-	historicalSummaryStateJSON, err := ParseJSONFileDeneb("../data/deneb_goerli_slot_7421952.json")
+	historicalSummaryStateJSON, err := ParseJSONFileDeneb("data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
@@ -107,7 +107,7 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
-	withdrawalBlock, err := ExtractBlockDeneb("../data/deneb_goerli_block_7421951.json")
+	withdrawalBlock, err := ExtractBlockDeneb("data/deneb_goerli_block_7421951.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
