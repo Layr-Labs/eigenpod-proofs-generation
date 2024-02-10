@@ -82,14 +82,22 @@ func CreateVersionedState(state interface{}) (spec.VersionedBeaconState, error) 
 
 func UnmarshalSSZVersionedBeaconState(data []byte) (*spec.VersionedBeaconState, error) {
 	beaconState := &spec.VersionedBeaconState{}
+	denebBeaconState := &deneb.BeaconState{}
 	// Try to unmarshal using Deneb
-	err := beaconState.Deneb.UnmarshalSSZ(data)
+	err := denebBeaconState.UnmarshalSSZ(data)
 	if err != nil {
 		// If Deneb fails, try Capella
-		err = beaconState.Capella.UnmarshalSSZ(data)
+		capellaBeaconState := &capella.BeaconState{}
+		err = capellaBeaconState.UnmarshalSSZ(data)
 		if err != nil {
 			return nil, err
+		} else {
+			beaconState.Capella = capellaBeaconState
+			beaconState.Version = spec.DataVersionCapella
 		}
+	} else {
+		beaconState.Deneb = denebBeaconState
+		beaconState.Version = spec.DataVersionDeneb
 	}
 
 	return beaconState, nil
@@ -97,10 +105,14 @@ func UnmarshalSSZVersionedBeaconState(data []byte) (*spec.VersionedBeaconState, 
 
 func MarshalSSZVersionedBeaconState(beaconState spec.VersionedBeaconState) ([]byte, error) {
 	var data []byte
+	var err error
 	// Try to marshal using Deneb
-	data, err := beaconState.Deneb.MarshalSSZ()
-	if err != nil {
-		// If Deneb fails, try Capella
+	if beaconState.Version == spec.DataVersionDeneb {
+		data, err = beaconState.Deneb.MarshalSSZ()
+		if err != nil {
+			return nil, err
+		}
+	} else {
 		data, err = beaconState.Capella.MarshalSSZ()
 		if err != nil {
 			return nil, err
