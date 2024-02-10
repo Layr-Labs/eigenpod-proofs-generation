@@ -134,10 +134,16 @@ func TestProveValidatorContainers(t *testing.T) {
 
 func TestProveWithdrawals(t *testing.T) {
 	oracleStateFile := "data/deneb_goerli_slot_7431952.json"
+	oracleHeaderFile := "data/deneb_goerli_block_header_7431952.json"
 	oracleStateJSON, err := ParseJSONFile(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
+	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
+	if err != nil {
+		fmt.Println("error with block header", err)
+	}
+
 	ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
