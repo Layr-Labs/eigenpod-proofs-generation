@@ -253,8 +253,6 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 		return phase0.BeaconBlockHeader{}, err
 	}
 
-	fmt.Println(inputData.Data.Header.Message)
-
 	return inputData.Data.Header.Message, nil
 }
 

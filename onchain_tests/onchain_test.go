@@ -60,7 +60,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupSuite() {
-	rpc := "https://rpc.ankr.com/eth_goerli"
+	rpc := os.Getenv("RPC_URL")
 	privateKey := os.Getenv("PRIVATE_KEY")
 
 	ethClient, err := ethclient.Dial(rpc)
@@ -129,7 +129,6 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("error", err)
-		return
 	}
 
 	verifyValidatorFieldsCallParams, err := epp.ProveValidatorContainers(&oracleBlockHeader, &versionedOracleState, []uint64{VALIDATOR_INDEX})
@@ -175,10 +174,17 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 
 func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
+	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
+	oracleStateJSON, err := eigenpodproofs.ParseJSONFileDeneb(oracleStateFile)
+	if err != nil {
+		fmt.Println("error with JSON parsing beacon state")
+	}
+	oracleState := deneb.BeaconState{}
+	eigenpodproofs.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("error creating versioned state", err)
-		return
 	}
 
 	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileDeneb("../data/deneb_goerli_slot_7421952.json")
@@ -186,8 +192,8 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState deneb.BeaconState
-	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	eigenpodproofs.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
 	withdrawalBlock, err := eigenpodproofs.ExtractBlockDeneb("../data/deneb_goerli_block_7421951.json")
 	if err != nil {
@@ -197,7 +203,6 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
 	if err != nil {
 		fmt.Println("error", err)
-		return
 	}
 
 	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
@@ -233,8 +238,7 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		ExecutionPayloadRoot:            verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadRoot,
 	}
 
-	verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot[0] = 1
-	// oracleBlockHeaderRoot
+	withdrawalFields = append(withdrawalFields, verifyAndProcessWithdrawalCallParams.WithdrawalFields[0][0])
 
 	err = beaconChainProofs.VerifyWithdrawal(
 		&bind.CallOpts{},
@@ -243,19 +247,26 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		withdrawalProof,
 		DENEB_FORK_TIMESTAMP_GOERLI,
 	)
+
 	if err != nil {
 		fmt.Println("error", err)
 	}
 	assert.Nil(t, err)
-
 }
 
 func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
+	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
+	oracleStateJSON, err := eigenpodproofs.ParseJSONFileDeneb(oracleStateFile)
+	if err != nil {
+		fmt.Println("error with JSON parsing beacon state")
+	}
+	oracleState := deneb.BeaconState{}
+	eigenpodproofs.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("error creating versioned state", err)
-		return
 	}
 
 	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileCapella("../data/goerli_slot_6397952.json")
@@ -263,8 +274,8 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState capella.BeaconState
-	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
 	withdrawalBlock, err := eigenpodproofs.ExtractBlockCapella("../data/goerli_block_6397852.json")
 	if err != nil {
@@ -274,7 +285,6 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
 	if err != nil {
 		fmt.Println("error", err)
-		return
 	}
 
 	withdrawalValidatorIndex := uint64(200240) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
@@ -324,18 +334,17 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 }
 
 func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
-	stateFile := "../data/goerli_slot_6409723.json"
-	stateJSON, err := eigenpodproofs.ParseJSONFileCapella(stateFile)
+	oracleStateFile := "../data/goerli_slot_6409723.json"
+	oracleStateJSON, err := eigenpodproofs.ParseJSONFileCapella(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
-	state := capella.BeaconState{}
-	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*stateJSON, &state)
+	oracleState := capella.BeaconState{}
+	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("error creating versioned state", err)
-		return
 	}
 
 	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileCapella("../data/goerli_slot_6397952.json")
@@ -343,8 +352,8 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState capella.BeaconState
-	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
 	withdrawalBlock, err := eigenpodproofs.ExtractBlockCapella("../data/goerli_block_6397852.json")
 	if err != nil {
@@ -354,10 +363,9 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 	versionedWithdrawalBlock, err := beacon.CreateVersionedSignedBlock(withdrawalBlock)
 	if err != nil {
 		fmt.Println("error", err)
-		return
 	}
 
-	withdrawalValidatorIndex := uint64(627559) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
+	withdrawalValidatorIndex := uint64(200240) //this is the index of the validator with the first withdrawal in the withdrawalBlock 7421951
 
 	verifyAndProcessWithdrawalCallParams, err := epp.ProveWithdrawals(
 		&oracleBlockHeader,
