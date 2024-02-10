@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/attestantio/go-eth2-client/spec"
+	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -295,6 +296,64 @@ func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 	flag := verifyValidatorAgainstBeaconState(&oracleState, proof, uint64(validatorIndex))
 
 	assert.True(t, flag, "Proof %v failed")
+}
+
+func TestCreateVersionedSignedBlockDeneb(t *testing.T) {
+	block := deneb.BeaconBlock{}
+	versionedBlock, err := beacon.CreateVersionedSignedBlock(block)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBlock.Version, spec.DataVersionDeneb, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestCreateVersionedSignedBlockCapella(t *testing.T) {
+	block := capella.BeaconBlock{}
+	versionedBlock, err := beacon.CreateVersionedSignedBlock(block)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBlock.Version, spec.DataVersionCapella, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestCreateVersionedSignedBlockAltair(t *testing.T) {
+	block := altair.BeaconBlock{}
+	_, err := beacon.CreateVersionedSignedBlock(block)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.NotNil(t, err, "error %v was nil")
+}
+
+func TestCreateVersionedBeaconStateDeneb(t *testing.T) {
+	oracleState := deneb.BeaconState{}
+	versionedState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedState.Version, spec.DataVersionDeneb, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestCreateVersionedBeaconStateCapella(t *testing.T) {
+	state := capella.BeaconState{}
+	versionedState, err := beacon.CreateVersionedState(&state)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedState.Version, spec.DataVersionCapella, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestCreateVersionedBeaconStateAltair(t *testing.T) {
+	state := altair.BeaconState{}
+	_, err := beacon.CreateVersionedState(&state)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.NotNil(t, err, "error %v was nil")
 }
 
 func TestProveValidatorBalanceAgainstValidatorBalanceList(t *testing.T) {
