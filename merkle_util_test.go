@@ -1,6 +1,7 @@
 package eigenpodproofs
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/ethclient"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/stretchr/testify/assert"
 
@@ -17,10 +19,13 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	contractBeaconChainProofs "github.com/Layr-Labs/eigenpod-proofs-generation/bindings"
+	epgcommon "github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	common "github.com/ethereum/go-ethereum/common"
 )
 
 var (
+	ctx                            context.Context
 	oracleState                    deneb.BeaconState
 	oracleBlockHeader              phase0.BeaconBlockHeader
 	blockHeader                    phase0.BeaconBlockHeader
@@ -31,6 +36,8 @@ var (
 	executionPayload               deneb.ExecutionPayload
 	epp                            *EigenPodProofs
 	executionPayloadFieldRoots     []phase0.Root
+	chainClient                    *ChainClient
+	beaconChainProofs              *contractBeaconChainProofs.BeaconChainProofsTest
 )
 
 // var VALIDATOR_INDEX uint64 = 61068 //this is the index of a validator that has a partial withdrawal
@@ -42,6 +49,8 @@ var REPOINTED_VALIDATOR_INDEX uint64 = 61511 //this is the index of a validator 
 
 // var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 656
 var BEACON_BLOCK_HEADER_TO_VERIFY_INDEX uint64 = 2262
+
+const DENEB_FORK_TIMESTAMP_GOERLI = uint64(1705473120)
 
 var GOERLI_CHAIN_ID uint64 = 5
 
@@ -63,6 +72,25 @@ func TestMain(m *testing.M) {
 
 func setupSuite() {
 	log.Println("Setting up suite")
+	rpc := "https://rpc.ankr.com/eth_goerli"
+	privateKey := os.Getenv("PRIVATE_KEY")
+	ethClient, err := ethclient.Dial(rpc)
+	if err != nil {
+		log.Panicf("failed to connect to the Ethereum client: %s", err)
+	}
+
+	chainClient, err = NewChainClient(ethClient, privateKey)
+	if err != nil {
+		log.Panicf("failed to create chain client: %s", err)
+	}
+
+	//BeaconChainProofs.sol deployment: https://goerli.etherscan.io/address/0xd132dD701d3980bb5d66A21e2340f263765e4a19#code
+	contractAddress := common.HexToAddress("0xd132dD701d3980bb5d66A21e2340f263765e4a19")
+	beaconChainProofs, err = contractBeaconChainProofs.NewBeaconChainProofsTest(contractAddress, chainClient)
+	if err != nil {
+		log.Panicf("failed to create beacon chain proofs contract: %s", err)
+	}
+
 	stateFile := "data/deneb_goerli_slot_7413760.json"
 	oracleHeaderFile := "data/deneb_goerli_block_header_7413760.json"
 	headerFile := "data/deneb_goerli_block_header_7426113.json"
@@ -259,7 +287,7 @@ func TestProveValidatorBalanceAgainstValidatorBalanceList(t *testing.T) {
 
 	leaf := balanceRootList[balanceIndex]
 
-	flag := common.ValidateProof(*root, proof, leaf, uint64(balanceIndex))
+	flag := epgcommon.ValidateProof(*root, proof, leaf, uint64(balanceIndex))
 	if flag != true {
 		fmt.Println("balance proof failed")
 	}
@@ -289,7 +317,7 @@ func TestProveBeaconTopLevelRootAgainstBeaconState(t *testing.T) {
 	// validation of the proof
 	// get the leaf denoting the validatorsRoot in the BeaconStateRoot Merkle tree
 	leaf := beaconStateTopLevelRoots.ValidatorsRoot
-	flag := common.ValidateProof(beaconStateRoot, validatorsRootProof, *leaf, beacon.ValidatorListIndex)
+	flag := epgcommon.ValidateProof(beaconStateRoot, validatorsRootProof, *leaf, beacon.ValidatorListIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -454,7 +482,7 @@ func TestProveValidatorAgainstValidatorList(t *testing.T) {
 	}
 
 	// calling the proof verification func
-	flag := common.ValidateProof(*beaconStateTopLevelRoots.ValidatorsRoot, validatorProof, leaf, uint64(validatorIndex))
+	flag := epgcommon.ValidateProof(*beaconStateTopLevelRoots.ValidatorsRoot, validatorProof, leaf, uint64(validatorIndex))
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -484,7 +512,7 @@ func TestComputeBlockSlotProof(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, beacon.SlotIndex)
+	flag := epgcommon.ValidateProof(beaconBlockHeaderRoot, blockHeaderSlotProof, slotHashRoot, beacon.SlotIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -514,7 +542,7 @@ func TestProveBlockBodyAgainstBlockHeader(t *testing.T) {
 	}
 
 	// calling the proof verification function
-	flag := common.ValidateProof(beaconBlockHeaderRoot, blockHeaderBlockBodyProof, blockBodyHashRoot, beacon.BeaconBlockBodyRootIndex)
+	flag := epgcommon.ValidateProof(beaconBlockHeaderRoot, blockHeaderBlockBodyProof, blockBodyHashRoot, beacon.BeaconBlockBodyRootIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -544,7 +572,7 @@ func TestComputeExecutionPayloadHeader(t *testing.T) {
 	blockHeaderBodyRoot := blockHeader.BodyRoot
 
 	// calling the proof verification function
-	flag := common.ValidateProof(blockHeaderBodyRoot, beaconBlockBodyProof, executionPayloadHashRoot, beacon.ExecutionPayloadIndex)
+	flag := epgcommon.ValidateProof(blockHeaderBodyRoot, beaconBlockBodyProof, executionPayloadHashRoot, beacon.ExecutionPayloadIndex)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -599,7 +627,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 	index := beacon.BeaconBlockBodyRootIndex<<(beacon.BlockBodyMerkleSubtreeNumLayers) | beacon.ExecutionPayloadIndex
 
 	// calling the proof verification function
-	flag := common.ValidateProof(root, exectionPayloadProof, executionPayloadHashRoot, index)
+	flag := epgcommon.ValidateProof(root, exectionPayloadProof, executionPayloadHashRoot, index)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -641,7 +669,7 @@ func TestComputeWithdrawalsListProof(t *testing.T) {
 		}
 		copy(executionPayloadHashRoot[:], hh.Hash())
 	}
-	flag := common.ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, beacon.WithdrawalsIndex)
+	flag := epgcommon.ValidateProof(executionPayloadHashRoot, withdrawalsListProof, withdrawalsHashRoot, beacon.WithdrawalsIndex)
 	if flag != true {
 		fmt.Println("Proof Failed")
 	}
@@ -691,7 +719,7 @@ func TestComputeIndividualWithdrawalProof(t *testing.T) {
 	}
 
 	// calling the proof verification func
-	flag := common.ValidateProof(withdrawalsHashRoot, withdrawalProof, leaf, uint64(withdrawalIndex))
+	flag := epgcommon.ValidateProof(withdrawalsHashRoot, withdrawalProof, leaf, uint64(withdrawalIndex))
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -766,7 +794,7 @@ func TestGetSlotProof(t *testing.T) {
 
 	leaf := ConvertTo32ByteArray(hh.Hash())
 
-	flag := common.ValidateProof(root, proof, leaf, 0)
+	flag := epgcommon.ValidateProof(root, proof, leaf, 0)
 	if flag != true {
 		fmt.Println("error")
 	}
@@ -813,7 +841,7 @@ func ParseJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	return &actualData, nil
 }
 
-func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlockHeader, oracleState deneb.BeaconState, proof common.Proof) bool {
+func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlockHeader, oracleState deneb.BeaconState, proof epgcommon.Proof) bool {
 	root, err := oracleBlockHeader.HashTreeRoot()
 	if err != nil {
 		fmt.Println("this error", err)
@@ -823,14 +851,14 @@ func verifyStateRootAgainstBlockHeaderProof(oracleBlockHeader phase0.BeaconBlock
 		fmt.Println("this error", err)
 	}
 
-	flag := common.ValidateProof(root, proof, leaf, 3)
+	flag := epgcommon.ValidateProof(root, proof, leaf, 3)
 	if flag != true {
 		fmt.Println("this error")
 	}
 	return flag
 }
 
-func verifyValidatorAgainstBeaconState(oracleState *deneb.BeaconState, proof common.Proof, validatorIndex uint64) bool {
+func verifyValidatorAgainstBeaconState(oracleState *deneb.BeaconState, proof epgcommon.Proof, validatorIndex uint64) bool {
 	leaf, err := oracleState.Validators[validatorIndex].HashTreeRoot()
 	if err != nil {
 		fmt.Println("error with hash tree root")
@@ -843,14 +871,14 @@ func verifyValidatorAgainstBeaconState(oracleState *deneb.BeaconState, proof com
 
 	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | validatorIndex
 
-	flag := common.ValidateProof(root, proof, leaf, index)
+	flag := epgcommon.ValidateProof(root, proof, leaf, index)
 	if flag != true {
 		fmt.Println("error")
 	}
 	return flag
 }
 
-func verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof common.Proof, withdrawalIndex uint64, withdrawal *capella.Withdrawal) bool {
+func verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof epgcommon.Proof, withdrawalIndex uint64, withdrawal *capella.Withdrawal) bool {
 	leaf, err := withdrawal.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error")
@@ -858,19 +886,19 @@ func verifyWithdrawalAgainstExecutionPayload(executionPayloadRoot phase0.Root, p
 
 	withdrawalRelativeToELPayloadIndex := beacon.WithdrawalsIndex<<(beacon.WithdrawalListMerkleSubtreeNumLayers+1) | uint64(withdrawalIndex)
 
-	return common.ValidateProof(executionPayloadRoot, proof, leaf, withdrawalRelativeToELPayloadIndex)
+	return epgcommon.ValidateProof(executionPayloadRoot, proof, leaf, withdrawalRelativeToELPayloadIndex)
 
 }
 
-func verifyTimestampAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof common.Proof, timestamp uint64) bool {
+func verifyTimestampAgainstExecutionPayload(executionPayloadRoot phase0.Root, proof epgcommon.Proof, timestamp uint64) bool {
 	hh := ssz.NewHasher()
 	hh.PutUint64(timestamp)
 	leaf := ConvertTo32ByteArray(hh.Hash())
 
-	return common.ValidateProof(executionPayloadRoot, proof, leaf, beacon.TimestampIndex)
+	return epgcommon.ValidateProof(executionPayloadRoot, proof, leaf, beacon.TimestampIndex)
 }
 
-func verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateRoot phase0.Root, proof common.Proof, beaconBlockHeaderToVerify phase0.BeaconBlockHeader, beaconBlockHeaderToVerifyIndex uint64, historicalSummaryIndex uint64) bool {
+func verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateRoot phase0.Root, proof epgcommon.Proof, beaconBlockHeaderToVerify phase0.BeaconBlockHeader, beaconBlockHeaderToVerifyIndex uint64, historicalSummaryIndex uint64) bool {
 	historicalBlockHeaderIndex := beacon.HistoricalSummaryListIndex<<((beacon.HistoricalSummaryListMerkleSubtreeNumLayers+1)+1+(beacon.BlockRootsMerkleSubtreeNumLayers)) |
 		historicalSummaryIndex<<(1+beacon.BlockRootsMerkleSubtreeNumLayers) |
 		beacon.BlockSummaryRootIndex<<(beacon.BlockRootsMerkleSubtreeNumLayers) | beaconBlockHeaderToVerifyIndex
@@ -880,5 +908,5 @@ func verifyBlockRootAgainstBeaconStateViaHistoricalSummaries(oracleBeaconStateRo
 		fmt.Println("beaconBlockHeaderToVerifyRoot error", err)
 		return false
 	}
-	return common.ValidateProof(oracleBeaconStateRoot, proof, beaconBlockHeaderToVerifyRoot, historicalBlockHeaderIndex)
+	return epgcommon.ValidateProof(oracleBeaconStateRoot, proof, beaconBlockHeaderToVerifyRoot, historicalBlockHeaderIndex)
 }

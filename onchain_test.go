@@ -1,15 +1,11 @@
-package onchain_tests
+package eigenpodproofs
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"math/big"
-	"os"
 	"testing"
 
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	contractBeaconChainProofs "github.com/Layr-Labs/eigenpod-proofs-generation/bindings"
 	"github.com/attestantio/go-eth2-client/spec"
@@ -19,115 +15,23 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-var (
-	chainClient                    *eigenpodproofs.ChainClient
-	ctx                            context.Context
-	contractAddress                common.Address
-	beaconChainProofs              *contractBeaconChainProofs.BeaconChainProofsTest
-	oracleState                    deneb.BeaconState
-	oracleBlockHeader              phase0.BeaconBlockHeader
-	blockHeader                    phase0.BeaconBlockHeader
-	blockHeaderIndex               uint64
-	block                          deneb.BeaconBlock
-	validatorIndex                 phase0.ValidatorIndex
-	beaconBlockHeaderToVerifyIndex uint64
-	executionPayload               deneb.ExecutionPayload
-	epp                            *eigenpodproofs.EigenPodProofs
-	executionPayloadFieldRoots     []phase0.Root
-)
-
-const GOERLI_CHAIN_ID = uint64(5)
-const VALIDATOR_INDEX = uint64(61336)
-const DENEB_FORK_TIMESTAMP_GOERLI = uint64(1705473120)
-
-func TestMain(m *testing.M) {
-	// Setup
-	log.Println("Setting up suite")
-	setupSuite()
-
-	// Run tests
-	code := m.Run()
-
-	// Teardown
-	log.Println("Tearing down suite")
-	teardownSuite()
-
-	// Exit with test result code
-	os.Exit(code)
-}
-
-func setupSuite() {
-	rpc := "https://rpc.ankr.com/eth_goerli"
-	privateKey := os.Getenv("PRIVATE_KEY")
-
-	ethClient, err := ethclient.Dial(rpc)
-	if err != nil {
-		log.Panicf("failed to connect to the Ethereum client: %s", err)
-	}
-
-	chainClient, err = eigenpodproofs.NewChainClient(ethClient, privateKey)
-	if err != nil {
-		log.Panicf("failed to create chain client: %s", err)
-	}
-	ctx = context.Background()
-	//BeaconChainProofs.sol deployment: https://goerli.etherscan.io/address/0xd132dD701d3980bb5d66A21e2340f263765e4a19#code
-	contractAddress = common.HexToAddress("0xd132dD701d3980bb5d66A21e2340f263765e4a19")
-	beaconChainProofs, err = contractBeaconChainProofs.NewBeaconChainProofsTest(contractAddress, chainClient)
-	if err != nil {
-		log.Panicf("failed to create contract instance: %s", err)
-	}
-
-	log.Println("Setting up suite")
+func TestValidatorContainersProofOnChain(t *testing.T) {
+	var oracleState deneb.BeaconState
 	stateFile := "../data/deneb_goerli_slot_7413760.json"
-	oracleHeaderFile := "../data/deneb_goerli_block_header_7413760.json"
-	headerFile := "../data/deneb_goerli_block_header_7426113.json"
-	bodyFile := "../data/deneb_goerli_block_7426113.json"
-
-	stateJSON, err := eigenpodproofs.ParseJSONFileDeneb(stateFile)
+	stateJSON, err := ParseJSONFileDeneb(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*stateJSON, &oracleState)
-
-	blockHeader, err = eigenpodproofs.ExtractBlockHeader(headerFile)
-	if err != nil {
-		fmt.Println("error with block header", err)
-	}
-
-	oracleBlockHeader, err = eigenpodproofs.ExtractBlockHeader(oracleHeaderFile)
-	if err != nil {
-		fmt.Println("error with oracle block header", err)
-	}
-
-	block, err = eigenpodproofs.ExtractBlockDeneb(bodyFile)
-	if err != nil {
-		fmt.Println("error with block body", err)
-	}
-
-	executionPayload = *block.Body.ExecutionPayload
-
-	blockHeaderIndex = uint64(blockHeader.Slot) % beacon.SlotsPerHistoricalRoot
-
-	epp, err = eigenpodproofs.NewEigenPodProofs(GOERLI_CHAIN_ID, 1000)
-	if err != nil {
-		fmt.Println("error in NewEigenPodProofs", err)
-	}
-
-	executionPayloadFieldRoots, _ = beacon.ComputeExecutionPayloadFieldRootsDeneb(block.Body.ExecutionPayload)
-}
-
-func teardownSuite() {
-	// Any cleanup you want to perform should go here
-	fmt.Println("all done!")
-}
-
-func TestValidatorContainersProofOnChain(t *testing.T) {
+	ParseDenebBeaconStateFromJSON(*stateJSON, &oracleState)
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	oracleBlockHeader, err = ExtractBlockHeader("../data/deneb_goerli_block_header_7413760.json")
 	if err != nil {
 		fmt.Println("error", err)
 	}
@@ -177,15 +81,15 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
 	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
-	oracleStateJSON, err := eigenpodproofs.ParseJSONFileDeneb(oracleStateFile)
+	oracleStateJSON, err := ParseJSONFileDeneb(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
 	oracleState := deneb.BeaconState{}
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+	ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	oracleHeaderFile := "../data/deneb_goerli_block_header_7431952.json"
-	oracleBlockHeader, err = eigenpodproofs.ExtractBlockHeader(oracleHeaderFile)
+	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
 	}
@@ -195,15 +99,15 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error creating versioned state", err)
 	}
 
-	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileDeneb("../data/deneb_goerli_slot_7421952.json")
+	historicalSummaryStateJSON, err := ParseJSONFileDeneb("../data/deneb_goerli_slot_7421952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState deneb.BeaconState
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
-	withdrawalBlock, err := eigenpodproofs.ExtractBlockDeneb("../data/deneb_goerli_block_7421951.json")
+	withdrawalBlock, err := ExtractBlockDeneb("../data/deneb_goerli_block_7421951.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
@@ -267,15 +171,15 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
 	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
-	oracleStateJSON, err := eigenpodproofs.ParseJSONFileDeneb(oracleStateFile)
+	oracleStateJSON, err := ParseJSONFileDeneb(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
 	oracleState := deneb.BeaconState{}
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+	ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	oracleHeaderFile := "../data/deneb_goerli_block_header_7431952.json"
-	oracleBlockHeader, err = eigenpodproofs.ExtractBlockHeader(oracleHeaderFile)
+	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
 	}
@@ -285,15 +189,15 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error creating versioned state", err)
 	}
 
-	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileCapella("../data/goerli_slot_6397952.json")
+	historicalSummaryStateJSON, err := ParseJSONFileCapella("../data/goerli_slot_6397952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState capella.BeaconState
-	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
-	withdrawalBlock, err := eigenpodproofs.ExtractBlockCapella("../data/goerli_block_6397852.json")
+	withdrawalBlock, err := ExtractBlockCapella("../data/goerli_block_6397852.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
@@ -354,15 +258,15 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
 func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 	oracleStateFile := "../data/goerli_slot_6409723.json"
-	oracleStateJSON, err := eigenpodproofs.ParseJSONFileCapella(oracleStateFile)
+	oracleStateJSON, err := ParseJSONFileCapella(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
 	}
 	oracleState := capella.BeaconState{}
-	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+	ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	oracleHeaderFile := "../data/goerli_block_header_6409723.json"
-	oracleBlockHeader, err = eigenpodproofs.ExtractBlockHeader(oracleHeaderFile)
+	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
 	}
@@ -372,15 +276,15 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 		fmt.Println("error creating versioned state", err)
 	}
 
-	historicalSummaryStateJSON, err := eigenpodproofs.ParseJSONFileCapella("../data/goerli_slot_6397952.json")
+	historicalSummaryStateJSON, err := ParseJSONFileCapella("../data/goerli_slot_6397952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState capella.BeaconState
-	eigenpodproofs.ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
-	withdrawalBlock, err := eigenpodproofs.ExtractBlockCapella("../data/goerli_block_6397852.json")
+	withdrawalBlock, err := ExtractBlockCapella("../data/goerli_block_6397852.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
