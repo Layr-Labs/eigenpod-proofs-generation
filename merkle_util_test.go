@@ -145,8 +145,8 @@ func TestProveWithdrawals(t *testing.T) {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
 	var historicalSummaryState deneb.BeaconState
-	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 	ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
 	withdrawalBlock, err := ExtractBlockDeneb("data/deneb_goerli_block_7421951.json")
 	if err != nil {
