@@ -627,8 +627,7 @@ func TestGetExecutionPayloadProof(t *testing.T) {
 	index := beacon.BeaconBlockBodyRootIndex<<(beacon.BlockBodyMerkleSubtreeNumLayers) | beacon.ExecutionPayloadIndex
 
 	// calling the proof verification function
-	flag := epgcommon.ValidateProof(root, exectionPayloadProof, executionPayloadHashRoot, index)
-
+	flag := epgcommon.ValidateProof(root, executionPayloadProof, executionPayloadHashRoot, index)
 	if flag != true {
 		fmt.Println("error")
 	}
