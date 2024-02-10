@@ -51,7 +51,7 @@ Here is a breakdown of the inputs here:
 - “oracleBlockHeaderFile” is the path to the oracle block header file, that we are proving all of this against
 - “stateFile” is the consensus state from that slot, containing the validator information
 - “validatorIndex” is the index of the validator being proven inside state.validators
-- “outtputFile” - setting this will write the proofs to a json file
+- “outputFile” - setting this will write the proofs to a json file
 - “chainID” this parameter allows certain constants to be set depending on whether the proof is being generated for a goerli or mainnet state.
 
 Here is an example of running this command with the sample state/block files in the `/data` folder
@@ -115,7 +115,7 @@ Here is a breakdown of the inputs here:
 - “oracleBlockHeaderFile” is the path to the oracle block header file, that we are proving all of this against
 - “stateFile” is the consensus state from that slot, containing the validator information
 - “validatorIndex” is the index of the validator being proven inside state.validators
-- “outtputFile” - setting this will write the proofs to a json file
+- “outputFile” - setting this will write the proofs to a json file
 - “chainID” this parameter allows certain constants to be set depending on whether the proof is being generated for a goerli or mainnet state.
 
 Here is an example of running this command with the sample state/block files in the `/data` folder:
