@@ -185,7 +185,7 @@ func GenerateWithdrawalFieldsProof(index, historicalSummariesIndex, blockHeaderI
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState, err := beacon.CreateVersionedState(oracleState)
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("Error creating versioned state", err)
 		return err
@@ -305,7 +305,7 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 
 	beaconBlockHeaderToVerifyIndex := blockHeaderIndex
 
-	versionedOracleState, err := beacon.CreateVersionedState(oracleState)
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 	if err != nil {
 		fmt.Println("Error creating versioned state", err)
 		return err
