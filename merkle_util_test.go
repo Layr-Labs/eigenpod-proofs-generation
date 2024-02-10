@@ -250,6 +250,33 @@ func TestProveWithdrawals(t *testing.T) {
 	assert.True(t, flag, "Historical Summary Block Root Proof %v failed")
 }
 
+func TestUnmarshalSSZVersionedBeaconState(t *testing.T) {
+	oracleStateBytes, err := oracleState.MarshalSSZ()
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	versionedBeaconState, err := beacon.UnmarshalSSZVersionedBeaconState(oracleStateBytes)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Equal(t, versionedBeaconState.Version, spec.DataVersionDeneb, "Version %v failed")
+	assert.Nil(t, err, "Error %v failed")
+}
+
+func TestMarshalSSZVersionedBeaconState(t *testing.T) {
+	versionedBeaconState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+
+	_, err = beacon.MarshalSSZVersionedBeaconState(versionedBeaconState)
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Nil(t, err, "Error %v failed")
+}
+
 func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
 
 	// picking up one random validator index
