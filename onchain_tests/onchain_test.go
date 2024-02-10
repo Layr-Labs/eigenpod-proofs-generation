@@ -172,6 +172,22 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestContractCall(t *testing.T) {
+
+	err := beaconChainProofs.VerifyWithdrawal(
+		&bind.CallOpts{},
+		phase0.Root{},
+		[][32]byte{},
+		contractBeaconChainProofs.BeaconChainProofsWithdrawalProof{},
+		DENEB_FORK_TIMESTAMP_GOERLI,
+	)
+
+	if err != nil {
+		fmt.Println("error", err)
+	}
+	assert.Nil(t, err)
+}
+
 func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
 	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
@@ -240,7 +256,7 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
 	withdrawalFields = append(withdrawalFields, verifyAndProcessWithdrawalCallParams.WithdrawalFields[0][0])
 
-	err = beaconChainProofs.VerifyWithdrawal(
+	beaconChainProofs.VerifyWithdrawal(
 		&bind.CallOpts{},
 		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
 		withdrawalFields,
