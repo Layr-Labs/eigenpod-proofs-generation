@@ -31,15 +31,18 @@ func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	}
 }
 
-func GetBlockRoots(beaconState spec.VersionedBeaconState) []phase0.Root {
-	blockRoots := make([]phase0.Root, 0)
+func GetBlockRoots(beaconState spec.VersionedBeaconState) ([]phase0.Root, error) {
+	var blockRoots []phase0.Root
+
 	switch beaconState.Version {
 	case spec.DataVersionDeneb:
 		blockRoots = beaconState.Deneb.BlockRoots
 	case spec.DataVersionCapella:
 		blockRoots = beaconState.Capella.BlockRoots
+	default:
+		return nil, errors.New("unsupported beacon state version")
 	}
-	return blockRoots
+	return blockRoots, nil
 }
 func CreateVersionedSignedBlock(block interface{}) (spec.VersionedSignedBeaconBlock, error) {
 	var versionedBlock spec.VersionedSignedBeaconBlock
