@@ -170,7 +170,7 @@ func TestProvingDenebWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
 func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 
-	oracleStateFile := "../data/deneb_goerli_slot_7431952.json"
+	oracleStateFile := "data/deneb_goerli_slot_7431952.json"
 	oracleStateJSON, err := ParseJSONFileDeneb(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
@@ -178,7 +178,7 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 	oracleState := deneb.BeaconState{}
 	ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
-	oracleHeaderFile := "../data/deneb_goerli_block_header_7431952.json"
+	oracleHeaderFile := "data/deneb_goerli_block_header_7431952.json"
 	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
@@ -189,7 +189,7 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 		fmt.Println("error creating versioned state", err)
 	}
 
-	historicalSummaryStateJSON, err := ParseJSONFileCapella("../data/goerli_slot_6397952.json")
+	historicalSummaryStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6397952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
@@ -197,7 +197,7 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 	ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
-	withdrawalBlock, err := ExtractBlockCapella("../data/goerli_block_6397852.json")
+	withdrawalBlock, err := ExtractBlockCapella("data/goerli_block_6397852.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
@@ -257,7 +257,7 @@ func TestProvingCapellaWithdrawalAgainstDenebStateOnChain(t *testing.T) {
 }
 
 func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
-	oracleStateFile := "../data/goerli_slot_6409723.json"
+	oracleStateFile := "data/goerli_slot_6409723.json"
 	oracleStateJSON, err := ParseJSONFileCapella(oracleStateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing beacon state")
@@ -265,7 +265,7 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 	oracleState := capella.BeaconState{}
 	ParseCapellaBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
-	oracleHeaderFile := "../data/goerli_block_header_6409723.json"
+	oracleHeaderFile := "data/goerli_block_header_6409723.json"
 	oracleBlockHeader, err = ExtractBlockHeader(oracleHeaderFile)
 	if err != nil {
 		fmt.Println("error with block header", err)
@@ -276,7 +276,7 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 		fmt.Println("error creating versioned state", err)
 	}
 
-	historicalSummaryStateJSON, err := ParseJSONFileCapella("../data/goerli_slot_6397952.json")
+	historicalSummaryStateJSON, err := ParseJSONFileCapella("data/goerli_slot_6397952.json")
 	if err != nil {
 		fmt.Println("error parsing historicalSummaryState JSON")
 	}
@@ -284,7 +284,7 @@ func TestProvingCapellaWithdrawalAgainstCapellaStateOnChain(t *testing.T) {
 	ParseCapellaBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 	historicalSummaryStateBlockRoots := historicalSummaryState.BlockRoots
 
-	withdrawalBlock, err := ExtractBlockCapella("../data/goerli_block_6397852.json")
+	withdrawalBlock, err := ExtractBlockCapella("data/goerli_block_6397852.json")
 	if err != nil {
 		fmt.Println("block.UnmarshalJSON error", err)
 	}
