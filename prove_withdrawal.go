@@ -171,8 +171,10 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 	withdrawalBlock *spec.VersionedSignedBeaconBlock,
 	validatorIndex uint64,
 ) (*WithdrawalProof, []Bytes32, error) {
+
 	start := time.Now()
 	// compute the withdrawal body root
+
 	blockBodyRoot, err := withdrawalBlock.BodyRoot()
 	if err != nil {
 		return nil, nil, err

@@ -110,7 +110,7 @@ func GenerateWithdrawalFieldsProof(
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error creating EPP object", err)
 		return err
 	}
-	versionedState, err = beacon.CreateVersionedState(state)
+	versionedState, err = beacon.CreateVersionedState(&state)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with CreateVersionedState", err)
 		return err

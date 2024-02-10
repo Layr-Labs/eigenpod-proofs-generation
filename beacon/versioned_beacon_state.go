@@ -33,11 +33,15 @@ func CreateVersionedSignedBlock(block interface{}) (spec.VersionedSignedBeaconBl
 	var versionedBlock spec.VersionedSignedBeaconBlock
 
 	switch s := block.(type) {
-	case *deneb.BeaconBlock:
-		versionedBlock.Deneb.Message = s
+	case deneb.BeaconBlock:
+		var signedBlock deneb.SignedBeaconBlock
+		signedBlock.Message = &s
+		versionedBlock.Deneb = &signedBlock
 		versionedBlock.Version = spec.DataVersionDeneb
-	case *capella.BeaconBlock:
-		versionedBlock.Capella.Message = s
+	case capella.BeaconBlock:
+		var signedBlock capella.SignedBeaconBlock
+		signedBlock.Message = &s
+		versionedBlock.Capella = &signedBlock
 		versionedBlock.Version = spec.DataVersionCapella
 	default:
 		return versionedBlock, errors.New("unsupported beacon block version")
