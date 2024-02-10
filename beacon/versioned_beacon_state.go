@@ -6,6 +6,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
+	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
 func GetHistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.HistoricalSummary, error) {
@@ -28,6 +29,17 @@ func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	default:
 		return 0, errors.New("unsupported beacon state version")
 	}
+}
+
+func GetBlockRoots(beaconState spec.VersionedBeaconState) []phase0.Root {
+	blockRoots := make([]phase0.Root, 0)
+	switch beaconState.Version {
+	case spec.DataVersionDeneb:
+		blockRoots = beaconState.Deneb.BlockRoots
+	case spec.DataVersionCapella:
+		blockRoots = beaconState.Capella.BlockRoots
+	}
+	return blockRoots
 }
 func CreateVersionedSignedBlock(block interface{}) (spec.VersionedSignedBeaconBlock, error) {
 	var versionedBlock spec.VersionedSignedBeaconBlock
@@ -63,4 +75,34 @@ func CreateVersionedState(state interface{}) (spec.VersionedBeaconState, error) 
 		return versionedState, errors.New("unsupported beacon state version")
 	}
 	return versionedState, nil
+}
+
+func UnmarshalSSZVersionedBeaconState(data []byte) (*spec.VersionedBeaconState, error) {
+	beaconState := &spec.VersionedBeaconState{}
+	// Try to unmarshal using Deneb
+	err := beaconState.Deneb.UnmarshalSSZ(data)
+	if err != nil {
+		// If Deneb fails, try Capella
+		err = beaconState.Capella.UnmarshalSSZ(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return beaconState, nil
+}
+
+func MarshalSSZVersionedBeaconState(beaconState spec.VersionedBeaconState) ([]byte, error) {
+	var data []byte
+	// Try to marshal using Deneb
+	data, err := beaconState.Deneb.MarshalSSZ()
+	if err != nil {
+		// If Deneb fails, try Capella
+		data, err = beaconState.Capella.MarshalSSZ()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return data, nil
 }
