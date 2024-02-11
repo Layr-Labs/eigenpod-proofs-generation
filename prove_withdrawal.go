@@ -23,32 +23,32 @@ import (
 type VerifyAndProcessWithdrawalCallParams struct {
 	OracleTimestamp       uint64             `json:"oracleTimestamp"`
 	StateRootProof        *StateRootProof    `json:"stateRootProof"`
-	WithdrawalProofs      []*WithdrawalProof `json:"withdrawalProofs"`
-	ValidatorFieldsProofs []common.Proof     `json:"validatorFieldsProofs"`
 	ValidatorFields       [][]Bytes32        `json:"validatorFields"`
+	ValidatorFieldsProofs []common.Proof     `json:"validatorFieldsProofs"`
 	WithdrawalFields      [][]Bytes32        `json:"withdrawalFields"`
+	WithdrawalProofs      []*WithdrawalProof `json:"withdrawalProofs"`
 }
 
 type WithdrawalProof struct {
-	WithdrawalProof                 common.Proof `json:"withdrawalProof"`
-	SlotProof                       common.Proof `json:"slotProof"`
-	ExecutionPayloadProof           common.Proof `json:"executionPayloadProof"`
-	TimestampProof                  common.Proof `json:"timestampProof"`
-	HistoricalSummaryBlockRootProof common.Proof `json:"historicalSummaryBlockRootProof"`
-	BlockRootIndex                  uint64       `json:"blockRootIndex"`
-	HistoricalSummaryIndex          uint64       `json:"historicalSummaryIndex"`
-	WithdrawalIndex                 uint64       `json:"withdrawalIndex"`
 	BlockRoot                       phase0.Root  `json:"blockRoot"`
-	SlotRoot                        phase0.Root  `json:"slotRoot"`
-	TimestampRoot                   phase0.Root  `json:"timestampRoot"`
+	BlockRootIndex                  uint64       `json:"blockRootIndex"`
+	ExecutionPayloadProof           common.Proof `json:"executionPayloadProof"`
 	ExecutionPayloadRoot            phase0.Root  `json:"executionPayloadRoot"`
+	HistoricalSummaryBlockRootProof common.Proof `json:"historicalSummaryBlockRootProof"`
+	HistoricalSummaryIndex          uint64       `json:"historicalSummaryIndex"`
+	SlotProof                       common.Proof `json:"slotProof"`
+	SlotRoot                        phase0.Root  `json:"slotRoot"`
+	TimestampProof                  common.Proof `json:"timestampProof"`
+	TimestampRoot                   phase0.Root  `json:"timestampRoot"`
+	WithdrawalIndex                 uint64       `json:"withdrawalIndex"`
+	WithdrawalProof                 common.Proof `json:"withdrawalProof"`
 }
 
 type StateRootProof struct {
 	BeaconStateRoot phase0.Root  `json:"beaconStateRoot"`
-	StateRootProof  common.Proof `json:"stateRootProof"`
 	Slot            phase0.Slot  `json:"slot"`
 	SlotRootProof   common.Proof `json:"slotRootProof"` //Note:  this slot root is oracle block root being used to prove partial withdrawals is after the specified range of blocks requested by the user
+	StateRootProof  common.Proof `json:"stateRootProof"`
 }
 
 const FIRST_CAPELLA_SLOT_GOERLI = uint64(5193728)
