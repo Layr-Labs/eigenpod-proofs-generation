@@ -5,7 +5,7 @@ This repository allows users to generate the proofs necessary to prove consensus
 
 ## How to Retrieve Data
 
-An important note is that this CLI is designed to be used with inputs that can be retrieved from a consensus layer full node, [here](https://ethereum.github.io/beacon-APIs/) is the relevant API specification.  These are the api ednpoints that are required to retrieve the 3 consensus layer object required to generate proofs with this CLI:
+An important note is that this CLI is designed to be used with inputs that can be retrieved from a consensus layer full node, [here](https://ethereum.github.io/beacon-APIs/) is the relevant API specification.  These are the api endpoints that are required to retrieve the 3 consensus layer object required to generate proofs with this CLI:
 
 ### Beacon State
 [This](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2) is the entire consensus layer [state](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate) object at a given slot.  The following endpoint returns this object:
@@ -135,7 +135,7 @@ Here is an example of running this command with the sample state/block files in 
 - `validatorIndex` is the index of the validator being proven for in the consensus layer
 - `outputFile` is the location where the generated proof will be written to
 - `chainID` is the chainID (either goerli = 5 or mainnet = 1) being generated for.
-- `historicalSummariesIndex` refer to *What Are Historical Summary Proofs?* secion.  This is the index of the historical summary we're gonna use to prove the withdrawal
+- `historicalSummariesIndex` refer to *What Are Historical Summary Proofs?* section.  This is the index of the historical summary we're gonna use to prove the withdrawal
 - `historicalSummaryStateFile` state file corresponding to the `state_summary_root` stored in the historical summary we're gonna use.
 - `blockHeaderIndex` index of the block header that contains the withdrawal being proven
 - `blockHeaderFile` file containing the block header that contains the withdrawal being proven
