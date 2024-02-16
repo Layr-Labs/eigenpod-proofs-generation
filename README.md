@@ -108,7 +108,7 @@ Here is a breakdown of the inputs here:
   ```
   (withdrawal_slot - FIRST_CAPELLA_SLOT) // SLOTS_PER_HISTORICAL_ROOT
   ```
-  where `FIRST_CAPELLA_SLOT` on mainnet is 6209536 and `SLOTS_PER_HISTORICAL_ROOT` is 8192.
+  where `FIRST_CAPELLA_SLOT` on mainnet is 6209536 and `SLOTS_PER_HISTORICAL_ROOT` is 8192. Note that `withdrawal_slot` is the slot number of the block containing the withdrawal you want to prove.
   - "blockHeaderIndex" -  this is the blockheaderRoot's index within the historical summaries entry, which can be calculated like this:
   ```
   withdrawal_slot mod SLOTS_PER_HISTORICAL_ROOT
