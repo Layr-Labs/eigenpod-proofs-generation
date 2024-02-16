@@ -106,16 +106,16 @@ Here is a breakdown of the inputs here:
 - “chainID” this parameter allows certain constants to be set depending on whether the proof is being generated for a goerli or mainnet state.
 - "historicalSummariesIndex" Is the index in the historical summaries field of the oracle state (“stateFile”).  You can calculate this like this:
   ```
-  withdrawal_slot - FIRST_CAPELLA_SLOT // SLOTS_PER_HISTORICAL_ROOT
+  (withdrawal_slot - FIRST_CAPELLA_SLOT) // SLOTS_PER_HISTORICAL_ROOT
   ```
-  where FIRST_CAPELLA_SLOT on mainnet is 6209536 and SLOTS_PER_HISTORICAL_ROOT is 8192.
-  - "blockHeaderIndex" -  this is the blockheaderIndex within the historical summaries, which can be calculated like this:
+  where `FIRST_CAPELLA_SLOT` on mainnet is 6209536 and `SLOTS_PER_HISTORICAL_ROOT` is 8192.
+  - "blockHeaderIndex" -  this is the blockheaderRoot's index within the historical summaries entry, which can be calculated like this:
   ```
   withdrawal_slot mod SLOTS_PER_HISTORICAL_ROOT
   ```
 
   - "historicalSummaryStateFile" This is the beacon state at the slot such that:
-Historical_summary_state.slot = SLOTS_PER_HISTORICAL_ROOT * (withdrawal_slot // SLOTS_PER_HISTORICAL_ROOT) + 1.
+historical_summary_state.slot = `SLOTS_PER_HISTORICAL_ROOT` * (withdrawal_slot // `SLOTS_PER_HISTORICAL_ROOT`) + 1.
 
   -blockHeaderFile  - blockHeader from the withdrawal slot
   -blockBodyFile" Is the block body file from the withdrawal slot
