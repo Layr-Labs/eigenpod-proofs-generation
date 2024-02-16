@@ -117,9 +117,9 @@ Here is a breakdown of the inputs here:
   - "historicalSummaryStateFile" This is the beacon state at the slot such that:
 historical_summary_state.slot = `SLOTS_PER_HISTORICAL_ROOT` * (withdrawal_slot // `SLOTS_PER_HISTORICAL_ROOT`) + 1.
 
-  -blockHeaderFile  - blockHeader from the withdrawal slot
-  -blockBodyFile" Is the block body file from the withdrawal slot
-  -withdrawalIndex Is the index of the withdrawal within the block (between 0 and 15)
+  - blockHeaderFile  - blockHeader from the withdrawal slot
+  - blockBodyFile" Is the block body file from the withdrawal slot
+  - withdrawalIndex Is the index of the withdrawal within the block (between 0 and 15)
 
 
 ### Generate a Balance Update Proof.  
