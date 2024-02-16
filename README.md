@@ -97,7 +97,29 @@ Here is an example of running this command with the sample state/block files in 
   -blockBodyFile data/deneb_goerli_block_7421951.json \
   -withdrawalIndex 0
 ```
+Here is a breakdown of the inputs here:
+- “Command” aka the type of proof being generated
+- “oracleBlockHeaderFile” is the path to the oracle block header file, that we are proving all of this against
+- “stateFile” is the consensus state from that slot, containing the validator information
+- “validatorIndex” is the index of the validator being proven inside state.validators
+- “outputFile” - setting this will write the proofs to a json file
+- “chainID” this parameter allows certain constants to be set depending on whether the proof is being generated for a goerli or mainnet state.
+- "historicalSummariesIndex" Is the index in the historical summaries field of the oracle state (“stateFile”).  You can calculate this like this:
+  ```
+  withdrawal_slot - FIRST_CAPELLA_SLOT // SLOTS_PER_HISTORICAL_ROOT
+  ```
+  where FIRST_CAPELLA_SLOT on mainnet is 6209536 and SLOTS_PER_HISTORICAL_ROOT is 8192.
+  - "blockHeaderIndex" -  this is the blockheaderIndex within the historical summaries, which can be calculated like this:
+  ```
+  withdrawal_slot mod SLOTS_PER_HISTORICAL_ROOT
+  ```
 
+  - "historicalSummaryStateFile" This is the beacon state at the slot such that:
+Historical_summary_state.slot = SLOTS_PER_HISTORICAL_ROOT * (withdrawal_slot // SLOTS_PER_HISTORICAL_ROOT) + 1.
+
+  -blockHeaderFile  - blockHeader from the withdrawal slot
+  -blockBodyFile" Is the block body file from the withdrawal slot
+  -withdrawalIndex Is the index of the withdrawal within the block (between 0 and 15)
 
 
 ### Generate a Balance Update Proof.  
