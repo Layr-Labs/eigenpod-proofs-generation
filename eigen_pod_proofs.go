@@ -1,7 +1,6 @@
 package eigenpodproofs
 
 import (
-	"encoding/json"
 	"errors"
 	"time"
 
@@ -54,7 +53,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 			if err != nil {
 				return nil, err
 			}
-			return stateRoot[:], nil
+			return stateRoot, nil
 		},
 	)
 	if err != nil {
@@ -84,7 +83,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 			if err != nil {
 				return nil, err
 			}
-			return json.Marshal(beaconStateTopLevelRoots)
+			return beaconStateTopLevelRoots, nil
 		},
 	)
 	if err != nil {
@@ -93,7 +92,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 
 	beaconStateTopLevelRoots, ok := beaconStateTopLevelRootsInterface.(*beacon.BeaconStateTopLevelRoots)
 	if !ok {
-		return nil, errors.New("beacon state top level roots is not of type []byte")
+		return nil, errors.New("beacon state top level roots is not of type *beacon.BeaconStateTopLevelRoots")
 	}
 	return beaconStateTopLevelRoots, err
 }
