@@ -129,6 +129,8 @@ func setupSuite() {
 		fmt.Println("error in NewEigenPodProofs", err)
 	}
 
+	beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
+
 	executionPayloadFieldRoots, _ = beacon.ComputeExecutionPayloadFieldRootsDeneb(block.Body.ExecutionPayload)
 }
 
@@ -342,6 +344,26 @@ func TestMarshalSSZVersionedBeaconStateCapella(t *testing.T) {
 }
 
 func TestGenerateWithdrawalCredentialsProof(t *testing.T) {
+
+	// picking up one random validator index
+	validatorIndex := phase0.ValidatorIndex(REPOINTED_VALIDATOR_INDEX)
+
+	beaconStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
+	if err != nil {
+		fmt.Println("error reading beaconStateTopLevelRoots")
+	}
+
+	proof, err := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleState.Slot, oracleState.Validators, uint64(validatorIndex))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	flag := verifyValidatorAgainstBeaconState(&oracleState, proof, uint64(validatorIndex))
+
+	assert.True(t, flag, "Proof %v failed")
+}
+
+func TestGenerateWithdrawalCredentialsProofUsingCache(t *testing.T) {
 
 	// picking up one random validator index
 	validatorIndex := phase0.ValidatorIndex(REPOINTED_VALIDATOR_INDEX)
