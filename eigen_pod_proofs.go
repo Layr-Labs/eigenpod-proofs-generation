@@ -3,6 +3,7 @@ package eigenpodproofs
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"strconv"
 
@@ -157,7 +158,7 @@ func (epp *EigenPodProofs) loadOrComputeBeaconData(prefix string, slot phase0.Sl
 	}
 
 	// cache the beacon state root
-	epp.oracleStateCache.Set(key(prefix, uint64(slot)), data)
+	epp.oracleStateCache.Set(key(prefix, uint64(slot)), data, cache.WithExpiration(time.Duration(epp.oracleStateCacheExpirySeconds)*time.Second))
 	return data, nil
 }
 
