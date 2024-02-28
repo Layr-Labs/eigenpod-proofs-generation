@@ -129,6 +129,9 @@ func setupSuite() {
 		fmt.Println("error in NewEigenPodProofs", err)
 	}
 
+	epp.ComputeBeaconStateTopLevelRoots(&spec.VersionedBeaconState{Deneb: &oracleState})
+	epp.ComputeBeaconStateRoot(&oracleState)
+
 	executionPayloadFieldRoots, _ = beacon.ComputeExecutionPayloadFieldRootsDeneb(block.Body.ExecutionPayload)
 }
 
@@ -604,6 +607,7 @@ func TestGetHistoricalSummariesBlockRootsProofProofCapellaAgainstDeneb(t *testin
 }
 
 func TestProveValidatorAgainstValidatorList(t *testing.T) {
+	epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
 
 	// picking up one random validator index
 	validatorIndex := phase0.ValidatorIndex(10000)
