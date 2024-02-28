@@ -7,11 +7,10 @@ import (
 
 	"strconv"
 
-	cache "github.com/Code-Hex/go-generics-cache"
-	"github.com/Code-Hex/go-generics-cache/policy/lru"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
+	expirable "github.com/hashicorp/golang-lru/v2/expirable"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
@@ -26,7 +25,7 @@ const (
 
 type EigenPodProofs struct {
 	chainID                       uint64
-	oracleStateCache              *cache.Cache[string, interface{}]
+	oracleStateCache              *expirable.LRU[string, interface{}]
 	oracleStateCacheExpirySeconds int
 }
 
@@ -37,7 +36,7 @@ func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*Eige
 	// note that TTL applies equally to each entry
 	// oracleStateCache := expirable.NewLRU[string, []byte](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 
-	oracleStateCache := cache.New(cache.AsLRU[string, interface{}](lru.WithCapacity(MAX_ORACLE_STATE_CACHE_SIZE)))
+	oracleStateCache := expirable.NewLRU[string, interface{}](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 
 	return &EigenPodProofs{
 		chainID:                       chainID,
@@ -158,7 +157,7 @@ func (epp *EigenPodProofs) loadOrComputeBeaconData(prefix string, slot phase0.Sl
 	}
 
 	// cache the beacon state root
-	epp.oracleStateCache.Set(key(prefix, uint64(slot)), data, cache.WithExpiration(time.Duration(epp.oracleStateCacheExpirySeconds)*time.Second))
+	epp.oracleStateCache.Add(key(prefix, uint64(slot)), data)
 	return data, nil
 }
 
