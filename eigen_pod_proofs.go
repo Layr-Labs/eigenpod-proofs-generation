@@ -4,8 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"strconv"
-
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -24,7 +22,9 @@ const (
 
 type EigenPodProofs struct {
 	chainID                       uint64
-	oracleStateCache              *expirable.LRU[string, interface{}]
+	oracleStateRootCache          *expirable.LRU[uint64, phase0.Root]
+	oracleStateTopLevelRootsCache *expirable.LRU[uint64, *beacon.BeaconStateTopLevelRoots]
+	oracleStateValidatorTreeCache *expirable.LRU[uint64, [][]phase0.Root]
 	oracleStateCacheExpirySeconds int
 }
 
@@ -35,23 +35,26 @@ func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*Eige
 	// note that TTL applies equally to each entry
 	// oracleStateCache := expirable.NewLRU[string, []byte](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 
-	oracleStateCache := expirable.NewLRU[string, interface{}](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
+	oracleStateRootCache := expirable.NewLRU[uint64, phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
+	oracleStateTopLevelRootsCache := expirable.NewLRU[uint64, *beacon.BeaconStateTopLevelRoots](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
+	oracleStateValidatorTreeCache := expirable.NewLRU[uint64, [][]phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 
 	return &EigenPodProofs{
 		chainID:                       chainID,
-		oracleStateCache:              oracleStateCache,
+		oracleStateRootCache:          oracleStateRootCache,
+		oracleStateTopLevelRootsCache: oracleStateTopLevelRootsCache,
+		oracleStateValidatorTreeCache: oracleStateValidatorTreeCache,
 		oracleStateCacheExpirySeconds: oracleStateCacheExpirySeconds,
 	}, nil
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState) (phase0.Root, error) {
-	beaconStateRootInterface, err := epp.loadOrComputeBeaconData(
-		BEACON_STATE_ROOT_PREFIX,
+	beaconStateRoot, err := epp.loadOrComputeBeaconStateRoot(
 		beaconState.Slot,
-		func() (interface{}, error) {
+		func() (phase0.Root, error) {
 			stateRoot, err := beaconState.HashTreeRoot()
 			if err != nil {
-				return nil, err
+				return phase0.Root{}, err
 			}
 			return stateRoot, nil
 		},
@@ -60,12 +63,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 		return phase0.Root{}, err
 	}
 
-	beaconStateRoot, ok := beaconStateRootInterface.([32]byte)
-	if !ok {
-		return phase0.Root{}, errors.New("beacon state root is not of type phase0.Root")
-	}
-
-	return phase0.Root(beaconStateRoot), nil
+	return beaconStateRoot, nil
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
@@ -75,10 +73,9 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 		return nil, err
 	}
 
-	beaconStateTopLevelRootsInterface, err := epp.loadOrComputeBeaconData(
-		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
+	beaconStateTopLevelRoots, err := epp.loadOrComputeBeaconStateTopLevelRoots(
 		slot,
-		func() (interface{}, error) {
+		func() (*beacon.BeaconStateTopLevelRoots, error) {
 			beaconStateTopLevelRoots, err := epp.ComputeVersionedBeaconStateTopLevelRoots(beaconState)
 			if err != nil {
 				return nil, err
@@ -88,11 +85,6 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	beaconStateTopLevelRoots, ok := beaconStateTopLevelRootsInterface.(*beacon.BeaconStateTopLevelRoots)
-	if !ok {
-		return nil, errors.New("beacon state top level roots is not of type *beacon.BeaconStateTopLevelRoots")
 	}
 	return beaconStateTopLevelRoots, err
 }
@@ -109,10 +101,9 @@ func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState 
 }
 
 func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*phase0.Validator) ([][]phase0.Root, error) {
-	validatorTreeInterface, err := epp.loadOrComputeBeaconData(
-		VALIDATOR_TREE_PREFIX,
+	validatorTree, err := epp.loadOrComputeValidatorTree(
 		slot,
-		func() (interface{}, error) {
+		func() ([][]phase0.Root, error) {
 			// compute the validator tree leaves
 			validatorLeaves, err := beacon.ComputeValidatorTreeLeaves(validators)
 			if err != nil {
@@ -133,33 +124,56 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 		return nil, err
 	}
 
-	validatorTree, ok := validatorTreeInterface.([][]phase0.Root)
-	if !ok {
-		return nil, errors.New("validator tree is not of type [][]phase0.Root")
-	}
-
 	return validatorTree, nil
 }
 
-func (epp *EigenPodProofs) loadOrComputeBeaconData(prefix string, slot phase0.Slot, getData func() (interface{}, error)) (interface{}, error) {
-	// check if the data is cached
-	data, found := epp.oracleStateCache.Get(key(prefix, uint64(slot)))
-	// if the data is cached, return it
+func (epp *EigenPodProofs) loadOrComputeBeaconStateRoot(slot phase0.Slot, getData func() (phase0.Root, error)) (phase0.Root, error) {
+	root, found := epp.oracleStateRootCache.Get(uint64(slot))
 	if found {
-		return data, nil
+		return root, nil
 	}
 
 	// compute the data
-	data, err := getData()
+	root, err := getData()
+	if err != nil {
+		return phase0.Root{}, err
+	}
+
+	// cache the beacon state root
+	epp.oracleStateRootCache.Add(uint64(slot), root)
+	return root, nil
+}
+
+func (epp *EigenPodProofs) loadOrComputeBeaconStateTopLevelRoots(slot phase0.Slot, getData func() (*beacon.BeaconStateTopLevelRoots, error)) (*beacon.BeaconStateTopLevelRoots, error) {
+	topLevelRoots, found := epp.oracleStateTopLevelRootsCache.Get(uint64(slot))
+	if found {
+		return topLevelRoots, nil
+	}
+
+	// compute the data
+	topLevelRoots, err := getData()
 	if err != nil {
 		return nil, err
 	}
 
 	// cache the beacon state root
-	epp.oracleStateCache.Add(key(prefix, uint64(slot)), data)
-	return data, nil
+	epp.oracleStateTopLevelRootsCache.Add(uint64(slot), topLevelRoots)
+	return topLevelRoots, nil
 }
 
-func key(prefix string, slot uint64) string {
-	return prefix + strconv.FormatUint(slot, 10)
+func (epp *EigenPodProofs) loadOrComputeValidatorTree(slot phase0.Slot, getData func() ([][]phase0.Root, error)) ([][]phase0.Root, error) {
+	validatorTree, found := epp.oracleStateValidatorTreeCache.Get(uint64(slot))
+	if found {
+		return validatorTree, nil
+	}
+
+	// compute the data
+	validatorTree, err := getData()
+	if err != nil {
+		return nil, err
+	}
+
+	// cache the beacon state root
+	epp.oracleStateValidatorTreeCache.Add(uint64(slot), validatorTree)
+	return validatorTree, nil
 }
