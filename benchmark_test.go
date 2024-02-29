@@ -27,14 +27,16 @@ func BenchmarkComputeBeaconStateRoot(b *testing.B) {
 }
 
 func BenchmarkComputeBeaconStateTopLevelRoots(b *testing.B) {
-	computed, err := epp.ComputeBeaconStateTopLevelRoots(&spec.VersionedBeaconState{Deneb: &oracleState})
+	versionedState := spec.VersionedBeaconState{Deneb: &oracleState}
+	versionedState.Version = spec.DataVersionDeneb
+	computed, err := epp.ComputeBeaconStateTopLevelRoots(&versionedState)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	var cached *beacon.BeaconStateTopLevelRoots
 	for i := 0; i < b.N; i++ {
-		cached, err = epp.ComputeBeaconStateTopLevelRoots(&spec.VersionedBeaconState{Deneb: &oracleState})
+		cached, err = epp.ComputeBeaconStateTopLevelRoots(&versionedState)
 		if err != nil {
 			b.Fatal(err)
 		}
