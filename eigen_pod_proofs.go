@@ -61,12 +61,12 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 		return phase0.Root{}, err
 	}
 
-	beaconStateRoot, ok := beaconStateRootInterface.(phase0.Root)
+	beaconStateRoot, ok := beaconStateRootInterface.([32]byte)
 	if !ok {
 		return phase0.Root{}, errors.New("beacon state root is not of type phase0.Root")
 	}
 
-	return beaconStateRoot, nil
+	return phase0.Root(beaconStateRoot), nil
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
@@ -126,11 +126,15 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 				return nil, err
 			}
 
+			fmt.Println("len validatorLeaves", len(validatorLeaves))
+
 			// compute the validator tree
 			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, beacon.ValidatorListMerkleSubtreeNumLayers)
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Println("len validatorLeaves", len(validatorLeaves))
 
 			// cache the validator tree
 			return validatorTree, nil

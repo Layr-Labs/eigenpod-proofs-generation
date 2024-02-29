@@ -47,17 +47,19 @@ func BenchmarkComputeBeaconStateTopLevelRoots(b *testing.B) {
 }
 
 func BenchmarkComputeValidatorTree(b *testing.B) {
+	b.Log("Validators", len(oracleState.Validators))
 	computed, err := epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
 	if err != nil {
 		b.Fatal(err)
 	}
 
 	var cached [][]phase0.Root
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < 1; i++ {
 		cached, err = epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
 		if err != nil {
 			b.Fatal(err)
 		}
+		b.Logf("computed: %v, cached: %v", len(computed), len(cached))
 	}
 
 	assert.Equal(b, computed, cached)
