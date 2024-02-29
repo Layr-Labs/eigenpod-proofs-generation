@@ -70,15 +70,11 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
-	fmt.Println("HELLO")
 	//get the versioned beacon state's slot
 	slot, err := beaconState.Slot()
 	if err != nil {
-		fmt.Print("ERROR")
 		return nil, err
 	}
-
-	fmt.Println("HELLO 2")
 
 	beaconStateTopLevelRootsInterface, err := epp.loadOrComputeBeaconData(
 		BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX,
@@ -92,7 +88,6 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 		},
 	)
 	if err != nil {
-		fmt.Println("ERROR", err)
 		return nil, err
 	}
 
@@ -100,7 +95,6 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 	if !ok {
 		return nil, errors.New("beacon state top level roots is not of type *beacon.BeaconStateTopLevelRoots")
 	}
-	fmt.Println("END")
 	return beaconStateTopLevelRoots, err
 }
 
