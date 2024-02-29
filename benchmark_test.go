@@ -59,7 +59,6 @@ func BenchmarkComputeValidatorTree(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		b.Logf("computed: %v, cached: %v", len(computed), len(cached))
 	}
 
 	assert.Equal(b, computed, cached)
