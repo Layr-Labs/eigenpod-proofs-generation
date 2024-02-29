@@ -129,9 +129,6 @@ func setupSuite() {
 		fmt.Println("error in NewEigenPodProofs", err)
 	}
 
-	epp.ComputeBeaconStateTopLevelRoots(&spec.VersionedBeaconState{Deneb: &oracleState})
-	epp.ComputeBeaconStateRoot(&oracleState)
-
 	executionPayloadFieldRoots, _ = beacon.ComputeExecutionPayloadFieldRootsDeneb(block.Body.ExecutionPayload)
 }
 
