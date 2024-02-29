@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/attestantio/go-eth2-client/spec"
+	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,11 +27,14 @@ func BenchmarkComputeValidatorTree(b *testing.B) {
 		b.Fatal(err)
 	}
 
+	var cached [][]phase0.Root
 	for i := 0; i < b.N; i++ {
-		cached, err := epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
+		cached, err = epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
 		if err != nil {
 			b.Fatal(err)
 		}
-		assert.Equal(b, computed, cached)
 	}
+
+	assert.Equal(b, computed, cached)
+
 }
