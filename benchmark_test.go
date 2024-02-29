@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/attestantio/go-eth2-client/spec"
+	"github.com/stretchr/testify/assert"
 )
 
 func BenchmarkComputeBeaconStateRoot(b *testing.B) {
@@ -20,7 +21,16 @@ func BenchmarkComputeBeaconStateTopLevelRoots(b *testing.B) {
 }
 
 func BenchmarkComputeValidatorTree(b *testing.B) {
+	computed, err := epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	for i := 0; i < b.N; i++ {
-		_, _ = epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
+		cached, err := epp.ComputeValidatorTree(oracleState.Slot, oracleState.Validators)
+		if err != nil {
+			b.Fatal(err)
+		}
+		assert.Equal(b, computed, cached)
 	}
 }
