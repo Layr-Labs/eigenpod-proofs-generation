@@ -2,7 +2,6 @@ package eigenpodproofs
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"strconv"
@@ -120,15 +119,11 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 				return nil, err
 			}
 
-			fmt.Println("len validatorLeaves", len(validatorLeaves))
-
 			// compute the validator tree
 			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, beacon.ValidatorListMerkleSubtreeNumLayers)
 			if err != nil {
 				return nil, err
 			}
-
-			fmt.Println("len validatorLeaves", len(validatorLeaves))
 
 			// cache the validator tree
 			return validatorTree, nil
