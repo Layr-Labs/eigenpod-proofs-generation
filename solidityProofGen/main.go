@@ -18,7 +18,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
-	generation "github.com/Layr-Labs/eigenpod-proofs-generation/generation"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 )
 
 var (
@@ -144,7 +144,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 	var versionedState spec.VersionedBeaconState
 	versionedState.Deneb = &state
 
-	stateRootProof, validatorFieldsProof, _ := generation.ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
+	stateRootProof, validatorFieldsProof, _ := ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 
 	proofs := WithdrawalCredentialProofs{
 		ValidatorIndex:                         uint64(validatorIndex),
@@ -394,4 +394,42 @@ func GenerateWithdrawalFieldsProofCapella(index, historicalSummariesIndex, block
 	_ = os.WriteFile(outputFile, proofData, 0644)
 
 	return nil
+}
+
+func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndex uint64) (*eigenpodproofs.StateRootProof, common.Proof, error) {
+	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
+	if err != nil {
+		return nil, nil, err
+	}
+	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRootProof := &eigenpodproofs.StateRootProof{}
+	// Get beacon state top level roots
+	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get beacon state root. TODO: Combine this cheaply with compute beacon state top level roots
+	stateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	validatorFieldsProof, err := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return stateRootProof, validatorFieldsProof, nil
 }

@@ -1,4 +1,4 @@
-package generation
+package main
 
 import (
 	"flag"
