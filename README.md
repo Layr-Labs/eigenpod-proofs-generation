@@ -118,7 +118,7 @@ Here is a breakdown of the inputs here:
 historical_summary_state.slot = `SLOTS_PER_HISTORICAL_ROOT` * (withdrawal_slot // `SLOTS_PER_HISTORICAL_ROOT`) + 1.
 
 - blockHeaderFile  - blockHeader from the withdrawal slot
-- blockBodyFile" Is the block body file from the withdrawal slot
+- blockBodyFile Is the block body file from the withdrawal slot
 - withdrawalIndex Is the index of the withdrawal within the block (between 0 and 15)
 
 
@@ -157,7 +157,7 @@ Here is an example of running this command with the sample state/block files in 
 - `validatorIndex` is the index of the validator being proven for in the consensus layer
 - `outputFile` is the location where the generated proof will be written to
 - `chainID` is the chainID (either goerli = 5 or mainnet = 1) being generated for.
-- `historicalSummariesIndex` refer to *What Are Historical Summary Proofs?* secion.  This is the index of the historical summary we're gonna use to prove the withdrawal
+- `historicalSummariesIndex` refer to *What Are Historical Summary Proofs?* section.  This is the index of the historical summary we're gonna use to prove the withdrawal
 - `historicalSummaryStateFile` state file corresponding to the `state_summary_root` stored in the historical summary we're gonna use.
 - `blockHeaderIndex` index of the block header that contains the withdrawal being proven
 - `blockHeaderFile` file containing the block header that contains the withdrawal being proven

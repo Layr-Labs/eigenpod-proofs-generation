@@ -26,7 +26,7 @@ const (
 	SlotIndex      = uint64(0)
 	stateRootIndex = uint64(3)
 
-	// in the historical summary coontainer, the block root summary is at index 0
+	// in the historical summary container, the block root summary is at index 0
 	BlockSummaryRootIndex = uint64(0)
 )
 
