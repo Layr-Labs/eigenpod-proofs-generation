@@ -53,7 +53,7 @@ type StateRootProof struct {
 
 const FIRST_CAPELLA_SLOT_GOERLI = uint64(5193728)
 const FIRST_CAPELLA_SLOT_MAINNET = uint64(6209536)
-const FIRST_CAPELLA_SLOT_HOLESKY = uint64(0)
+const FIRST_CAPELLA_SLOT_HOLESKY = uint64(8192)
 
 func IsProvableWithdrawal(latestOracleBeaconSlot, withdrawalSlot uint64) bool {
 	return latestOracleBeaconSlot > beacon.SlotsPerHistoricalRoot+withdrawalSlot
