@@ -29,7 +29,7 @@ type EigenPodProofs struct {
 }
 
 func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*EigenPodProofs, error) {
-	if chainID != 1 && chainID != 5 {
+	if chainID != 1 && chainID != 5 && chainID != 17000 {
 		return nil, errors.New("chainID not supported")
 	}
 	// note that TTL applies equally to each entry
