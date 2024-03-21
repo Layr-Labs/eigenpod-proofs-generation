@@ -108,14 +108,14 @@ Here is a breakdown of the inputs here:
   ```
   (withdrawal_slot - FIRST_CAPELLA_SLOT) // SLOTS_PER_HISTORICAL_ROOT
   ```
-  where `FIRST_CAPELLA_SLOT` on mainnet is 6209536 and `SLOTS_PER_HISTORICAL_ROOT` is 8192. Note that `withdrawal_slot` is the slot number of the block containing the withdrawal you want to prove.
+  where `FIRST_CAPELLA_SLOT` on [Mainnet](https://twitter.com/TimBeiko/status/1755597708520501672) is 6209536, 5193728 on [Goerli](https://twitter.com/TimBeiko/status/1633554636711034880), 8192 on [Holesky](https://github.com/eth-clients/holesky?tab=readme-ov-file#metadata) and `SLOTS_PER_HISTORICAL_ROOT` is 8192. Note that `withdrawal_slot` is the slot number of the block containing the withdrawal you want to prove.
 - "blockHeaderIndex" -  this is the blockheaderRoot's index within the historical summaries entry, which can be calculated like this:
   ```
   withdrawal_slot mod SLOTS_PER_HISTORICAL_ROOT
   ```
 
 - "historicalSummaryStateFile" This is the beacon state at the slot such that:
-historical_summary_state.slot = `SLOTS_PER_HISTORICAL_ROOT` * (withdrawal_slot // `SLOTS_PER_HISTORICAL_ROOT`) + 1.
+historical_summary_state.slot = `SLOTS_PER_HISTORICAL_ROOT` * ((withdrawal_slot // `SLOTS_PER_HISTORICAL_ROOT`) + 1).
 
 - blockHeaderFile  - blockHeader from the withdrawal slot
 - blockBodyFile" Is the block body file from the withdrawal slot
@@ -168,9 +168,4 @@ Here is an example of running this command with the sample state/block files in 
 
 # What Are Historical Summary Proofs?
 Every block contains 16 withdrawals and any given beacon state stores the last 8192 block roots.  Thus if a withdrawal was within the last 8192 blocks, we can prove any withdrawal against one of the block roots, and then prove that block root against the state root.  However, what happens when we need to prove something from further in the past than 8192 blocks? That is where historical summaries come in. 
-	Every 8192 blocks, the state transition function takes a “snapshot” of the state.block_roots that are stored in the beacon state by taking the hash tree root of the state.block_roots, and adding that root to state.historical_summaries.  Then, state.block_roots is cleared and the next 8192 block_roots will be added to state.block_roots.  Thus, to prove an old withdrawal, we need to take the extra step of retrieving the state at the slot at which the snapshot that contains the root of the block when the withdrawal was included. Refer [here](https://github.com/ethereum/consensus-specs/blob/dev/specs/capella/beacon-chain.md#historicalsummary) for the beacon chain specs for historical summaries. 
-
-
-
-
-
+	Every 8192 blocks, the state transition function takes a “snapshot” of the state.block_roots that are stored in the beacon state by taking the hash tree root of the state.block_roots, and adding that root to state.historical_summaries.  Then, state.block_roots is cleared and the next 8192 block_roots will be added to state.block_roots.  Thus, to prove an old withdrawal, we need to take the extra step of retrieving the state at the slot at which the snapshot that contains the root of the block when the withdrawal was included. Refer [here](https://github.com/ethereum/consensus-specs/blob/dev/specs/capella/beacon-chain.md#historicalsummary) for the beacon chain specs for historical summaries.
