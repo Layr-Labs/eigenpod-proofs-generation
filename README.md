@@ -111,14 +111,14 @@ Here is a breakdown of the inputs here:
   where `FIRST_CAPELLA_SLOT` on [Mainnet](https://twitter.com/TimBeiko/status/1755597708520501672) is 6209536, 5193728 on [Goerli](https://twitter.com/TimBeiko/status/1633554636711034880), 950272 on [Hoelsky](https://blog.ethereum.org/2024/01/24/sepolia-holesky-dencun) and `SLOTS_PER_HISTORICAL_ROOT` is 8192. Note that `withdrawal_slot` is the slot number of the block containing the withdrawal you want to prove.
 - "blockHeaderIndex" -  this is the blockheaderRoot's index within the historical summaries entry, which can be calculated like this:
   ```
-  SLOTS_PER_HISTORICAL_ROOT - 1
+  withdrawal_slot mod SLOTS_PER_HISTORICAL_ROOT
   ```
 
 - "historicalSummaryStateFile" This is the beacon state at the slot such that:
 historical_summary_state.slot = `SLOTS_PER_HISTORICAL_ROOT` * ((withdrawal_slot // `SLOTS_PER_HISTORICAL_ROOT`) + 1).
 
-- blockHeaderFile  - blockHeader from the withdrawal slot, is such that: `historical_summary_state.slot` - 1
-- blockBodyFile" Is the block body file from the withdrawal slot, is such that `historical_summary_state.slot` - 1
+- blockHeaderFile  - blockHeader from the withdrawal slot
+- blockBodyFile" Is the block body file from the withdrawal slot
 - withdrawalIndex Is the index of the withdrawal within the block (between 0 and 15)
 
 
