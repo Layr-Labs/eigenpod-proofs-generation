@@ -108,7 +108,7 @@ Here is a breakdown of the inputs here:
   ```
   (withdrawal_slot - FIRST_CAPELLA_SLOT) // SLOTS_PER_HISTORICAL_ROOT
   ```
-  where `FIRST_CAPELLA_SLOT` on [Mainnet](https://twitter.com/TimBeiko/status/1755597708520501672) is 6209536, 5193728 on [Goerli](https://twitter.com/TimBeiko/status/1633554636711034880), 8192 on [Hoelsky](https://github.com/eth-clients/holesky?tab=readme-ov-file#metadata) and `SLOTS_PER_HISTORICAL_ROOT` is 8192. Note that `withdrawal_slot` is the slot number of the block containing the withdrawal you want to prove.
+  where `FIRST_CAPELLA_SLOT` on [Mainnet](https://twitter.com/TimBeiko/status/1755597708520501672) is 6209536, 5193728 on [Goerli](https://twitter.com/TimBeiko/status/1633554636711034880), 8192 on [Holesky](https://github.com/eth-clients/holesky?tab=readme-ov-file#metadata) and `SLOTS_PER_HISTORICAL_ROOT` is 8192. Note that `withdrawal_slot` is the slot number of the block containing the withdrawal you want to prove.
 - "blockHeaderIndex" -  this is the blockheaderRoot's index within the historical summaries entry, which can be calculated like this:
   ```
   withdrawal_slot mod SLOTS_PER_HISTORICAL_ROOT
