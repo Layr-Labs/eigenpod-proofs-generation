@@ -96,7 +96,7 @@ func ProveBlockRootAgainstBeaconStateViaHistoricalSummaries(beaconStateTopLevelR
 		return nil, err
 	}
 
-	// historical block roots are incklude the really old block root you wanna prove
+	// historical block roots are include the really old block root you wanna prove
 	beaconBlockHeaderRootsProof, err := common.GetProof(historicalBlockRoots, blockRootIndex, BlockRootsMerkleSubtreeNumLayers)
 	if err != nil {
 		return nil, err

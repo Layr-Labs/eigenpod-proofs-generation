@@ -22,7 +22,7 @@ func main() {
 	outputFile := flag.String("outputFile", "", "Output file")
 	chainID := flag.Uint64("chainID", 0, "Chain ID")
 
-	//WithdrawaProof specific flags
+	//WithdrawProof specific flags
 	historicalSummariesIndex := flag.Uint64("historicalSummariesIndex", 0, "Historical summaries index")
 	blockHeaderIndex := flag.Uint64("blockHeaderIndex", 0, "Block header index")
 	historicalSummaryStateFile := flag.String("historicalSummaryStateFile", "", "Historical summary state file")
