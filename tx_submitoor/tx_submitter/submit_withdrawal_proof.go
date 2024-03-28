@@ -1,0 +1,194 @@
+package txsubmitter
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/tx_submitoor/utils"
+	contractEigenPod "github.com/Layr-Labs/eigensdk-go/contracts/bindings/EigenPod"
+	"github.com/attestantio/go-eth2-client/spec"
+	"github.com/attestantio/go-eth2-client/spec/deneb"
+	"github.com/attestantio/go-eth2-client/spec/phase0"
+	common "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/rs/zerolog/log"
+)
+
+type EigenPodProofTxSubmitter struct {
+	chainClient    *ChainClient
+	eigenPodProofs *eigenpodproofs.EigenPodProofs
+}
+
+type WithdrawalProofConfig struct {
+	EigenPodAddress common.Address `json:"EIGENPOD_ADDRESS,required"`
+
+	BeaconStateFiles struct {
+		OracleStateFile       string `json:"ORACLE_STATE_FILE,required"`
+		OracleBlockHeaderFile string `json:"ORACLE_BLOCK_HEADER_FILE,required"`
+	}
+
+	WithdrawalDetails struct {
+		ValidatorIndices            []uint64 `json:"VALIDATOR_INDICES,required"`
+		WithdrawalBlockHeaderFiles  []string `json:"WITHDRAWAL_BLOCK_HEADER_FILES,required"`
+		WithdrawalBlockBodyFiles    []string `json:"WITHDRAWAL_BLOCK_BODY_FILES,required"`
+		HistoricalSummaryStateFiles []string `json:"HISTORICAL_SUMMARY_STATE_FILES,required"`
+	}
+}
+
+func NewEigenPodProofTxSubmitter(chainClient ChainClient, epp eigenpodproofs.EigenPodProofs) *EigenPodProofTxSubmitter {
+
+	return &EigenPodProofTxSubmitter{
+		chainClient:    &chainClient,
+		eigenPodProofs: &epp,
+	}
+}
+
+func (u *EigenPodProofTxSubmitter) generateVerifyAndProcessWithdrawalsTx(
+	eigenpod common.Address,
+	versionedOracleState *spec.VersionedBeaconState,
+	oracleBeaconBlockHeader *phase0.BeaconBlockHeader,
+	historicalSummaryStateBlockRoots [][]phase0.Root,
+	withdrawalBlocks []*spec.VersionedSignedBeaconBlock,
+	validatorIndices []uint64,
+) (*types.Transaction, error) {
+	withdrawalsProof, err := u.eigenPodProofs.ProveWithdrawals(
+		oracleBeaconBlockHeader,
+		versionedOracleState,
+		historicalSummaryStateBlockRoots,
+		withdrawalBlocks,
+		validatorIndices)
+	if err != nil {
+		return nil, err
+	}
+	withdrawalProofs := make([]contractEigenPod.BeaconChainProofsWithdrawalProof, len(withdrawalsProof.WithdrawalProofs))
+	for i, v := range withdrawalsProof.WithdrawalProofs {
+		withdrawalProofs[i] = contractEigenPod.BeaconChainProofsWithdrawalProof{
+			WithdrawalProof:                 v.WithdrawalProof.ToByteSlice(),
+			SlotProof:                       v.SlotProof.ToByteSlice(),
+			ExecutionPayloadProof:           v.ExecutionPayloadProof.ToByteSlice(),
+			TimestampProof:                  v.TimestampProof.ToByteSlice(),
+			HistoricalSummaryBlockRootProof: v.HistoricalSummaryBlockRootProof.ToByteSlice(),
+			BlockRootIndex:                  v.BlockRootIndex,
+			HistoricalSummaryIndex:          v.HistoricalSummaryIndex,
+			WithdrawalIndex:                 v.WithdrawalIndex,
+			BlockRoot:                       v.BlockRoot,
+			SlotRoot:                        v.SlotRoot,
+			TimestampRoot:                   v.TimestampRoot,
+			ExecutionPayloadRoot:            v.ExecutionPayloadRoot,
+		}
+	}
+
+	var validatorFields [][][32]byte
+	for _, v := range withdrawalsProof.ValidatorFields {
+		validatorFields = append(validatorFields, convertProofsToBytes32Array(v))
+	}
+	var withdrawalFields [][][32]byte
+	for _, w := range withdrawalsProof.WithdrawalFields {
+		withdrawalFields = append(withdrawalFields, convertProofsToBytes32Array(w))
+	}
+	var validatorFieldsProofs [][]byte
+	for _, v := range withdrawalsProof.ValidatorFieldsProofs {
+		validatorFieldsProofs = append(validatorFieldsProofs, v.ToByteSlice())
+	}
+
+	eigenPod, err := contractEigenPod.NewContractEigenPod(eigenpod, u.chainClient.Client)
+	if err != nil {
+		return nil, err
+	}
+
+	// update validator balance
+	return eigenPod.VerifyAndProcessWithdrawals(
+		u.chainClient.NoSendTransactOpts,
+		withdrawalsProof.OracleTimestamp,
+		contractEigenPod.BeaconChainProofsStateRootProof{
+			BeaconStateRoot: withdrawalsProof.StateRootProof.BeaconStateRoot,
+			Proof:           withdrawalsProof.StateRootProof.StateRootProof.ToByteSlice(),
+		},
+		withdrawalProofs,
+		validatorFieldsProofs,
+		validatorFields,
+		withdrawalFields,
+	)
+
+}
+
+func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawalProofConfig string) error {
+	ctx := context.Background()
+	cfg, err := parseWithdrawalProofConfig(withdrawalProofConfig)
+	if err != nil {
+		log.Debug().AnErr("Error with parsing withdrawal proof config file", err)
+		return err
+	}
+
+	oracleBeaconBlockHeader, err := utils.ExtractBlockHeader(cfg.BeaconStateFiles.OracleBlockHeaderFile)
+	if err != nil {
+		log.Debug().AnErr("Error with parsing header file", err)
+		return err
+	}
+
+	oracleStateJSON, err := utils.ParseDenebStateJSONFile(cfg.BeaconStateFiles.OracleStateFile)
+	var oracleState deneb.BeaconState
+	if err != nil {
+		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
+		return err
+	}
+	utils.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+
+	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+
+	historicalSummaryStateBlockRoots := make([][]phase0.Root, 0)
+	for _, file := range cfg.WithdrawalDetails.HistoricalSummaryStateFiles {
+		historicalSummaryStateJSON, err := utils.ParseDenebStateJSONFile(file)
+		var historicalSummaryState deneb.BeaconState
+		if err != nil {
+			log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
+			return err
+		}
+		utils.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+
+		historicalSummaryStateBlockRoots = append(historicalSummaryStateBlockRoots, historicalSummaryState.BlockRoots)
+	}
+
+	withdrawalBlocks := make([]*spec.VersionedSignedBeaconBlock, 0)
+	for _, file := range cfg.WithdrawalDetails.WithdrawalBlockHeaderFiles {
+		block, err := utils.ExtractBlock(file)
+		if err != nil {
+			log.Debug().AnErr("Error with parsing header file", err)
+			return err
+		}
+		versionedSignedBlock, err := beacon.CreateVersionedSignedBlock(block)
+		withdrawalBlocks = append(withdrawalBlocks, &versionedSignedBlock)
+	}
+
+	withdrawalTx, err := u.generateVerifyAndProcessWithdrawalsTx(cfg.EigenPodAddress, &versionedOracleState, &oracleBeaconBlockHeader, historicalSummaryStateBlockRoots, withdrawalBlocks, cfg.WithdrawalDetails.ValidatorIndices)
+	_, err = u.chainClient.EstimateGasPriceAndLimitAndSendTx(ctx, withdrawalTx, "withdraw")
+	if err != nil {
+		return fmt.Errorf("failed to execute withdrawal transaction: %w", err)
+	}
+	return nil
+}
+
+func parseWithdrawalProofConfig(filePath string) (*WithdrawalProofConfig, error) {
+
+	data, err := ioutil.ReadFile(filePath)
+
+	var cfg WithdrawalProofConfig
+	err = json.Unmarshal(data, &cfg)
+	if err != nil {
+		log.Debug().Msg("error with JSON unmarshalling")
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func convertProofsToBytes32Array(proof []eigenpodproofs.Bytes32) [][32]byte {
+	proofBytes32 := make([][32]byte, len(proof))
+	for i, e := range proof {
+		proofBytes32[i] = e
+	}
+	return proofBytes32
+}
