@@ -47,7 +47,7 @@ func NewEigenPodProofTxSubmitter(chainClient ChainClient, epp eigenpodproofs.Eig
 	}
 }
 
-func (u *EigenPodProofTxSubmitter) generateVerifyAndProcessWithdrawalsTx(
+func (u *EigenPodProofTxSubmitter) GenerateVerifyAndProcessWithdrawalsTx(
 	eigenpod common.Address,
 	versionedOracleState *spec.VersionedBeaconState,
 	oracleBeaconBlockHeader *phase0.BeaconBlockHeader,
@@ -116,25 +116,25 @@ func (u *EigenPodProofTxSubmitter) generateVerifyAndProcessWithdrawalsTx(
 
 }
 
-func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawalProofConfig string) error {
+func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawalProofConfig string, submitTransaction bool) ([]byte, error) {
 	ctx := context.Background()
 	cfg, err := parseWithdrawalProofConfig(withdrawalProofConfig)
 	if err != nil {
 		log.Debug().AnErr("Error with parsing withdrawal proof config file", err)
-		return err
+		return nil, err
 	}
 
 	oracleBeaconBlockHeader, err := utils.ExtractBlockHeader(cfg.BeaconStateFiles.OracleBlockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
-		return err
+		return nil, err
 	}
 
 	oracleStateJSON, err := utils.ParseDenebStateJSONFile(cfg.BeaconStateFiles.OracleStateFile)
 	var oracleState deneb.BeaconState
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
-		return err
+		return nil, err
 	}
 	utils.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
@@ -146,7 +146,7 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 		var historicalSummaryState deneb.BeaconState
 		if err != nil {
 			log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
-			return err
+			return nil, err
 		}
 		utils.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 
@@ -158,18 +158,25 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 		block, err := utils.ExtractBlock(file)
 		if err != nil {
 			log.Debug().AnErr("Error with parsing header file", err)
-			return err
+			return nil, err
 		}
 		versionedSignedBlock, err := beacon.CreateVersionedSignedBlock(block)
 		withdrawalBlocks = append(withdrawalBlocks, &versionedSignedBlock)
 	}
 
-	withdrawalTx, err := u.generateVerifyAndProcessWithdrawalsTx(cfg.EigenPodAddress, &versionedOracleState, &oracleBeaconBlockHeader, historicalSummaryStateBlockRoots, withdrawalBlocks, cfg.WithdrawalDetails.ValidatorIndices)
-	_, err = u.chainClient.EstimateGasPriceAndLimitAndSendTx(ctx, withdrawalTx, "withdraw")
+	withdrawalTx, err := u.GenerateVerifyAndProcessWithdrawalsTx(cfg.EigenPodAddress, &versionedOracleState, &oracleBeaconBlockHeader, historicalSummaryStateBlockRoots, withdrawalBlocks, cfg.WithdrawalDetails.ValidatorIndices)
 	if err != nil {
-		return fmt.Errorf("failed to execute withdrawal transaction: %w", err)
+		log.Debug().AnErr("Error with generating withdrawal transaction", err)
+		return nil, err
 	}
-	return nil
+
+	if !submitTransaction {
+		_, err = u.chainClient.EstimateGasPriceAndLimitAndSendTx(ctx, withdrawalTx, "withdraw")
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute withdrawal transaction: %w", err)
+		}
+	}
+	return withdrawalTx.Data(), nil
 }
 
 func parseWithdrawalProofConfig(filePath string) (*WithdrawalProofConfig, error) {

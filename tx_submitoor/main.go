@@ -28,6 +28,7 @@ func main() {
 	// Defining flags for all the parameters
 	command := flag.String("command", "", "The command to execute")
 	withdrawalProofConfigFile := flag.String("withdrawalProofConfig", "", "Withdrawal proof config file")
+	submitTransaction := flag.Bool("submitTransaction", false, "Submit transaction to the chain")
 
 	ethClient, err := ethclient.Dial(cfg.RPC)
 	if err != nil {
@@ -52,7 +53,7 @@ func main() {
 	// Handling commands based on the 'command' flag
 	switch *command {
 	case "WithdrawalFieldsProof":
-		submitter.SubmitVerifyAndProcessWithdrawalsTx(*withdrawalProofConfigFile)
+		submitter.SubmitVerifyAndProcessWithdrawalsTx(*withdrawalProofConfigFile, submitTransaction)
 
 	default:
 		log.Debug().Str("Unknown command:", *command)
