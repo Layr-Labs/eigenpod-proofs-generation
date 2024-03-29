@@ -13,10 +13,10 @@ import (
 
 type Config struct {
 	RPC          string `json:"RPC_URL"`
-	PrivateKey   string `json:"PRIVATE_KEY,required"`
+	PrivateKey   string `json:"PRIVATE_KEY"`
 	ChainID      uint64 `json:"CHAIN_ID,required"`
 	CacheExpire  int    `json:"CACHE_EXPIRE" envDefault:"1000"`
-	BeaconAPIURL string `json:"BEACON_API_URL,required"`
+	BeaconAPIURL string `json:"BEACON_API_URL"`
 }
 
 func main() {
