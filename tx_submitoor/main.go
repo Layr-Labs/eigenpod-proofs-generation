@@ -53,7 +53,11 @@ func main() {
 	// Handling commands based on the 'command' flag
 	switch *command {
 	case "WithdrawalFieldsProof":
-		submitter.SubmitVerifyAndProcessWithdrawalsTx(*withdrawalProofConfigFile, submitTransaction)
+		calldata, err := submitter.SubmitVerifyAndProcessWithdrawalsTx(*withdrawalProofConfigFile, *submitTransaction)
+		if err != nil {
+			log.Panic().Msgf("failed to submit withdrawal proof: %s", err)
+		}
+		log.Info().Msgf("Withdrawal proof submitted with calldata: %s", calldata)
 
 	default:
 		log.Debug().Str("Unknown command:", *command)
