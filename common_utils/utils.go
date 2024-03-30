@@ -1,21 +1,22 @@
-package main
+package commonutils
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -249,8 +250,8 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 	return inputData.Data.Header.Message, nil
 }
 
-func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
-	fileBytes, err := os.ReadFile(blockHeaderFile)
+func ExtractBlock(blockFile string) (deneb.BeaconBlock, error) {
+	fileBytes, err := os.ReadFile(blockFile)
 	if err != nil {
 		return deneb.BeaconBlock{}, err
 	}
@@ -263,6 +264,27 @@ func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
 
 	// Extract block body
 	return data.Data.Message, nil
+}
+
+func ExtractSignedDenebBlock(signedBlockFile string) (*spec.VersionedSignedBeaconBlock, error) {
+	fileBytes, err := os.ReadFile(signedBlockFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode JSON
+	var data InputDataBlock
+	if err := json.Unmarshal(fileBytes, &data); err != nil {
+		return nil, err
+	}
+
+	signedBlock, err := beacon.CreateVersionedSignedBlock(data.Data.Message)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract block body
+	return &signedBlock, nil
 }
 
 func GetWithdrawalFields(w *capella.Withdrawal) []string {
@@ -286,6 +308,15 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	hh.Reset()
 
 	return withdrawalFields
+}
+
+func GetWithdrawalIndex(validatorIndex uint64, withdrawals []*capella.Withdrawal) uint64 {
+	for i := 0; i < len(withdrawals); i++ {
+		if uint64(withdrawals[i].ValidatorIndex) == validatorIndex {
+			return uint64(i)
+		}
+	}
+	return math.MaxUint64
 }
 
 func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {

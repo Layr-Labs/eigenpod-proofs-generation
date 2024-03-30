@@ -8,7 +8,7 @@ import (
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/tx_submitoor/utils"
+	commonutils "github.com/Layr-Labs/eigenpod-proofs-generation/common_utils"
 	contractEigenPod "github.com/Layr-Labs/eigensdk-go/contracts/bindings/EigenPod"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
@@ -124,38 +124,38 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 		return nil, err
 	}
 
-	oracleBeaconBlockHeader, err := utils.ExtractBlockHeader(cfg.BeaconStateFiles.OracleBlockHeaderFile)
+	oracleBeaconBlockHeader, err := commonutils.ExtractBlockHeader(cfg.BeaconStateFiles.OracleBlockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
 		return nil, err
 	}
 
-	oracleStateJSON, err := utils.ParseDenebStateJSONFile(cfg.BeaconStateFiles.OracleStateFile)
+	oracleStateJSON, err := commonutils.ParseDenebStateJSONFile(cfg.BeaconStateFiles.OracleStateFile)
 	var oracleState deneb.BeaconState
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
 		return nil, err
 	}
-	utils.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+	commonutils.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 
 	historicalSummaryStateBlockRoots := make([][]phase0.Root, 0)
 	for _, file := range cfg.WithdrawalDetails.HistoricalSummaryStateFiles {
-		historicalSummaryStateJSON, err := utils.ParseDenebStateJSONFile(file)
+		historicalSummaryStateJSON, err := commonutils.ParseDenebStateJSONFile(file)
 		var historicalSummaryState deneb.BeaconState
 		if err != nil {
 			log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
 			return nil, err
 		}
-		utils.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+		commonutils.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
 
 		historicalSummaryStateBlockRoots = append(historicalSummaryStateBlockRoots, historicalSummaryState.BlockRoots)
 	}
 
 	withdrawalBlocks := make([]*spec.VersionedSignedBeaconBlock, 0)
 	for _, file := range cfg.WithdrawalDetails.WithdrawalBlockHeaderFiles {
-		block, err := utils.ExtractBlock(file)
+		block, err := commonutils.ExtractBlock(file)
 		if err != nil {
 			log.Debug().AnErr("Error with parsing header file", err)
 			return nil, err

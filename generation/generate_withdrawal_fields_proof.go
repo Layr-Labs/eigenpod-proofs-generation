@@ -9,6 +9,7 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	commonutils "github.com/Layr-Labs/eigenpod-proofs-generation/common_utils"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -39,7 +40,7 @@ func GenerateWithdrawalFieldsProof(
 	var withdrawalBlockHeader phase0.BeaconBlockHeader
 	var withdrawalBlock deneb.BeaconBlock
 
-	oracleBeaconBlockHeader, err := ExtractBlockHeader(oracleBlockHeaderFile)
+	oracleBeaconBlockHeader, err := commonutils.ExtractBlockHeader(oracleBlockHeaderFile)
 
 	root, _ := oracleBeaconBlockHeader.HashTreeRoot()
 	fmt.Println("oracleBeaconBlockHeader: ", root)
@@ -49,27 +50,27 @@ func GenerateWithdrawalFieldsProof(
 		return err
 	}
 
-	stateJSON, err := ParseDenebStateJSONFile(stateFile)
+	stateJSON, err := commonutils.ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
 		return err
 	}
-	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
+	commonutils.ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
-	historicalSummaryJSON, err := ParseDenebStateJSONFile(historicalSummaryStateFile)
+	historicalSummaryJSON, err := commonutils.ParseDenebStateJSONFile(historicalSummaryStateFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
 		return err
 	}
-	ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
+	commonutils.ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
 
-	withdrawalBlockHeader, err = ExtractBlockHeader(blockHeaderFile)
+	withdrawalBlockHeader, err = commonutils.ExtractBlockHeader(blockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing header file", err)
 		return err
 	}
 
-	withdrawalBlock, err = ExtractBlock(blockBodyFile)
+	withdrawalBlock, err = commonutils.ExtractBlock(blockBodyFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing body file", err)
 		return err
@@ -149,15 +150,15 @@ func GenerateWithdrawalFieldsProof(
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with ProveValidatorAgainstBeaconState", err)
 		return err
 	}
-	proofs := WithdrawalProofs{
-		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProofAgainstBlockHeader),
-		SlotAgainstLatestBlockHeaderProof:      ConvertBytesToStrings(slotProofAgainstBlockHeader),
+	proofs := commonutils.WithdrawalProofs{
+		StateRootAgainstLatestBlockHeaderProof: commonutils.ConvertBytesToStrings(stateRootProofAgainstBlockHeader),
+		SlotAgainstLatestBlockHeaderProof:      commonutils.ConvertBytesToStrings(slotProofAgainstBlockHeader),
 		BeaconStateRoot:                        "0x" + hex.EncodeToString(beaconStateRoot[:]),
-		WithdrawalProof:                        ConvertBytesToStrings(withdrawalProof.WithdrawalProof),
-		SlotProof:                              ConvertBytesToStrings(withdrawalProof.SlotProof),
-		ExecutionPayloadProof:                  ConvertBytesToStrings(withdrawalProof.ExecutionPayloadProof),
-		TimestampProof:                         ConvertBytesToStrings(withdrawalProof.TimestampProof),
-		HistoricalSummaryProof:                 ConvertBytesToStrings(withdrawalProof.HistoricalSummaryBlockRootProof),
+		WithdrawalProof:                        commonutils.ConvertBytesToStrings(withdrawalProof.WithdrawalProof),
+		SlotProof:                              commonutils.ConvertBytesToStrings(withdrawalProof.SlotProof),
+		ExecutionPayloadProof:                  commonutils.ConvertBytesToStrings(withdrawalProof.ExecutionPayloadProof),
+		TimestampProof:                         commonutils.ConvertBytesToStrings(withdrawalProof.TimestampProof),
+		HistoricalSummaryProof:                 commonutils.ConvertBytesToStrings(withdrawalProof.HistoricalSummaryBlockRootProof),
 		BlockHeaderRootIndex:                   beaconBlockHeaderToVerifyIndex,
 		HistoricalSummaryIndex:                 uint64(historicalSummariesIndex),
 		WithdrawalIndex:                        withdrawalIndex,
@@ -165,9 +166,9 @@ func GenerateWithdrawalFieldsProof(
 		SlotRoot:                               "0x" + hex.EncodeToString(slotRoot[:]),
 		TimestampRoot:                          "0x" + hex.EncodeToString(timestampRoot[:]),
 		ExecutionPayloadRoot:                   "0x" + hex.EncodeToString(executionPayloadRoot[:]),
-		ValidatorProof:                         ConvertBytesToStrings(validatorProof),
-		ValidatorFields:                        GetValidatorFields(state.Validators[validatorIndex]),
-		WithdrawalFields:                       GetWithdrawalFields(withdrawalBlock.Body.ExecutionPayload.Withdrawals[withdrawalIndex]),
+		ValidatorProof:                         commonutils.ConvertBytesToStrings(validatorProof),
+		ValidatorFields:                        commonutils.GetValidatorFields(state.Validators[validatorIndex]),
+		WithdrawalFields:                       commonutils.GetWithdrawalFields(withdrawalBlock.Body.ExecutionPayload.Withdrawals[withdrawalIndex]),
 	}
 
 	proofData, err := json.Marshal(proofs)
