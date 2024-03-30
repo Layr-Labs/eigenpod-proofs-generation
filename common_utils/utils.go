@@ -323,14 +323,14 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
-		log.Debug().Str("file", filePath).Msg("error with reading file")
+		log.Debug().Str("file", filePath).Msgf("error with reading file: %v", err)
 		return nil, err
 	}
 
 	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
-		log.Debug().Msg("error with JSON unmarshalling")
+		log.Debug().Msgf("error with JSON unmarshalling: %v", err)
 		return nil, err
 	}
 
@@ -342,14 +342,14 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
-		log.Debug().Str("file", filePath).Msg("error with reading file")
+		log.Debug().Str("file", filePath).Msgf("error with reading file: %v", err)
 		return nil, err
 	}
 
 	var beaconState beaconStateVersionCapella
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
-		log.Debug().Msg("error with JSON unmarshalling")
+		log.Debug().Msgf("error with JSON unmarshalling: %v", err)
 		return nil, err
 	}
 
