@@ -49,7 +49,7 @@ func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, 
 		return err
 	}
 
-	stateRootProof, validatorFieldsProof, err := commonutils.ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
+	stateRootProof, validatorFieldsProof, err := eigenpodproofs.ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)
 		return err

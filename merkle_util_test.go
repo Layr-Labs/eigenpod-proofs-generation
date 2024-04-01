@@ -9,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,6 @@ import (
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	contractBeaconChainProofs "github.com/Layr-Labs/eigenpod-proofs-generation/bindings"
 	epgcommon "github.com/Layr-Labs/eigenpod-proofs-generation/common"
-	common "github.com/ethereum/go-ethereum/common"
 )
 
 var (
