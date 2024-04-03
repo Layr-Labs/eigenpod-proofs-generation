@@ -682,7 +682,12 @@ func ComputeExecutionPayloadFieldRootsDeneb(executionPayloadFields *deneb.Execut
 	}
 
 	//Field 11: BaseFeePerGas
-	hh.PutBytes(executionPayloadFields.BaseFeePerGas.Bytes())
+	baseFeePerGas := make([]byte, 32)
+	baseFeePerGasBE := executionPayloadFields.BaseFeePerGas.Bytes32()
+	for i := 0; i < 32; i++ {
+		baseFeePerGas[i] = baseFeePerGasBE[31-i]
+	}
+	hh.PutBytes(baseFeePerGas)
 	copy(executionPayloadFieldRoots[11][:], hh.Hash())
 	hh.Reset()
 
