@@ -63,6 +63,11 @@ func GenerateWithdrawalFieldsProof(
 	}
 	ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, &historicalSummaryState)
 
+	if uint64(historicalSummaryState.Slot) >= uint64(oracleBeaconBlockHeader.Slot) {
+		log.Debug().Msg("GenerateWithdrawalFieldsProof: historical summary slot is greater than oracle block header slot")
+		return nil
+	}
+
 	withdrawalBlockHeader, err = ExtractBlockHeader(blockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with parsing header file", err)
