@@ -22,7 +22,8 @@ type RestakeProofsResponse struct {
 	VerifyAndProcessWithdrawalCallParams  *eigenpodproofs.VerifyAndProcessWithdrawalCallParams  `json:"verifyAndProcessWithdrawalCallParams"`
 }
 
-var DENEB_FORK_TIMESTAMP_HOLESKY = uint64(1707305664)
+// https://coindataflow.com/en/ethereum-cancun-hard-fork-countdown
+var DENEB_FORK_TIMESTAMP_MAINNET = uint64(1710338135)
 
 func main() {
 	log.Println("Setting up suite")
