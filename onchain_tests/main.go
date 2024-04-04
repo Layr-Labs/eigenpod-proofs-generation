@@ -97,39 +97,41 @@ func main() {
 
 	verifyAndProcessWithdrawalCallParams := restakeResponse.VerifyAndProcessWithdrawalCallParams
 
-	var withdrawalFields [][32]byte
-	for _, field := range verifyAndProcessWithdrawalCallParams.WithdrawalFields[0] {
-		withdrawalFields = append(withdrawalFields, field)
-	}
+	for i, _ := range verifyAndProcessWithdrawalCallParams.WithdrawalProofs {
+		var withdrawalFields [][32]byte
+		for _, field := range verifyAndProcessWithdrawalCallParams.WithdrawalFields[i] {
+			withdrawalFields = append(withdrawalFields, field)
+		}
 
-	withdrawalProof := contractBeaconChainProofs.BeaconChainProofsContractWithdrawalProof{
-		WithdrawalProof:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalProof.ToByteSlice(),
-		SlotProof:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].SlotProof.ToByteSlice(),
-		ExecutionPayloadProof:           verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadProof.ToByteSlice(),
-		TimestampProof:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampProof.ToByteSlice(),
-		HistoricalSummaryBlockRootProof: verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryBlockRootProof.ToByteSlice(),
-		BlockRootIndex:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRootIndex,
-		HistoricalSummaryIndex:          verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryIndex,
-		WithdrawalIndex:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].WithdrawalIndex,
-		BlockRoot:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRoot,
-		SlotRoot:                        verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].SlotRoot,
-		TimestampRoot:                   verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].TimestampRoot,
-		ExecutionPayloadRoot:            verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].ExecutionPayloadRoot,
-	}
+		withdrawalProof := contractBeaconChainProofs.BeaconChainProofsContractWithdrawalProof{
+			WithdrawalProof:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalProof.ToByteSlice(),
+			SlotProof:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].SlotProof.ToByteSlice(),
+			ExecutionPayloadProof:           verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].ExecutionPayloadProof.ToByteSlice(),
+			TimestampProof:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].TimestampProof.ToByteSlice(),
+			HistoricalSummaryBlockRootProof: verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].HistoricalSummaryBlockRootProof.ToByteSlice(),
+			BlockRootIndex:                  verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].BlockRootIndex,
+			HistoricalSummaryIndex:          verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].HistoricalSummaryIndex,
+			WithdrawalIndex:                 verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].WithdrawalIndex,
+			BlockRoot:                       verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].BlockRoot,
+			SlotRoot:                        verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].SlotRoot,
+			TimestampRoot:                   verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].TimestampRoot,
+			ExecutionPayloadRoot:            verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].ExecutionPayloadRoot,
+		}
 
-	fmt.Println("historicalSummaryndex ", verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].HistoricalSummaryIndex)
-	fmt.Println("blockRootIndex ", verifyAndProcessWithdrawalCallParams.WithdrawalProofs[0].BlockRootIndex)
-	fmt.Println("beacon state root: ", hex.EncodeToString(verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot[:]))
+		fmt.Println("historicalSummaryndex ", verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].HistoricalSummaryIndex)
+		fmt.Println("blockRootIndex ", verifyAndProcessWithdrawalCallParams.WithdrawalProofs[i].BlockRootIndex)
+		fmt.Println("beacon state root: ", hex.EncodeToString(verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot[:]))
 
-	err = beaconChainProofs.VerifyWithdrawal(
-		&bind.CallOpts{},
-		verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
-		withdrawalFields,
-		withdrawalProof,
-		DENEB_FORK_TIMESTAMP_HOLESKY,
-	)
+		err = beaconChainProofs.VerifyWithdrawal(
+			&bind.CallOpts{},
+			verifyAndProcessWithdrawalCallParams.StateRootProof.BeaconStateRoot,
+			withdrawalFields,
+			withdrawalProof,
+			DENEB_FORK_TIMESTAMP_HOLESKY,
+		)
 
-	if err != nil {
-		fmt.Println("error", err)
+		if err != nil {
+			fmt.Println("error", err)
+		}
 	}
 }
