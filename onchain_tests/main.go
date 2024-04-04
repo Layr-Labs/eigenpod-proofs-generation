@@ -38,8 +38,8 @@ func main() {
 		log.Panicf("failed to create chain client: %s", err)
 	}
 
-	//BeaconChainProofs.sol deployment: https://goerli.etherscan.io/address/0xd132dD701d3980bb5d66A21e2340f263765e4a19#code
-	contractAddress := common.HexToAddress("0xd132dD701d3980bb5d66A21e2340f263765e4a19")
+	//BeaconChainProofs.sol deployment: https://holesky.etherscan.io/address/0xa00b695c024890e8c1d7c3485874869110c8a3c6#code
+	contractAddress := common.HexToAddress("0xa00B695c024890E8C1d7C3485874869110c8A3C6")
 	beaconChainProofs, err := contractBeaconChainProofs.NewBeaconChainProofsTest(contractAddress, chainClient)
 	if err != nil {
 		log.Panicf("failed to create beacon chain proofs contract: %s", err)
