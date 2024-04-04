@@ -78,7 +78,7 @@ func main() {
 		// }
 
 		var validatorFields [][32]byte
-		for _, field := range verifyValidatorFieldsCallParams.ValidatorFields[0] {
+		for _, field := range verifyValidatorFieldsCallParams.ValidatorFields[i] {
 			validatorFields = append(validatorFields, field)
 		}
 
