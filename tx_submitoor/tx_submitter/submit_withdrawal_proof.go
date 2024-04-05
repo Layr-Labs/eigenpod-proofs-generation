@@ -4,9 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	commonutils "github.com/Layr-Labs/eigenpod-proofs-generation/common_utils"
 	contractEigenPod "github.com/Layr-Labs/eigensdk-go/contracts/bindings/EigenPod"
@@ -17,11 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/rs/zerolog/log"
 )
-
-type EigenPodProofTxSubmitter struct {
-	chainClient    *ChainClient
-	eigenPodProofs *eigenpodproofs.EigenPodProofs
-}
 
 type WithdrawalProofConfig struct {
 	EigenPodAddress common.Address `json:"EIGENPOD_ADDRESS,required"`
@@ -36,14 +30,6 @@ type WithdrawalProofConfig struct {
 		WithdrawalBlockHeaderFiles  []string `json:"WITHDRAWAL_BLOCK_HEADER_FILES,required"`
 		WithdrawalBlockBodyFiles    []string `json:"WITHDRAWAL_BLOCK_BODY_FILES,required"`
 		HistoricalSummaryStateFiles []string `json:"HISTORICAL_SUMMARY_STATE_FILES,required"`
-	}
-}
-
-func NewEigenPodProofTxSubmitter(chainClient ChainClient, epp eigenpodproofs.EigenPodProofs) *EigenPodProofTxSubmitter {
-
-	return &EigenPodProofTxSubmitter{
-		chainClient:    &chainClient,
-		eigenPodProofs: &epp,
 	}
 }
 
@@ -84,11 +70,11 @@ func (u *EigenPodProofTxSubmitter) GenerateVerifyAndProcessWithdrawalsTx(
 
 	var validatorFields [][][32]byte
 	for _, v := range withdrawalsProof.ValidatorFields {
-		validatorFields = append(validatorFields, convertProofsToBytes32Array(v))
+		validatorFields = append(validatorFields, ConvertProofsToBytes32Array(v))
 	}
 	var withdrawalFields [][][32]byte
 	for _, w := range withdrawalsProof.WithdrawalFields {
-		withdrawalFields = append(withdrawalFields, convertProofsToBytes32Array(w))
+		withdrawalFields = append(withdrawalFields, ConvertProofsToBytes32Array(w))
 	}
 	var validatorFieldsProofs [][]byte
 	for _, v := range withdrawalsProof.ValidatorFieldsProofs {
@@ -181,7 +167,11 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 
 func parseWithdrawalProofConfig(filePath string) (*WithdrawalProofConfig, error) {
 
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Debug().AnErr("Error with reading file", err)
+		return nil, err
+	}
 
 	var cfg WithdrawalProofConfig
 	err = json.Unmarshal(data, &cfg)
@@ -190,12 +180,4 @@ func parseWithdrawalProofConfig(filePath string) (*WithdrawalProofConfig, error)
 		return nil, err
 	}
 	return &cfg, nil
-}
-
-func convertProofsToBytes32Array(proof []eigenpodproofs.Bytes32) [][32]byte {
-	proofBytes32 := make([][32]byte, len(proof))
-	for i, e := range proof {
-		proofBytes32[i] = e
-	}
-	return proofBytes32
 }
