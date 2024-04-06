@@ -59,6 +59,13 @@ func main() {
 		}
 		log.Info().Msgf("Withdrawal proof submitted with calldata: %s", calldata)
 
+	case "WithdrawalCredentialProof":
+		calldata, err := submitter.SubmitVerifyWithdrawalCredentialsTx(*withdrawalProofConfigFile, *submitTransaction)
+		if err != nil {
+			log.Panic().Msgf("failed to submit withdrawal credential proof: %s", err)
+		}
+		log.Info().Msgf("Withdrawal credential proof submitted with calldata: %s", calldata)
+
 	default:
 		log.Debug().Str("Unknown command:", *command)
 	}
