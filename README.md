@@ -10,17 +10,17 @@ An important note is that this CLI is designed to be used with inputs that can b
 ### Beacon State
 [This](https://ethereum.github.io/beacon-APIs/#/Debug/getStateV2) is the entire consensus layer [state](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate) object at a given slot.  The following endpoint returns this object:
 ```
-/beacon/eth/v2/debug/beacon/states/[SLOT_NUMBER]
+[BEACON_URL]/eth/v2/debug/beacon/states/[SLOT_NUMBER]
 ```
 ### Beacon Block
 [This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockV2) is the [beacon block](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconstate) object.  The following endpoint returns this object:
 ```
-beacon/eth/v2/beacon/blocks/[SLOT_NUMBER]
+[BEACON_URL]/eth/v2/beacon/blocks/[SLOT_NUMBER]
 ```
 ### Beacon Block Header
 [This](https://ethereum.github.io/beacon-APIs/#/Beacon/getBlockHeader) is the [block header](https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#beaconblockheader) for a beacon block.  The following endpoint returns this object:
 ```
-/beacon/eth/v1/beacon/headers/[SLOT_NUMBER]
+[BEACON_URL]/eth/v1/beacon/headers/[SLOT_NUMBER]
 ```
 
 
