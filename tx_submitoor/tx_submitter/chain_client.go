@@ -31,7 +31,7 @@ type ChainClient struct {
 	Contracts          map[common.Address]*bind.BoundContract
 }
 
-func NewChainClient(ethClient *ethclient.Client, privateKeyString string) (*ChainClient, error) {
+func NewChainClient(ethClient *ethclient.Client, privateKeyString string, address string, gasPrice int64, gasLimit uint64) (*ChainClient, error) {
 	var (
 		accountAddress common.Address
 		privateKey     *ecdsa.PrivateKey
@@ -63,7 +63,18 @@ func NewChainClient(ethClient *ethclient.Client, privateKeyString string) (*Chai
 		if err != nil {
 			return nil, fmt.Errorf("NewClient: cannot create NoSendTransactOpts: %w", err)
 		}
-		opts.NoSend = true
+		opts.NoSend = false
+	} else {
+		opts = &bind.TransactOpts{
+			From: common.HexToAddress(address),
+			Signer: func(a common.Address, t *types.Transaction) (*types.Transaction, error) {
+				return t, nil
+			},
+			Context:  context.Background(),
+			NoSend:   true,
+			GasPrice: big.NewInt(gasPrice),
+			GasLimit: gasLimit,
+		}
 	}
 
 	c := &ChainClient{
