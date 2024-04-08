@@ -314,6 +314,8 @@ func (epp *EigenPodProofs) proveWithdrawal(
 		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_GOERLI
 	} else if epp.chainID == 1 {
 		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_MAINNET
+	} else if epp.chainID == 17000 {
+		FIRST_CAPELLA_SLOT = FIRST_CAPELLA_SLOT_HOLESKY
 	}
 
 	withdrawalSlotUint64 := uint64(withdrawalBlockHeader.Slot)
