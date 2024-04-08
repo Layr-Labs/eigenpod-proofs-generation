@@ -107,7 +107,7 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyWithdrawalCredentialsTx(withdrawa
 		return nil, err
 	}
 
-	if !submitTransaction {
+	if submitTransaction {
 		_, err = u.chainClient.EstimateGasPriceAndLimitAndSendTx(ctx, withdrawalCredentialsTx, "withdraw")
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute withdrawal transaction: %w", err)

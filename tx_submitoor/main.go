@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
@@ -12,11 +13,14 @@ import (
 )
 
 type Config struct {
-	RPC          string `json:"RPC_URL"`
-	PrivateKey   string `json:"PRIVATE_KEY"`
-	ChainID      uint64 `json:"CHAIN_ID,required"`
-	CacheExpire  int    `json:"CACHE_EXPIRE" envDefault:"1000"`
-	BeaconAPIURL string `json:"BEACON_API_URL"`
+	FromAddress  string `env:"FROM_ADDRESS"`
+	GasPrice     int64  `env:"GAS_PRICE" envDefault:"50"`
+	GasLimit     uint64 `env:"GAS_LIMIT" envDefault:"100"`
+	RPC          string `env:"RPC_URL"`
+	PrivateKey   string `env:"PRIVATE_KEY"`
+	ChainID      uint64 `env:"CHAIN_ID,required"`
+	CacheExpire  int    `env:"CACHE_EXPIRE" envDefault:"1000"`
+	BeaconAPIURL string `env:"BEACON_API_URL"`
 }
 
 func main() {
@@ -30,12 +34,14 @@ func main() {
 	withdrawalProofConfigFile := flag.String("withdrawalProofConfig", "", "Withdrawal proof config file")
 	submitTransaction := flag.Bool("submitTransaction", false, "Submit transaction to the chain")
 
+	flag.Parse()
+
 	ethClient, err := ethclient.Dial(cfg.RPC)
 	if err != nil {
 		log.Panic().Msgf("failed to connect to RPC: %s", err)
 	}
 
-	chainClient, err := txsubmitter.NewChainClient(ethClient, cfg.PrivateKey)
+	chainClient, err := txsubmitter.NewChainClient(ethClient, cfg.PrivateKey, cfg.FromAddress, cfg.GasPrice, cfg.GasLimit)
 	if err != nil {
 		log.Panic().Msgf("failed to create chain client: %s", err)
 	}
@@ -64,7 +70,7 @@ func main() {
 		if err != nil {
 			log.Panic().Msgf("failed to submit withdrawal credential proof: %s", err)
 		}
-		log.Info().Msgf("Withdrawal credential proof submitted with calldata: %s", calldata)
+		log.Info().Msgf("Withdrawal credential proof submitted with calldata: %s", hex.EncodeToString(calldata))
 
 	default:
 		log.Debug().Str("Unknown command:", *command)
