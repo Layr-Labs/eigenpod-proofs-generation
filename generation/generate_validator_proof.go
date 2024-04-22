@@ -7,6 +7,7 @@ import (
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
+	commonutils "github.com/Layr-Labs/eigenpod-proofs-generation/common_utils"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/rs/zerolog/log"
@@ -16,14 +17,14 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 
 	var state deneb.BeaconState
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
-	stateJSON, err := ParseDenebStateJSONFile(stateFile)
+	stateJSON, err := commonutils.ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		log.Debug().Msg("GenerateValidatorFieldsProof: error with JSON parsing")
 		return err
 	}
-	ParseDenebBeaconStateFromJSON(*stateJSON, &state)
+	commonutils.ParseDenebBeaconStateFromJSON(*stateJSON, &state)
 
-	oracleBeaconBlockHeader, err = ExtractBlockHeader(oracleBlockHeaderFile)
+	oracleBeaconBlockHeader, err = commonutils.ExtractBlockHeader(oracleBlockHeaderFile)
 	if err != nil {
 		log.Debug().AnErr("Error with parsing header file", err)
 		return err
@@ -48,18 +49,18 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 		return err
 	}
 
-	stateRootProof, validatorFieldsProof, err := ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
+	stateRootProof, validatorFieldsProof, err := eigenpodproofs.ProveValidatorFields(epp, &oracleBeaconBlockHeader, &versionedState, uint64(validatorIndex))
 	if err != nil {
 		log.Debug().AnErr("Error with ProveValidatorFields", err)
 		return err
 	}
 
-	proofs := WithdrawalCredentialProofs{
-		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProof.StateRootProof),
+	proofs := commonutils.WithdrawalCredentialProofs{
+		StateRootAgainstLatestBlockHeaderProof: commonutils.ConvertBytesToStrings(stateRootProof.StateRootProof),
 		BeaconStateRoot:                        "0x" + hex.EncodeToString(beaconStateRoot[:]),
 		ValidatorIndex:                         uint64(validatorIndex),
-		WithdrawalCredentialProof:              ConvertBytesToStrings(validatorFieldsProof),
-		ValidatorFields:                        GetValidatorFields(state.Validators[validatorIndex]),
+		WithdrawalCredentialProof:              commonutils.ConvertBytesToStrings(validatorFieldsProof),
+		ValidatorFields:                        commonutils.GetValidatorFields(state.Validators[validatorIndex]),
 	}
 
 	proofData, err := json.Marshal(proofs)

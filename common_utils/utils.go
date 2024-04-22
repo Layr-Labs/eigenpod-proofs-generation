@@ -1,21 +1,20 @@
-package main
+package commonutils
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	ssz "github.com/ferranbt/fastssz"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
@@ -157,44 +156,6 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 	return s
 }
 
-func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndex uint64) (*eigenpodproofs.StateRootProof, common.Proof, error) {
-	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
-	if err != nil {
-		return nil, nil, err
-	}
-	oracleBeaconStateValidators, err := oracleBeaconState.Validators()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	stateRootProof := &eigenpodproofs.StateRootProof{}
-	// Get beacon state top level roots
-	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Get beacon state root. TODO: Combine this cheaply with compute beacon state top level roots
-	stateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
-	if err != nil {
-		return nil, nil, err
-	}
-
-	stateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	validatorFieldsProof, err := epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return stateRootProof, validatorFieldsProof, nil
-}
-
 func GetValidatorFields(v *phase0.Validator) []string {
 	var validatorFields []string
 	hh := ssz.NewHasher()
@@ -249,8 +210,8 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 	return inputData.Data.Header.Message, nil
 }
 
-func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
-	fileBytes, err := os.ReadFile(blockHeaderFile)
+func ExtractBlock(blockFile string) (deneb.BeaconBlock, error) {
+	fileBytes, err := os.ReadFile(blockFile)
 	if err != nil {
 		return deneb.BeaconBlock{}, err
 	}
@@ -263,6 +224,27 @@ func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
 
 	// Extract block body
 	return data.Data.Message, nil
+}
+
+func ExtractSignedDenebBlock(signedBlockFile string) (*spec.VersionedSignedBeaconBlock, error) {
+	fileBytes, err := os.ReadFile(signedBlockFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode JSON
+	var data InputDataBlock
+	if err := json.Unmarshal(fileBytes, &data); err != nil {
+		return nil, err
+	}
+
+	signedBlock, err := beacon.CreateVersionedSignedBlock(data.Data.Message)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract block body
+	return &signedBlock, nil
 }
 
 func GetWithdrawalFields(w *capella.Withdrawal) []string {
@@ -288,18 +270,27 @@ func GetWithdrawalFields(w *capella.Withdrawal) []string {
 	return withdrawalFields
 }
 
+func GetWithdrawalIndex(validatorIndex uint64, withdrawals []*capella.Withdrawal) uint64 {
+	for i := 0; i < len(withdrawals); i++ {
+		if uint64(withdrawals[i].ValidatorIndex) == validatorIndex {
+			return uint64(i)
+		}
+	}
+	return math.MaxUint64
+}
+
 func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
-		log.Debug().Str("file", filePath).Msg("error with reading file")
+		log.Debug().Str("file", filePath).Msgf("error with reading file: %v", err)
 		return nil, err
 	}
 
 	var beaconState beaconStateVersionDeneb
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
-		log.Debug().Msg("error with JSON unmarshalling")
+		log.Debug().Msgf("error with JSON unmarshalling: %v", err)
 		return nil, err
 	}
 
@@ -311,14 +302,14 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
-		log.Debug().Str("file", filePath).Msg("error with reading file")
+		log.Debug().Str("file", filePath).Msgf("error with reading file: %v", err)
 		return nil, err
 	}
 
 	var beaconState beaconStateVersionCapella
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
-		log.Debug().Msg("error with JSON unmarshalling")
+		log.Debug().Msgf("error with JSON unmarshalling: %v", err)
 		return nil, err
 	}
 
