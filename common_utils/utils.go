@@ -138,11 +138,21 @@ type InputDataBlockHeader struct {
 	} `json:"data"`
 }
 
-type InputDataBlock struct {
+type InputDataBlockDeneb struct {
 	Version string `json:"version"`
 	Data    struct {
 		Message   deneb.BeaconBlock `json:"message"`
 		Signature string            `json:"signature"`
+	} `json:"data"`
+	Execution_optimistic bool `json:"execution_optimistic"`
+	Finalized            bool `json:"finalized"`
+}
+
+type InputDataBlockCapella struct {
+	Version string `json:"version"`
+	Data    struct {
+		Message   capella.BeaconBlock `json:"message"`
+		Signature string              `json:"signature"`
 	} `json:"data"`
 	Execution_optimistic bool `json:"execution_optimistic"`
 	Finalized            bool `json:"finalized"`
@@ -210,16 +220,32 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 	return inputData.Data.Header.Message, nil
 }
 
-func ExtractBlock(blockFile string) (deneb.BeaconBlock, error) {
+func ExtractBlockDeneb(blockFile string) (deneb.BeaconBlock, error) {
 	fileBytes, err := os.ReadFile(blockFile)
 	if err != nil {
 		return deneb.BeaconBlock{}, err
 	}
 
 	// Decode JSON
-	var data InputDataBlock
+	var data InputDataBlockDeneb
 	if err := json.Unmarshal(fileBytes, &data); err != nil {
 		return deneb.BeaconBlock{}, err
+	}
+
+	// Extract block body
+	return data.Data.Message, nil
+}
+
+func ExtractBlockCapella(blockFile string) (capella.BeaconBlock, error) {
+	fileBytes, err := os.ReadFile(blockFile)
+	if err != nil {
+		return capella.BeaconBlock{}, err
+	}
+
+	// Decode JSON
+	var data InputDataBlockCapella
+	if err := json.Unmarshal(fileBytes, &data); err != nil {
+		return capella.BeaconBlock{}, err
 	}
 
 	// Extract block body
@@ -233,7 +259,7 @@ func ExtractSignedDenebBlock(signedBlockFile string) (*spec.VersionedSignedBeaco
 	}
 
 	// Decode JSON
-	var data InputDataBlock
+	var data InputDataBlockDeneb
 	if err := json.Unmarshal(fileBytes, &data); err != nil {
 		return nil, err
 	}

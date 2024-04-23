@@ -141,7 +141,7 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 
 	withdrawalBlocks := make([]*spec.VersionedSignedBeaconBlock, 0)
 	for _, file := range cfg.WithdrawalDetails.WithdrawalBlockHeaderFiles {
-		block, err := commonutils.ExtractBlock(file)
+		block, err := commonutils.ExtractBlockDeneb(file)
 		if err != nil {
 			log.Debug().AnErr("Error with parsing header file", err)
 			return nil, err
