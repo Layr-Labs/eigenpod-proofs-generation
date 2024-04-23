@@ -125,6 +125,10 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 	commonutils.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
+	if err != nil {
+		log.Debug().AnErr("Error with creating versioned state", err)
+		return nil, err
+	}
 
 	historicalSummaryStateBlockRoots := make([][]phase0.Root, 0)
 	for _, file := range cfg.WithdrawalDetails.HistoricalSummaryStateFiles {
@@ -147,6 +151,10 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 			return nil, err
 		}
 		versionedSignedBlock, err := beacon.CreateVersionedSignedBlock(block)
+		if err != nil {
+			log.Debug().AnErr("Error with creating versioned signed block", err)
+			return nil, err
+		}
 		withdrawalBlocks = append(withdrawalBlocks, &versionedSignedBlock)
 	}
 
