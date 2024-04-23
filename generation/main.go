@@ -18,7 +18,7 @@ func main() {
 
 	oracleBlockHeaderFile := flag.String("oracleBlockHeaderFile", "", "Oracle block header file")
 	stateFile := flag.String("stateFile", "", "State file")
-	validatorIndex := flag.Uint64("validatorIndex", 0, "validatorIndex")
+	validatorIndex := flag.String("validatorIndex", "", "validatorIndex")
 	outputFile := flag.String("outputFile", "", "Output file")
 	chainID := flag.Uint64("chainID", 0, "Chain ID")
 

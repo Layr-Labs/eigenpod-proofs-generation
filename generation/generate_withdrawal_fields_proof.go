@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
@@ -23,13 +24,18 @@ func GenerateWithdrawalFieldsProof(
 	historicalSummaryStateFile,
 	blockHeaderFile,
 	blockBodyFile string,
-	validatorIndex,
+	validatorIndexStr string,
 	withdrawalIndex,
 	historicalSummariesIndex,
 	blockHeaderIndex,
 	chainID uint64,
 	outputFile string,
 ) error {
+	validatorIndex, err := strconv.ParseUint(validatorIndexStr, 10, 64)
+	if err != nil {
+		log.Debug().AnErr(fmt.Sprintf("Error with ParseUint(%s)", validatorIndexStr), err)
+		return err
+	}
 
 	//this is the oracle provided state
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
@@ -40,7 +46,7 @@ func GenerateWithdrawalFieldsProof(
 	var withdrawalBlockHeader phase0.BeaconBlockHeader
 	var withdrawalBlock deneb.BeaconBlock
 
-	oracleBeaconBlockHeader, err := commonutils.ExtractBlockHeader(oracleBlockHeaderFile)
+	oracleBeaconBlockHeader, err = commonutils.ExtractBlockHeader(oracleBlockHeaderFile)
 
 	root, _ := oracleBeaconBlockHeader.HashTreeRoot()
 	fmt.Println("oracleBeaconBlockHeader: ", root)

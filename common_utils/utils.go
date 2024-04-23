@@ -22,6 +22,11 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
+type StateRootProof struct {
+	BeaconStateRoot string `json:"beaconStateRoot"`
+	Proof           string `json:"proof"`
+}
+
 type WithdrawalProofs struct {
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
 	SlotAgainstLatestBlockHeaderProof      []string `json:"SlotAgainstLatestBlockHeaderProof"`
@@ -41,6 +46,13 @@ type WithdrawalProofs struct {
 	ValidatorProof                         []string `json:"ValidatorProof"`
 	ValidatorFields                        []string `json:"ValidatorFields"`
 	WithdrawalFields                       []string `json:"WithdrawalFields"`
+}
+
+type VerifyWithdrawalCredentialsCallParams struct {
+	StateRootProof        StateRootProof `json:"stateRootProof"`
+	ValidatorIndices      []uint64       `json:"validatorIndices"`
+	ValidatorFieldsProofs []string       `json:"validatorFieldsProofs"`
+	ValidatorFields       [][]string     `json:"validatorFields"`
 }
 
 type WithdrawalCredentialProofs struct {
@@ -154,6 +166,15 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 		s = append(s, "0x"+hex.EncodeToString(v[:]))
 	}
 	return s
+}
+
+func ConvertToHexString(b []string) string {
+	var s string
+	for _, v := range b {
+		s = s + v
+	}
+
+	return "0x" + strings.Replace(s, "0x", "", -1)
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {

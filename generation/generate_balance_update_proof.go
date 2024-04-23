@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
+	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
@@ -13,7 +15,12 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, validatorIndex uint64, chainID uint64, output string) error {
+func GenerateBalanceUpdateProof(oracleBlockHeaderFile string, stateFile string, validatorIndexStr string, chainID uint64, output string) error {
+	validatorIndex, err := strconv.ParseUint(validatorIndexStr, 10, 64)
+	if err != nil {
+		log.Debug().AnErr(fmt.Sprintf("Error with ParseUint(%s)", validatorIndexStr), err)
+		return err
+	}
 
 	var state deneb.BeaconState
 	var oracleBeaconBlockHeader phase0.BeaconBlockHeader
