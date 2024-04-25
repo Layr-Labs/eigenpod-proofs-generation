@@ -2,6 +2,7 @@ package eigenpodproofs
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -237,6 +238,10 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 
 		withdrawals = withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Withdrawals
 		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
+		if withdrawalIndex == math.MaxUint64 {
+			slot, _ = withdrawalBlock.Slot()
+			return nil, nil, errors.New(fmt.Sprintf("Couldn't find withdrawal index for validator %d in the slot %d", validatorIndex, slot))
+		}
 		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
 		timestamp = withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Timestamp
 	} else if withdrawalBlock.Version == spec.DataVersionCapella {
@@ -258,6 +263,10 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 
 		withdrawals = withdrawalBlock.Capella.Message.Body.ExecutionPayload.Withdrawals
 		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
+		if withdrawalIndex == math.MaxUint64 {
+			slot, _ = withdrawalBlock.Slot()
+			return nil, nil, errors.New(fmt.Sprintf("Couldn't find withdrawal index for validator %d in the slot %d", validatorIndex, slot))
+		}
 		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Capella.Message.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
 
 		timestamp = withdrawalBlock.Capella.Message.Body.ExecutionPayload.Timestamp
