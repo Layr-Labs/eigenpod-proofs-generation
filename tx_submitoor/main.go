@@ -63,7 +63,7 @@ func main() {
 		if err != nil {
 			log.Panic().Msgf("failed to submit withdrawal proof: %s", err)
 		}
-		log.Info().Msgf("Withdrawal proof submitted with calldata: %s", calldata)
+		log.Info().Msgf("Withdrawal proof submitted with calldata: %s", hex.EncodeToString(calldata))
 
 	case "WithdrawalCredentialProof":
 		calldata, err := submitter.SubmitVerifyWithdrawalCredentialsTx(*withdrawalProofConfigFile, *submitTransaction)
