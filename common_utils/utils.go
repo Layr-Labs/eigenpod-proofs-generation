@@ -60,7 +60,7 @@ type BalanceUpdateProofs struct {
 	ValidatorFields                        []string `json:"ValidatorFields"`
 }
 
-type beaconStateJSONDeneb struct {
+type BeaconStateJSONDeneb struct {
 	GenesisTime                  string                        `json:"genesis_time"`
 	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
 	Slot                         string                        `json:"slot"`
@@ -91,7 +91,7 @@ type beaconStateJSONDeneb struct {
 	HistoricalSummaries          []*capella.HistoricalSummary  `json:"historical_summaries"`
 }
 
-type BeaconStateJSONCapella struct {
+type beaconStateJSONCapella struct {
 	GenesisTime                  string                          `json:"genesis_time"`
 	GenesisValidatorsRoot        string                          `json:"genesis_validators_root"`
 	Slot                         string                          `json:"slot"`
@@ -123,11 +123,11 @@ type BeaconStateJSONCapella struct {
 }
 
 type beaconStateVersionDeneb struct {
-	Data beaconStateJSONDeneb `json:"data"`
+	Data BeaconStateJSONDeneb `json:"data"`
 }
 
 type beaconStateVersionCapella struct {
-	Data BeaconStateJSONCapella `json:"data"`
+	Data beaconStateJSONCapella `json:"data"`
 }
 
 type InputDataBlockHeader struct {
@@ -279,7 +279,7 @@ func GetWithdrawalIndex(validatorIndex uint64, withdrawals []*capella.Withdrawal
 	return math.MaxUint64
 }
 
-func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
+func ParseDenebStateJSONFile(filePath string) (*BeaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -298,7 +298,7 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	return &actualData, nil
 }
 
-func ParseCapellaStateJSONFile(filePath string) (*BeaconStateJSONCapella, error) {
+func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -318,7 +318,7 @@ func ParseCapellaStateJSONFile(filePath string) (*BeaconStateJSONCapella, error)
 }
 
 // nolint:gocyclo
-func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconState) error {
+func ParseDenebBeaconStateFromJSON(data BeaconStateJSONDeneb, s *deneb.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {
@@ -533,7 +533,7 @@ func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconSta
 	return nil
 }
 
-func ParseCapellaBeaconStateFromJSON(data BeaconStateJSONCapella, s *capella.BeaconState) error {
+func ParseCapellaBeaconStateFromJSON(data beaconStateJSONCapella, s *capella.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {
