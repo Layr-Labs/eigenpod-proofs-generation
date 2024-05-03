@@ -1,4 +1,4 @@
-module github.com/Layr-Labs/eigenpod-proofs-generation
+module github.com/p2p-org/eigenpod-proofs-generation
 
 go 1.21
 
@@ -58,3 +58,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
+
+replace github.com/Layr-Labs/eigenpod-proofs-generation v0.0.10-0.20240502182625-d1ae0221e732 => github.com/p2p-org/eigenpod-proofs-generation v0.0.0-20240502182625-d1ae0221e732
