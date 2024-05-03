@@ -16,3 +16,4 @@ solidityProofGen/solidityProofGen
 test
 
 **/.DS_Store
+.idea/*

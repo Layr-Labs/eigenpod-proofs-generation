@@ -91,7 +91,7 @@ type beaconStateJSONDeneb struct {
 	HistoricalSummaries          []*capella.HistoricalSummary  `json:"historical_summaries"`
 }
 
-type beaconStateJSONCapella struct {
+type BeaconStateJSONCapella struct {
 	GenesisTime                  string                          `json:"genesis_time"`
 	GenesisValidatorsRoot        string                          `json:"genesis_validators_root"`
 	Slot                         string                          `json:"slot"`
@@ -127,7 +127,7 @@ type beaconStateVersionDeneb struct {
 }
 
 type beaconStateVersionCapella struct {
-	Data beaconStateJSONCapella `json:"data"`
+	Data BeaconStateJSONCapella `json:"data"`
 }
 
 type InputDataBlockHeader struct {
@@ -298,7 +298,7 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	return &actualData, nil
 }
 
-func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error) {
+func ParseCapellaStateJSONFile(filePath string) (*BeaconStateJSONCapella, error) {
 	data, err := ioutil.ReadFile(filePath)
 
 	if err != nil {
@@ -533,7 +533,7 @@ func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconSta
 	return nil
 }
 
-func ParseCapellaBeaconStateFromJSON(data beaconStateJSONCapella, s *capella.BeaconState) error {
+func ParseCapellaBeaconStateFromJSON(data BeaconStateJSONCapella, s *capella.BeaconState) error {
 	var err error
 
 	if data.GenesisTime == "" {
