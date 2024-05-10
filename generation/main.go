@@ -16,6 +16,10 @@ func main() {
 	// Defining flags for all the parameters
 	command := flag.String("command", "", "The command to execute")
 
+	// List of indexes is only used in GenerateValidatorFieldsProof
+	var validatorIndices IntSlice
+	flag.Var(&validatorIndices, "validatorIndices", "A list of validator indices separated by commas (e.g., -validatorIndices 1685702,1685703,1685704)")
+
 	oracleBlockHeaderFile := flag.String("oracleBlockHeaderFile", "", "Oracle block header file")
 	stateFile := flag.String("stateFile", "", "State file")
 	validatorIndex := flag.Uint64("validatorIndex", 0, "validatorIndex")
@@ -44,6 +48,14 @@ func main() {
 	switch *command {
 	case "ValidatorFieldsProof":
 		err = GenerateValidatorFieldsProof(*oracleBlockHeaderFile, *stateFile, *validatorIndex, *chainID, *outputFile)
+
+	// This command was implemented by Figment
+	case "ValidatorFieldsProofs":
+		err = GenerateValidatorFieldsProofs(*oracleBlockHeaderFile, *stateFile, validatorIndices.GetSlice(), *chainID, *outputFile)
+
+	// This command was implemented by Figment
+	case "ClearStateCache":
+		err = ClearStateCache(*oracleBlockHeaderFile, *chainID)
 
 	case "WithdrawalFieldsProof":
 		err = GenerateWithdrawalFieldsProof(*oracleBlockHeaderFile, *stateFile, *historicalSummaryStateFile, *blockHeaderFile, *blockBodyFile, *validatorIndex, *withdrawalIndex, *historicalSummariesIndex, *blockHeaderIndex, *chainID, *outputFile)
