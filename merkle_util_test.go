@@ -425,7 +425,7 @@ func TestCreateVersionedBeaconStateAltair(t *testing.T) {
 func TestProveValidatorBalanceAgainstValidatorBalanceList(t *testing.T) {
 
 	validatorIndex := phase0.ValidatorIndex(REPOINTED_VALIDATOR_INDEX)
-	proof, _ := beacon.ProveValidatorBalanceAgainstValidatorBalanceList(oracleState.Balances, uint64(validatorIndex))
+	_, proof, _ := beacon.ProveValidatorBalanceAgainstValidatorBalanceList(oracleState.Balances, uint64(validatorIndex))
 
 	beaconStateTopLevelRoots, _ := beacon.ComputeBeaconStateTopLevelRootsDeneb(&oracleState)
 	root := beaconStateTopLevelRoots.BalancesRoot

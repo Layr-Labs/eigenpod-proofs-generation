@@ -244,32 +244,6 @@ func (epp *EigenPodProofs) ProveWithdrawal(
 		}
 		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
 		timestamp = withdrawalBlock.Deneb.Message.Body.ExecutionPayload.Timestamp
-	} else if withdrawalBlock.Version == spec.DataVersionCapella {
-		start = time.Now()
-		// prove the execution payload against the withdrawal block header
-		withdrawalProof.ExecutionPayloadProof, withdrawalProof.ExecutionPayloadRoot, err = beacon.ProveExecutionPayloadAgainstBlockHeaderCapella(withdrawalBlockHeader, withdrawalBlock.Capella.Message.Body)
-		if err != nil {
-			return nil, nil, err
-		}
-		log.Debug().Msgf("time to prove execution payload against block header: %s", time.Since(start))
-
-		start = time.Now()
-		// calculate execution payload field roots
-		withdrawalExecutionPayloadFieldRoots, err = beacon.ComputeExecutionPayloadFieldRootsCapella(withdrawalBlock.Capella.Message.Body.ExecutionPayload)
-		if err != nil {
-			return nil, nil, err
-		}
-		log.Debug().Msgf("time to compute execution payload field roots: %s", time.Since(start))
-
-		withdrawals = withdrawalBlock.Capella.Message.Body.ExecutionPayload.Withdrawals
-		withdrawalIndex = GetWithdrawalIndex(validatorIndex, withdrawals)
-		if withdrawalIndex == math.MaxUint64 {
-			slot, _ = withdrawalBlock.Slot()
-			return nil, nil, errors.New(fmt.Sprintf("Couldn't find withdrawal index for validator %d in the slot %d", validatorIndex, slot))
-		}
-		withdrawalFields = ConvertWithdrawalToWithdrawalFields(withdrawalBlock.Capella.Message.Body.ExecutionPayload.Withdrawals[withdrawalIndex])
-
-		timestamp = withdrawalBlock.Capella.Message.Body.ExecutionPayload.Timestamp
 	} else {
 		return nil, nil, errors.New("unsupported version")
 	}

@@ -8,7 +8,7 @@ const (
 
 	// Index of validator list in beacon state
 	ValidatorListIndex = uint64(11)
-	balanceListIndex   = uint64(12)
+	BalanceListIndex   = uint64(12)
 
 	// Index of the beacon body root inside the beacon body header
 	BeaconBlockBodyRootIndex = uint64(4)
@@ -42,14 +42,11 @@ const (
 
 	BlockBodyMerkleSubtreeNumLayers = uint64(4)
 
-	// TODO unused; remove
-	// Number of layers for the merkelization of the Execution Payload
-	executionPayloadMerkleSubtreeNumLayersDeneb = uint64(5)
-
-	executionPayloadMerkleSubtreeNumLayersCapella = uint64(4)
-
-	// Number of layers for the merkleixation of the Validator List in the Beacon State
+	// Number of layers for the merklelization of the Validator List in the Beacon State
 	ValidatorListMerkleSubtreeNumLayers = uint64(40)
+
+	// Number of layers for the merklelization of the Validator Balances in the Beacon State
+	ValidatorBalancesMerkleSubtreeNumLayers = uint64(4)
 
 	// Number of layers for the merkleixation of the Historical Summary List in the Beacon State
 	HistoricalSummaryListMerkleSubtreeNumLayers = uint64(24)

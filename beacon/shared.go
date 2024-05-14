@@ -7,8 +7,9 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
-	"github.com/rs/zerolog/log"
 )
+
+var zeroBytes = [32]byte{}
 
 func ComputeValidatorTreeLeaves(validators []*phase0.Validator) ([]phase0.Root, error) {
 	validatorNodeList := make([]phase0.Root, len(validators))
@@ -23,8 +24,7 @@ func ComputeValidatorTreeLeaves(validators []*phase0.Validator) ([]phase0.Root, 
 	return validatorNodeList, nil
 }
 
-func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (common.Proof, error) {
-
+func ComputeValidatorBalancesTreeLeaves(balances []phase0.Gwei) []phase0.Root {
 	buf := []byte{}
 
 	for i := 0; i < len(balances); i++ {
@@ -42,14 +42,19 @@ func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, va
 		copy(balanceRootList[i][:], buf[i*32:(i+1)*32])
 	}
 
+	return balanceRootList
+}
+
+func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
+	balanceRootList := ComputeValidatorBalancesTreeLeaves(balances)
+
 	//refer to beaconstate_ssz.go in go-eth2-client
 	numLayers := uint64(common.GetDepth(ssz.CalculateLimit(1099511627776, uint64(len(balances)), 8)))
 	validatorBalanceIndex := uint64(validatorIndex / 4)
 	proof, err := common.GetProof(balanceRootList, validatorBalanceIndex, numLayers)
 
 	if err != nil {
-		log.Debug().AnErr("error", err).Msg("error getting proof")
-		return nil, err
+		return phase0.Root{}, nil, err
 	}
 
 	//append the length of the balance array to the proof
@@ -57,7 +62,7 @@ func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, va
 	balanceListLenLE := common.BigToLittleEndian(big.NewInt(int64(len(balances))))
 
 	proof = append(proof, balanceListLenLE)
-	return proof, nil
+	return balanceRootList[validatorBalanceIndex], proof, nil
 }
 
 func GetBalanceRoots(balances []phase0.Gwei) ([]phase0.Root, error) {
