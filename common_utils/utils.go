@@ -22,27 +22,6 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
-type WithdrawalProofs struct {
-	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
-	SlotAgainstLatestBlockHeaderProof      []string `json:"SlotAgainstLatestBlockHeaderProof"`
-	BeaconStateRoot                        string   `json:"beaconStateRoot"`
-	WithdrawalProof                        []string `json:"WithdrawalProof"`
-	SlotProof                              []string `json:"SlotProof"`
-	ExecutionPayloadProof                  []string `json:"ExecutionPayloadProof"`
-	TimestampProof                         []string `json:"TimestampProof"`
-	HistoricalSummaryProof                 []string `json:"HistoricalSummaryProof"`
-	BlockHeaderRootIndex                   uint64   `json:"blockHeaderRootIndex"`
-	HistoricalSummaryIndex                 uint64   `json:"historicalSummaryIndex"`
-	WithdrawalIndex                        uint64   `json:"withdrawalIndex"`
-	BlockHeaderRoot                        string   `json:"blockHeaderRoot"`
-	SlotRoot                               string   `json:"slotRoot"`
-	TimestampRoot                          string   `json:"timestampRoot"`
-	ExecutionPayloadRoot                   string   `json:"executionPayloadRoot"`
-	ValidatorProof                         []string `json:"ValidatorProof"`
-	ValidatorFields                        []string `json:"ValidatorFields"`
-	WithdrawalFields                       []string `json:"WithdrawalFields"`
-}
-
 type WithdrawalCredentialProofs struct {
 	StateRootAgainstLatestBlockHeaderProof []string `json:"StateRootAgainstLatestBlockHeaderProof"`
 	BeaconStateRoot                        string   `json:"beaconStateRoot"`
