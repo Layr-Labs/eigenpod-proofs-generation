@@ -11,6 +11,13 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 )
 
+type StateRootProof struct {
+	BeaconStateRoot phase0.Root  `json:"beaconStateRoot"`
+	StateRootProof  common.Proof `json:"stateRootProof"`
+	Slot            phase0.Slot  `json:"slot"`
+	SlotRootProof   common.Proof `json:"slotRootProof"` //Note:  this slot root is oracle block root being used to prove partial withdrawals is after the specified range of blocks requested by the user
+}
+
 type VerifyValidatorFieldsCallParams struct {
 	OracleTimestamp       uint64          `json:"oracleTimestamp"`
 	StateRootProof        *StateRootProof `json:"stateRootProof"`

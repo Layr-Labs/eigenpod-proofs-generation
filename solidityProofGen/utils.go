@@ -4,18 +4,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	ssz "github.com/ferranbt/fastssz"
 
-	"github.com/attestantio/go-eth2-client/spec/altair"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-
-	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 )
 
 type WithdrawalProofs struct {
@@ -63,41 +59,6 @@ type BalanceUpdateProofs struct {
 	WithdrawalCredentialProof              []string `json:"WithdrawalCredentialProof"`
 }
 
-type beaconStateJSONDeneb struct {
-	GenesisTime                  string                        `json:"genesis_time"`
-	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
-	Slot                         string                        `json:"slot"`
-	Fork                         *phase0.Fork                  `json:"fork"`
-	LatestBlockHeader            *phase0.BeaconBlockHeader     `json:"latest_block_header"`
-	BlockRoots                   []string                      `json:"block_roots"`
-	StateRoots                   []string                      `json:"state_roots"`
-	HistoricalRoots              []string                      `json:"historical_roots"`
-	ETH1Data                     *phase0.ETH1Data              `json:"eth1_data"`
-	ETH1DataVotes                []*phase0.ETH1Data            `json:"eth1_data_votes"`
-	ETH1DepositIndex             string                        `json:"eth1_deposit_index"`
-	Validators                   []*phase0.Validator           `json:"validators"`
-	Balances                     []string                      `json:"balances"`
-	RANDAOMixes                  []string                      `json:"randao_mixes"`
-	Slashings                    []string                      `json:"slashings"`
-	PreviousEpochParticipation   []string                      `json:"previous_epoch_participation"`
-	CurrentEpochParticipation    []string                      `json:"current_epoch_participation"`
-	JustificationBits            string                        `json:"justification_bits"`
-	PreviousJustifiedCheckpoint  *phase0.Checkpoint            `json:"previous_justified_checkpoint"`
-	CurrentJustifiedCheckpoint   *phase0.Checkpoint            `json:"current_justified_checkpoint"`
-	FinalizedCheckpoint          *phase0.Checkpoint            `json:"finalized_checkpoint"`
-	InactivityScores             []string                      `json:"inactivity_scores"`
-	CurrentSyncCommittee         *altair.SyncCommittee         `json:"current_sync_committee"`
-	NextSyncCommittee            *altair.SyncCommittee         `json:"next_sync_committee"`
-	LatestExecutionPayloadHeader *deneb.ExecutionPayloadHeader `json:"latest_execution_payload_header"`
-	NextWithdrawalIndex          string                        `json:"next_withdrawal_index"`
-	NextWithdrawalValidatorIndex string                        `json:"next_withdrawal_validator_index"`
-	HistoricalSummaries          []*capella.HistoricalSummary  `json:"historical_summaries"`
-}
-
-type beaconStateVersionDeneb struct {
-	Data beaconStateJSONDeneb `json:"data"`
-}
-
 type InputDataBlockHeader struct {
 	Data struct {
 		Header struct {
@@ -124,106 +85,6 @@ type InputDataBlockCapella struct {
 	} `json:"data"`
 	Execution_optimistic bool `json:"execution_optimistic"`
 	Finalized            bool `json:"finalized"`
-}
-
-func SetUpWithdrawalsProof(
-	oracleBlockHeaderFile string,
-	stateFile string,
-	historicalSummaryStateFile string,
-	headerFile string,
-	bodyFile string,
-	oracleBlockHeader *phase0.BeaconBlockHeader,
-	state *deneb.BeaconState,
-	historicalSummaryState *deneb.BeaconState,
-	blockHeader *phase0.BeaconBlockHeader,
-	block *deneb.BeaconBlock,
-	modifyStateToIncludeFullWithdrawal bool,
-	partialWithdrawalProof bool,
-	validatorIndex uint64,
-	historicalSummariesIndex uint64,
-	withdrawalToModifyIndex uint64,
-	advanceSlotOfWithdrawal bool,
-) *deneb.BeaconBlock {
-	log.Println("Setting up suite")
-	// filename1 := "data/slot_58000/oracle_capella_beacon_state_58100.ssz"
-	// filename2 := "data/slot_58000/capella_block_header_58000.json"
-	// filename3 := "data/slot_58000/capella_block_58000.json"
-	// filename1 := "data/slot_43222/oracle_capella_beacon_state_43300.ssz"
-	// filename2 := "data/slot_43222/capella_block_header_43222.json"
-	// filename3 := "data/slot_43222/capella_block_43222.json"
-	var err error
-	*oracleBlockHeader, err = ExtractBlockHeader(oracleBlockHeaderFile)
-	if err != nil {
-		fmt.Println("read error with header file")
-	}
-
-	stateJSON, err := eigenpodproofs.ParseDenebStateJSONFile(stateFile)
-	if err != nil {
-		fmt.Println("error with JSON parsing state file")
-	}
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*stateJSON, state)
-
-	historicalSummaryJSON, err := eigenpodproofs.ParseDenebStateJSONFile(historicalSummaryStateFile)
-	if err != nil {
-		fmt.Println("error with JSON parsing historical summary state file")
-	}
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*historicalSummaryJSON, historicalSummaryState)
-
-	*blockHeader, err = ExtractBlockHeader(headerFile)
-	fmt.Println("blockHeader slot", blockHeader.Slot)
-	if err != nil {
-		fmt.Println("read error with header file")
-	}
-
-	*block, err = ExtractBlock(bodyFile)
-	if err != nil {
-		fmt.Println("read error with body file")
-	}
-
-	fmt.Println("blockHeader slot", block.ParentRoot)
-
-	//this exists so that if there is not a full withdrawal in the block, we can modify the state to include one.
-	if modifyStateToIncludeFullWithdrawal {
-		if !partialWithdrawalProof {
-			block.Body.ExecutionPayload.Withdrawals[withdrawalToModifyIndex].Amount = 32000115173
-		}
-		block.Body.ExecutionPayload.Withdrawals[withdrawalToModifyIndex].ValidatorIndex = phase0.ValidatorIndex(validatorIndex)
-		if advanceSlotOfWithdrawal {
-			block.Body.ExecutionPayload.Timestamp = block.Body.ExecutionPayload.Timestamp + 1
-		}
-
-		bodyRoot, _ := block.Body.HashTreeRoot()
-		blockHeader.BodyRoot = bodyRoot
-
-		root, _ := historicalSummaryState.HashTreeRoot()
-		fmt.Println("old state root", hex.EncodeToString(root[:]))
-
-		blockHeaderRoot, _ := blockHeader.HashTreeRoot()
-		//set the block root in the state
-		historicalSummaryState.BlockRoots[uint64(blockHeader.Slot)%8192] = blockHeaderRoot
-		historicalSummaryStateTopLevelRoots, err := beacon.ComputeBeaconStateTopLevelRootsDeneb(historicalSummaryState)
-		if err != nil {
-			fmt.Println("error in getting top level roots", err)
-		}
-		state.HistoricalSummaries[historicalSummariesIndex].BlockSummaryRoot = *historicalSummaryStateTopLevelRoots.BlockRootsRoot
-
-		// set the withdrawable epoch of the validator to indicate a full withdrawal
-		if !partialWithdrawalProof {
-			state.Validators[validatorIndex].WithdrawableEpoch = 0
-		}
-
-		//set the new stateRoot as the latestBlockHeader.state_root
-		newStateRoot, _ := state.HashTreeRoot()
-		oracleBlockHeader.StateRoot = newStateRoot
-
-		fmt.Println("blockheader slot", blockHeader.Slot)
-
-		fmt.Println("new state root", hex.EncodeToString(newStateRoot[:]))
-	}
-	executionPayload = *block.Body.ExecutionPayload
-
-	return block
-
 }
 
 func SetupValidatorProof(oracleBlockHeaderFile string, stateFile string, validatorIndex uint64, changeBalance bool, newBalance uint64, incrementSlot uint64, state *deneb.BeaconState, oracleBlockHeader *phase0.BeaconBlockHeader) {
@@ -260,6 +121,9 @@ func SetupValidatorProof(oracleBlockHeaderFile string, stateFile string, validat
 	}
 
 	newStateRoot, err := state.HashTreeRoot()
+	if err != nil {
+		fmt.Println("error with HashTreeRoot", err)
+	}
 	//Now that we've made these changes to "state", we need to update the oracleState.LatestBlockHeader.StateRoot
 	oracleBlockHeader.StateRoot = newStateRoot
 }
