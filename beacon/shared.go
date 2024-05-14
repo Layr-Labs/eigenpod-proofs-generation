@@ -44,6 +44,10 @@ func ComputeValidatorBalancesTreeLeaves(balances []phase0.Gwei) []phase0.Root {
 	return balanceRootList
 }
 
+func GetValidatorBalancesProofDepth(numBalances int) uint64 {
+	return uint64(common.GetDepth(ssz.CalculateLimit(1099511627776, uint64(numBalances), 8)))
+}
+
 func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
 	balanceRootList := ComputeValidatorBalancesTreeLeaves(balances)
 

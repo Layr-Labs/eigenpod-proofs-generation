@@ -14,8 +14,6 @@ import (
 type StateRootProof struct {
 	BeaconStateRoot phase0.Root  `json:"beaconStateRoot"`
 	StateRootProof  common.Proof `json:"stateRootProof"`
-	Slot            phase0.Slot  `json:"slot"`
-	SlotRootProof   common.Proof `json:"slotRootProof"` //Note:  this slot root is oracle block root being used to prove partial withdrawals is after the specified range of blocks requested by the user
 }
 
 type VerifyValidatorFieldsCallParams struct {
@@ -174,7 +172,7 @@ func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.Beaco
 
 func (epp *EigenPodProofs) ProveValidatorBalanceAgainstBeaconState(beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, oracleBeaconStateSlot phase0.Slot, oracleBeaconStateValidatorBalances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
 	// prove the validator list against the beacon state
-	balancesRootProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, beacon.BalanceListIndex)
+	balancesRootProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, beacon.ValidatorBalancesListIndex)
 	if err != nil {
 		return phase0.Root{}, nil, err
 	}
@@ -199,7 +197,7 @@ func (epp *EigenPodProofs) ProveValidatorBalanceAgainstValidatorBalancesList(slo
 	// 4 balances per leaf
 	validatorBalancesIndex := validatorIndex / 4
 
-	proof, err := common.ComputeMerkleProofFromTree(validatorBalancesTree, validatorBalancesIndex, beacon.ValidatorBalancesMerkleSubtreeNumLayers)
+	proof, err := common.ComputeMerkleProofFromTree(validatorBalancesTree, validatorBalancesIndex, beacon.GetValidatorBalancesProofDepth(len(balances)))
 	if err != nil {
 		return phase0.Root{}, nil, err
 	}

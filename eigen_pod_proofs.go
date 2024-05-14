@@ -14,10 +14,7 @@ import (
 )
 
 const (
-	BEACON_STATE_ROOT_PREFIX            = "BEACON_STATE_ROOT_"
-	BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX = "BEACON_STATE_TOP_LEVEL_ROOTS_"
-	VALIDATOR_TREE_PREFIX               = "VALIDATOR_TREE_"
-	MAX_ORACLE_STATE_CACHE_SIZE         = 2000000
+	MAX_ORACLE_STATE_CACHE_SIZE = 2000000
 )
 
 type EigenPodProofs struct {
@@ -30,20 +27,22 @@ type EigenPodProofs struct {
 }
 
 func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*EigenPodProofs, error) {
-	if chainID != 1 && chainID != 5 && chainID != 17000 {
+	if chainID != 1 && chainID != 17000 {
 		return nil, errors.New("chainID not supported")
 	}
 
 	oracleStateRootCache := expirable.NewLRU[uint64, phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 	oracleStateTopLevelRootsCache := expirable.NewLRU[uint64, *beacon.BeaconStateTopLevelRoots](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 	oracleStateValidatorTreeCache := expirable.NewLRU[uint64, [][]phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
+	oracleStateValidatorBalancesTreeCache := expirable.NewLRU[uint64, [][]phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 
 	return &EigenPodProofs{
-		chainID:                       chainID,
-		oracleStateRootCache:          oracleStateRootCache,
-		oracleStateTopLevelRootsCache: oracleStateTopLevelRootsCache,
-		oracleStateValidatorTreeCache: oracleStateValidatorTreeCache,
-		oracleStateCacheExpirySeconds: oracleStateCacheExpirySeconds,
+		chainID:                               chainID,
+		oracleStateRootCache:                  oracleStateRootCache,
+		oracleStateTopLevelRootsCache:         oracleStateTopLevelRootsCache,
+		oracleStateValidatorTreeCache:         oracleStateValidatorTreeCache,
+		oracleStateCacheExpirySeconds:         oracleStateCacheExpirySeconds,
+		oracleStateValidatorBalancesTreeCache: oracleStateValidatorBalancesTreeCache,
 	}, nil
 }
 
@@ -132,7 +131,7 @@ func (epp *EigenPodProofs) ComputeValidatorBalancesTree(slot phase0.Slot, balanc
 			balanceRoots := beacon.ComputeValidatorBalancesTreeLeaves(balances)
 
 			// compute the validator balances tree
-			validatorBalancesTree, err := common.ComputeMerkleTreeFromLeaves(balanceRoots, beacon.ValidatorBalancesMerkleSubtreeNumLayers)
+			validatorBalancesTree, err := common.ComputeMerkleTreeFromLeaves(balanceRoots, beacon.GetValidatorBalancesProofDepth(len(balances)))
 			if err != nil {
 				return nil, err
 			}

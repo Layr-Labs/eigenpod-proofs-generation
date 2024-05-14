@@ -9,7 +9,6 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	ssz "github.com/ferranbt/fastssz"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
@@ -77,20 +76,7 @@ type InputDataBlock struct {
 	Finalized            bool `json:"finalized"`
 }
 
-type InputDataBlockCapella struct {
-	Version string `json:"version"`
-	Data    struct {
-		Message   capella.BeaconBlock `json:"message"`
-		Signature string              `json:"signature"`
-	} `json:"data"`
-	Execution_optimistic bool `json:"execution_optimistic"`
-	Finalized            bool `json:"finalized"`
-}
-
 func SetupValidatorProof(oracleBlockHeaderFile string, stateFile string, validatorIndex uint64, changeBalance bool, newBalance uint64, incrementSlot uint64, state *deneb.BeaconState, oracleBlockHeader *phase0.BeaconBlockHeader) {
-	//filename1 := "data/slot_58000/oracle_capella_beacon_state_58100.ssz" //this is the file for the repointed validator (either 61336 or 61068)
-	//filename1 := "data/slot_209635/oracle_capella_beacon_state_209635.ssz" //this is the file for the slashed validator 61511
-
 	stateJSON, err := eigenpodproofs.ParseDenebStateJSONFile(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing")
@@ -204,43 +190,4 @@ func ExtractBlock(blockHeaderFile string) (deneb.BeaconBlock, error) {
 
 	// Extract block body
 	return data.Data.Message, nil
-}
-
-func ExtractBlockCapella(blockHeaderFile string) (capella.BeaconBlock, error) {
-	fileBytes, err := os.ReadFile(blockHeaderFile)
-	if err != nil {
-		return capella.BeaconBlock{}, err
-	}
-
-	// Decode JSON
-	var data InputDataBlockCapella
-	if err := json.Unmarshal(fileBytes, &data); err != nil {
-		return capella.BeaconBlock{}, err
-	}
-
-	// Extract block body
-	return data.Data.Message, nil
-}
-
-func GetWithdrawalFields(w *capella.Withdrawal) []string {
-	var withdrawalFields []string
-	hh := ssz.NewHasher()
-
-	hh.PutUint64(uint64(w.Index))
-	withdrawalFields = append(withdrawalFields, "0x"+hex.EncodeToString(hh.Hash()))
-	hh.Reset()
-
-	hh.PutUint64(uint64(w.ValidatorIndex))
-	withdrawalFields = append(withdrawalFields, "0x"+hex.EncodeToString(hh.Hash()))
-	hh.Reset()
-
-	hh.PutBytes(w.Address[:])
-	withdrawalFields = append(withdrawalFields, "0x"+hex.EncodeToString(hh.Hash()))
-	hh.Reset()
-
-	hh.PutUint64(uint64(w.Amount))
-	withdrawalFields = append(withdrawalFields, "0x"+hex.EncodeToString(hh.Hash()))
-	hh.Reset()
-
-	return withdrawalFields
 }

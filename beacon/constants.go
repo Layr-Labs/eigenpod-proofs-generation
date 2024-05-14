@@ -6,8 +6,8 @@ const (
 
 	HistoricalSummaryListIndex = uint64(27)
 
-	ValidatorListIndex = uint64(11)
-	BalanceListIndex   = uint64(12)
+	ValidatorListIndex         = uint64(11)
+	ValidatorBalancesListIndex = uint64(12)
 
 	BeaconBlockBodyRootIndex = uint64(4)
 
@@ -39,8 +39,6 @@ const (
 	BlockBodyMerkleSubtreeNumLayers = uint64(4)
 
 	ValidatorListMerkleSubtreeNumLayers = uint64(40)
-
-	ValidatorBalancesMerkleSubtreeNumLayers = uint64(4)
 
 	HistoricalSummaryListMerkleSubtreeNumLayers = uint64(24)
 
