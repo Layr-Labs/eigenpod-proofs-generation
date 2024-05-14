@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	ssz "github.com/ferranbt/fastssz"
 
 	"github.com/attestantio/go-eth2-client/spec/deneb"
@@ -77,15 +77,21 @@ type InputDataBlock struct {
 }
 
 func SetupValidatorProof(oracleBlockHeaderFile string, stateFile string, validatorIndex uint64, changeBalance bool, newBalance uint64, incrementSlot uint64, state *deneb.BeaconState, oracleBlockHeader *phase0.BeaconBlockHeader) {
-	stateJSON, err := eigenpodproofs.ParseDenebStateJSONFile(stateFile)
+	stateBytes, err := common.ReadFile(stateFile)
 	if err != nil {
 		fmt.Println("error with JSON parsing")
+		return
 	}
-	eigenpodproofs.ParseDenebBeaconStateFromJSON(*stateJSON, state)
+	err = state.UnmarshalSSZ(stateBytes)
+	if err != nil {
+		fmt.Println("error with SSZ parsing")
+		return
+	}
 
 	*oracleBlockHeader, err = ExtractBlockHeader(oracleBlockHeaderFile)
 	if err != nil {
 		fmt.Println("read error with header file")
+		return
 	}
 
 	//setting the withdrawal credentials of Validator
@@ -109,6 +115,7 @@ func SetupValidatorProof(oracleBlockHeaderFile string, stateFile string, validat
 	newStateRoot, err := state.HashTreeRoot()
 	if err != nil {
 		fmt.Println("error with HashTreeRoot", err)
+		return
 	}
 	//Now that we've made these changes to "state", we need to update the oracleState.LatestBlockHeader.StateRoot
 	oracleBlockHeader.StateRoot = newStateRoot

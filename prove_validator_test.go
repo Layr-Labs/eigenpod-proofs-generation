@@ -2,7 +2,6 @@ package eigenpodproofs_test
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"testing"
 
@@ -19,33 +18,19 @@ var beaconHeader *phase0.BeaconBlockHeader
 var beaconState *spec.VersionedBeaconState
 var epp *eigenpodproofs.EigenPodProofs
 
-func readFile(fileName string) ([]byte, error) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return fileBytes, nil
-}
-
 // before all
 func TestMain(m *testing.M) {
 	var err error
 
 	beaconHeaderFileName := "data/deneb_holesky_beacon_header_1650726.json"
-	beaconHeaderBytes, err := readFile(beaconHeaderFileName)
+	beaconHeaderBytes, err := common.ReadFile(beaconHeaderFileName)
 	if err != nil {
 		fmt.Println("error", err)
 		return
 	}
 
 	beaconStateFileName := "data/deneb_holesky_beacon_state_1650726.ssz"
-	beaconStateBytes, err := readFile(beaconStateFileName)
+	beaconStateBytes, err := common.ReadFile(beaconStateFileName)
 	if err != nil {
 		fmt.Println("error", err)
 		return
