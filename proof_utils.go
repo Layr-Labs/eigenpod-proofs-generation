@@ -70,43 +70,8 @@ type beaconStateJSONDeneb struct {
 	HistoricalSummaries          []*capella.HistoricalSummary  `json:"historical_summaries"`
 }
 
-type beaconStateJSONCapella struct {
-	GenesisTime                  string                          `json:"genesis_time"`
-	GenesisValidatorsRoot        string                          `json:"genesis_validators_root"`
-	Slot                         string                          `json:"slot"`
-	Fork                         *phase0.Fork                    `json:"fork"`
-	LatestBlockHeader            *phase0.BeaconBlockHeader       `json:"latest_block_header"`
-	BlockRoots                   []string                        `json:"block_roots"`
-	StateRoots                   []string                        `json:"state_roots"`
-	HistoricalRoots              []string                        `json:"historical_roots"`
-	ETH1Data                     *phase0.ETH1Data                `json:"eth1_data"`
-	ETH1DataVotes                []*phase0.ETH1Data              `json:"eth1_data_votes"`
-	ETH1DepositIndex             string                          `json:"eth1_deposit_index"`
-	Validators                   []*phase0.Validator             `json:"validators"`
-	Balances                     []string                        `json:"balances"`
-	RANDAOMixes                  []string                        `json:"randao_mixes"`
-	Slashings                    []string                        `json:"slashings"`
-	PreviousEpochParticipation   []string                        `json:"previous_epoch_participation"`
-	CurrentEpochParticipation    []string                        `json:"current_epoch_participation"`
-	JustificationBits            string                          `json:"justification_bits"`
-	PreviousJustifiedCheckpoint  *phase0.Checkpoint              `json:"previous_justified_checkpoint"`
-	CurrentJustifiedCheckpoint   *phase0.Checkpoint              `json:"current_justified_checkpoint"`
-	FinalizedCheckpoint          *phase0.Checkpoint              `json:"finalized_checkpoint"`
-	InactivityScores             []string                        `json:"inactivity_scores"`
-	CurrentSyncCommittee         *altair.SyncCommittee           `json:"current_sync_committee"`
-	NextSyncCommittee            *altair.SyncCommittee           `json:"next_sync_committee"`
-	LatestExecutionPayloadHeader *capella.ExecutionPayloadHeader `json:"latest_execution_payload_header"`
-	NextWithdrawalIndex          string                          `json:"next_withdrawal_index"`
-	NextWithdrawalValidatorIndex string                          `json:"next_withdrawal_validator_index"`
-	HistoricalSummaries          []*capella.HistoricalSummary    `json:"historical_summaries"`
-}
-
 type beaconStateVersionDeneb struct {
 	Data beaconStateJSONDeneb `json:"data"`
-}
-
-type beaconStateVersionCapella struct {
-	Data beaconStateJSONCapella `json:"data"`
 }
 
 type InputDataBlockHeader struct {
@@ -127,16 +92,6 @@ type InputDataBlockDeneb struct {
 	Finalized            bool `json:"finalized"`
 }
 
-type InputDataBlockCapella struct {
-	Version string `json:"version"`
-	Data    struct {
-		Message   capella.BeaconBlock `json:"message"`
-		Signature string              `json:"signature"`
-	} `json:"data"`
-	Execution_optimistic bool `json:"execution_optimistic"`
-	Finalized            bool `json:"finalized"`
-}
-
 func ParseJSONFileDeneb(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := os.ReadFile(filePath)
 
@@ -146,25 +101,6 @@ func ParseJSONFileDeneb(filePath string) (*beaconStateJSONDeneb, error) {
 	}
 
 	var beaconState beaconStateVersionDeneb
-	err = json.Unmarshal(data, &beaconState)
-	if err != nil {
-		fmt.Println("error with beaconState JSON unmarshalling")
-		return nil, err
-	}
-
-	actualData := beaconState.Data
-	return &actualData, nil
-}
-
-func ParseJSONFileCapella(filePath string) (*beaconStateJSONCapella, error) {
-	data, err := os.ReadFile(filePath)
-
-	if err != nil {
-		fmt.Println("error with reading file")
-		return nil, err
-	}
-
-	var beaconState beaconStateVersionCapella
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		fmt.Println("error with beaconState JSON unmarshalling")
@@ -291,22 +227,6 @@ func ExtractBlockDeneb(blockHeaderFile string) (deneb.BeaconBlock, error) {
 	return data.Data.Message, nil
 }
 
-func ExtractBlockCapella(blockHeaderFile string) (capella.BeaconBlock, error) {
-	fileBytes, err := os.ReadFile(blockHeaderFile)
-	if err != nil {
-		return capella.BeaconBlock{}, err
-	}
-
-	// Decode JSON
-	var data InputDataBlockCapella
-	if err := json.Unmarshal(fileBytes, &data); err != nil {
-		return capella.BeaconBlock{}, err
-	}
-
-	// Extract block body
-	return data.Data.Message, nil
-}
-
 func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	data, err := ioutil.ReadFile(filePath)
 
@@ -316,25 +236,6 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	}
 
 	var beaconState beaconStateVersionDeneb
-	err = json.Unmarshal(data, &beaconState)
-	if err != nil {
-		log.Debug().Msg("error with JSON unmarshalling")
-		return nil, err
-	}
-
-	actualData := beaconState.Data
-	return &actualData, nil
-}
-
-func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error) {
-	data, err := ioutil.ReadFile(filePath)
-
-	if err != nil {
-		log.Debug().Str("file", filePath).Msg("error with reading file")
-		return nil, err
-	}
-
-	var beaconState beaconStateVersionCapella
 	err = json.Unmarshal(data, &beaconState)
 	if err != nil {
 		log.Debug().Msg("error with JSON unmarshalling")
