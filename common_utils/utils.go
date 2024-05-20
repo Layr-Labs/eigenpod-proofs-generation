@@ -149,9 +149,9 @@ type InputDataBlock struct {
 }
 
 func ConvertBytesToStrings(b [][32]byte) []string {
-	var s []string
-	for _, v := range b {
-		s = append(s, "0x"+hex.EncodeToString(v[:]))
+	s := make([]string, 0, len(b))
+	for i := range b {
+		s = append(s, "0x"+hex.EncodeToString(b[i][:]))
 	}
 	return s
 }
