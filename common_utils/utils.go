@@ -157,7 +157,7 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {
-	var validatorFields []string
+	validatorFields := make([]string, 0, 8)
 	hh := ssz.NewHasher()
 
 	hh.PutBytes(v.PublicKey[:])
@@ -248,7 +248,7 @@ func ExtractSignedDenebBlock(signedBlockFile string) (*spec.VersionedSignedBeaco
 }
 
 func GetWithdrawalFields(w *capella.Withdrawal) []string {
-	var withdrawalFields []string
+	withdrawalFields := make([]string, 0, 4)
 	hh := ssz.NewHasher()
 
 	hh.PutUint64(uint64(w.Index))
@@ -318,9 +318,7 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 }
 
 // nolint:gocyclo
-func ParseDenebBeaconStateFromJSON(data BeaconStateJSONDeneb, s *deneb.BeaconState) error {
-	var err error
-
+func ParseDenebBeaconStateFromJSON(data *BeaconStateJSONDeneb, s *deneb.BeaconState) (err error) {
 	if data.GenesisTime == "" {
 		return errors.New("genesis time missing")
 	}
