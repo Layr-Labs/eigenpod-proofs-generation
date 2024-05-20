@@ -122,7 +122,7 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 		log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing state file", err)
 		return nil, err
 	}
-	commonutils.ParseDenebBeaconStateFromJSON(*oracleStateJSON, &oracleState)
+	commonutils.ParseDenebBeaconStateFromJSON(oracleStateJSON, &oracleState)
 
 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
 
@@ -134,7 +134,7 @@ func (u *EigenPodProofTxSubmitter) SubmitVerifyAndProcessWithdrawalsTx(withdrawa
 			log.Debug().AnErr("GenerateWithdrawalFieldsProof: error with JSON parsing historical summary state file", err)
 			return nil, err
 		}
-		commonutils.ParseDenebBeaconStateFromJSON(*historicalSummaryStateJSON, &historicalSummaryState)
+		commonutils.ParseDenebBeaconStateFromJSON(historicalSummaryStateJSON, &historicalSummaryState)
 
 		historicalSummaryStateBlockRoots = append(historicalSummaryStateBlockRoots, historicalSummaryState.BlockRoots)
 	}

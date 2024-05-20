@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"strconv"
@@ -60,7 +59,7 @@ type BalanceUpdateProofs struct {
 	ValidatorFields                        []string `json:"ValidatorFields"`
 }
 
-type beaconStateJSONDeneb struct {
+type BeaconStateJSONDeneb struct {
 	GenesisTime                  string                        `json:"genesis_time"`
 	GenesisValidatorsRoot        string                        `json:"genesis_validators_root"`
 	Slot                         string                        `json:"slot"`
@@ -123,7 +122,7 @@ type beaconStateJSONCapella struct {
 }
 
 type beaconStateVersionDeneb struct {
-	Data beaconStateJSONDeneb `json:"data"`
+	Data BeaconStateJSONDeneb `json:"data"`
 }
 
 type beaconStateVersionCapella struct {
@@ -149,7 +148,7 @@ type InputDataBlock struct {
 }
 
 func ConvertBytesToStrings(b [][32]byte) []string {
-	var s []string
+	s := make([]string, 0, len(b))
 	for _, v := range b {
 		s = append(s, "0x"+hex.EncodeToString(v[:]))
 	}
@@ -157,7 +156,7 @@ func ConvertBytesToStrings(b [][32]byte) []string {
 }
 
 func GetValidatorFields(v *phase0.Validator) []string {
-	var validatorFields []string
+	validatorFields := make([]string, 0, 8)
 	hh := ssz.NewHasher()
 
 	hh.PutBytes(v.PublicKey[:])
@@ -279,8 +278,8 @@ func GetWithdrawalIndex(validatorIndex uint64, withdrawals []*capella.Withdrawal
 	return math.MaxUint64
 }
 
-func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
-	data, err := ioutil.ReadFile(filePath)
+func ParseDenebStateJSONFile(filePath string) (*BeaconStateJSONDeneb, error) {
+	data, err := os.ReadFile(filePath)
 
 	if err != nil {
 		log.Debug().Str("file", filePath).Msgf("error with reading file: %v", err)
@@ -294,12 +293,11 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 		return nil, err
 	}
 
-	actualData := beaconState.Data
-	return &actualData, nil
+	return &beaconState.Data, nil
 }
 
 func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 
 	if err != nil {
 		log.Debug().Str("file", filePath).Msgf("error with reading file: %v", err)
@@ -318,9 +316,7 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 }
 
 // nolint:gocyclo
-func ParseDenebBeaconStateFromJSON(data beaconStateJSONDeneb, s *deneb.BeaconState) error {
-	var err error
-
+func ParseDenebBeaconStateFromJSON(data *BeaconStateJSONDeneb, s *deneb.BeaconState) (err error) {
 	if data.GenesisTime == "" {
 		return errors.New("genesis time missing")
 	}
