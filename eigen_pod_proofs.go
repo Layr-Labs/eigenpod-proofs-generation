@@ -98,6 +98,18 @@ func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState 
 	}
 }
 
+func (epp *EigenPodProofs) ComputeValidatorTreeCustomComputer(slot phase0.Slot, computer func() ([][]phase0.Root, error)) ([][]phase0.Root, error) {
+	validatorTree, err := epp.loadOrComputeValidatorTree(
+		slot,
+		computer,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return validatorTree, nil
+}
+
 func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*phase0.Validator) ([][]phase0.Root, error) {
 	validatorTree, err := epp.loadOrComputeValidatorTree(
 		slot,
