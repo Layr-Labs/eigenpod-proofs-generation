@@ -12,7 +12,9 @@ generation/generation
 
 solidityProofGen/solidityProofGen
 
-
+node_modules
 test
-
+.env
+automationScript/HEAD_FILE.json
+automationScript/STATE_FILE.json
 **/.DS_Store
