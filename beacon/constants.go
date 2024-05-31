@@ -1,52 +1,30 @@
 package beacon
 
-// various constants used in the beacon package
 const (
-	SlotsPerHistoricalRoot = uint64(8192)
+	BEACON_BLOCK_HEADER_NUM_FIELDS = uint64(5)
 
-	HistoricalSummaryListIndex = uint64(27)
+	BEACON_BLOCK_HEADER_TREE_HEIGHT = uint64(3)
+	BEACON_STATE_TREE_HEIGHT        = uint64(5)
+	BALANCE_TREE_HEIGHT             = uint64(38)
+	VALIDATOR_TREE_HEIGHT           = uint64(40)
 
-	ValidatorListIndex         = uint64(11)
-	ValidatorBalancesListIndex = uint64(12)
+	STATE_ROOT_INDEX = uint64(3)
 
-	BeaconBlockBodyRootIndex = uint64(4)
+	VALIDATORS_INDEX = uint64(11)
+	BALANCES_INDEX   = uint64(12)
 
-	ExecutionPayloadIndex = uint64(9)
+	VALIDATOR_FIELDS_LENGTH = uint64(8)
 
-	// Index of the timestamp inside the execution payload
-	TimestampIndex = uint64(9)
+	VALIDATOR_PUBKEY_INDEX                 = uint64(0)
+	VALIDATOR_WITHDRAWAL_CREDENTIALS_INDEX = uint64(1)
+	VALIDATOR_BALANCE_INDEX                = uint64(2)
+	VALIDATOR_SLASHED_INDEX                = uint64(3)
+	VALIDATOR_EXIT_EPOCH_INDEX             = uint64(6)
 
-	// Index of the withdrawals inside the execution payload
-	WithdrawalsIndex = uint64(14)
+	SECONDS_PER_SLOT  = uint64(12)
+	SLOTS_PER_EPOCH   = uint64(32)
+	SECONDS_PER_EPOCH = SECONDS_PER_SLOT * SLOTS_PER_EPOCH
 
-	// Index of the slot in the beacon block header
-	SlotIndex      = uint64(0)
-	StateRootIndex = uint64(3)
-
-	// in the historical summary coontainer, the block root summary is at index 0
-	BlockSummaryRootIndex = uint64(0)
-)
-
-//
-//
-// **************Number of Layers in Various Subtrees**************
-//
-//
-
-const (
-	BlockHeaderMerkleSubtreeNumLayers = uint64(3)
-
-	BlockBodyMerkleSubtreeNumLayers = uint64(4)
-
-	ValidatorListMerkleSubtreeNumLayers = uint64(40)
-
-	HistoricalSummaryListMerkleSubtreeNumLayers = uint64(24)
-
-	WithdrawalListMerkleSubtreeNumLayers = uint64(4)
-
-	beaconStateMerkleSubtreeNumLayers = uint64(5)
-
-	BlockRootsMerkleSubtreeNumLayers = uint64(13)
-
-	BeaconBlockHeaderNumFields = uint64(5)
+	FAR_FUTURE_EPOCH = ^uint64(0)
+	UINT64_MASK      = 0xffffffffffffffff
 )

@@ -107,7 +107,7 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 			}
 
 			// compute the validator tree
-			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, beacon.ValidatorListMerkleSubtreeNumLayers)
+			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, beacon.VALIDATOR_TREE_HEIGHT)
 			if err != nil {
 				return nil, err
 			}

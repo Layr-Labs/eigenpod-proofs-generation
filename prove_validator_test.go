@@ -79,7 +79,7 @@ func TestProveValidatorContainers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, verifyStateRootAgainstBlockHeaderProof(t, epp, beaconHeader, beaconState.Deneb, verifyValidatorFieldsCallParams.StateRootProof.Proof))
+	assert.True(t, verifyStateRootAgainstBlockHeader(t, epp, beaconHeader, beaconState.Deneb, verifyValidatorFieldsCallParams.StateRootProof.Proof))
 
 	for i := 0; i < len(verifyValidatorFieldsCallParams.ValidatorFields); i++ {
 		assert.True(t, verifyValidatorAgainstBeaconState(t, epp, beaconState.Deneb, verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], validatorIndices[i]))
@@ -107,25 +107,25 @@ func TestProveValidatorBalances(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, verifyStateRootAgainstBlockHeaderProof(t, epp, beaconHeader, beaconState.Deneb, verifyCheckpointProofsCallParams.StateRootProof.Proof))
+	assert.True(t, verifyValidatorBalancesRootAgainstBlockHeader(t, epp, beaconHeader, verifyCheckpointProofsCallParams.ValidatorBalancesRootProof))
 
 	for i := 0; i < len(verifyCheckpointProofsCallParams.BalanceProofs); i++ {
-		assert.True(t, verifyValidatorBalanceAgainstBeaconState(t, epp, beaconState.Deneb, verifyCheckpointProofsCallParams.BalanceProofs[i], validatorIndices[i]))
+		assert.True(t, verifyValidatorBalanceAgainstValidatorBalancesRoot(t, epp, beaconState.Deneb, verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot, verifyCheckpointProofsCallParams.BalanceProofs[i], validatorIndices[i]))
 	}
 }
 
-func verifyStateRootAgainstBlockHeaderProof(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleState *deneb.BeaconState, proof common.Proof) bool {
+func verifyStateRootAgainstBlockHeader(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleState *deneb.BeaconState, proof common.Proof) bool {
 	root, err := oracleBlockHeader.HashTreeRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	leaf, err := epp.ComputeBeaconStateRoot(oracleState)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	flag := common.ValidateProof(root, proof, leaf, beacon.StateRootIndex)
-	return flag
+	return common.ValidateProof(root, proof, leaf, beacon.STATE_ROOT_INDEX)
 }
 
 func verifyValidatorAgainstBeaconState(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, proof common.Proof, validatorIndex uint64) bool {
@@ -139,17 +139,22 @@ func verifyValidatorAgainstBeaconState(t *testing.T, epp *eigenpodproofs.EigenPo
 		t.Fatal(err)
 	}
 
-	index := beacon.ValidatorListIndex<<(beacon.ValidatorListMerkleSubtreeNumLayers+1) | validatorIndex
+	index := beacon.VALIDATORS_INDEX<<(beacon.VALIDATOR_TREE_HEIGHT+1) | validatorIndex
 	return common.ValidateProof(root, proof, leaf, index)
 }
 
-func verifyValidatorBalanceAgainstBeaconState(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {
-	root, err := epp.ComputeBeaconStateRoot(oracleState)
+func verifyValidatorBalancesRootAgainstBlockHeader(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, proof *eigenpodproofs.ValidatorBalancesRootProof) bool {
+	root, err := oracleBlockHeader.HashTreeRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	index := beacon.ValidatorBalancesListIndex<<(beacon.GetValidatorBalancesProofDepth(len(oracleState.Balances))+1) | (validatorIndex / 4)
+	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beacon.BEACON_STATE_TREE_HEIGHT|beacon.BALANCES_INDEX)
+}
 
-	return common.ValidateProof(root, proof.Proof, proof.BalanceRoot, index)
+func verifyValidatorBalanceAgainstValidatorBalancesRoot(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, validatorBalancesRoot phase0.Root, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {
+
+	index := beacon.BALANCES_INDEX<<(beacon.GetValidatorBalancesProofDepth(len(oracleState.Balances))+1) | (validatorIndex / 4)
+
+	return common.ValidateProof(validatorBalancesRoot, proof.Proof, proof.BalanceRoot, index)
 }
