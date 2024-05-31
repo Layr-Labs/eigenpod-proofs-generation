@@ -79,7 +79,7 @@ func TestProveValidatorContainers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, verifyStateRootAgainstBlockHeaderProof(t, epp, beaconHeader, beaconState.Deneb, verifyValidatorFieldsCallParams.StateRootProof.StateRootProof))
+	assert.True(t, verifyStateRootAgainstBlockHeaderProof(t, epp, beaconHeader, beaconState.Deneb, verifyValidatorFieldsCallParams.StateRootProof.Proof))
 
 	for i := 0; i < len(verifyValidatorFieldsCallParams.ValidatorFields); i++ {
 		assert.True(t, verifyValidatorAgainstBeaconState(t, epp, beaconState.Deneb, verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], validatorIndices[i]))
@@ -107,7 +107,7 @@ func TestProveValidatorBalances(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, verifyStateRootAgainstBlockHeaderProof(t, epp, beaconHeader, beaconState.Deneb, verifyCheckpointProofsCallParams.StateRootProof.StateRootProof))
+	assert.True(t, verifyStateRootAgainstBlockHeaderProof(t, epp, beaconHeader, beaconState.Deneb, verifyCheckpointProofsCallParams.StateRootProof.Proof))
 
 	for i := 0; i < len(verifyCheckpointProofsCallParams.BalanceProofs); i++ {
 		assert.True(t, verifyValidatorBalanceAgainstBeaconState(t, epp, beaconState.Deneb, verifyCheckpointProofsCallParams.BalanceProofs[i], validatorIndices[i]))

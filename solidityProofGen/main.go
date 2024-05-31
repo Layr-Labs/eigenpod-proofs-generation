@@ -105,7 +105,7 @@ func GenerateValidatorFieldsProof(oracleBlockHeaderFile string, stateFile string
 		LatestBlockHeaderRoot:                  "0x" + hex.EncodeToString(latestBlockHeaderRoot[:]),
 		WithdrawalCredentialProof:              ConvertBytesToStrings(validatorFieldsProof),
 		ValidatorFields:                        GetValidatorFields(state.Validators[validatorIndex]),
-		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProof.StateRootProof),
+		StateRootAgainstLatestBlockHeaderProof: ConvertBytesToStrings(stateRootProof.Proof),
 	}
 
 	proofData, err := json.Marshal(proofs)
@@ -142,7 +142,7 @@ func ProveValidatorFields(epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader 
 		return nil, nil, err
 	}
 
-	stateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
+	stateRootProof.Proof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
 
 	if err != nil {
 		return nil, nil, err

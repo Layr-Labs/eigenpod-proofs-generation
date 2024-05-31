@@ -13,7 +13,7 @@ import (
 
 type StateRootProof struct {
 	BeaconStateRoot phase0.Root  `json:"beaconStateRoot"`
-	StateRootProof  common.Proof `json:"stateRootProof"`
+	Proof           common.Proof `json:"stateRootProof"`
 }
 
 type VerifyValidatorFieldsCallParams struct {
@@ -22,6 +22,11 @@ type VerifyValidatorFieldsCallParams struct {
 	ValidatorIndices      []uint64        `json:"validatorIndices"`
 	ValidatorFieldsProofs []common.Proof  `json:"validatorFieldsProofs"`
 	ValidatorFields       [][]Bytes32     `json:"validatorFields"`
+}
+
+type ValidatorBalanceRootProof struct {
+	ValidatorBalanceRoot phase0.Root  `json:"validatorBalanceRoot"`
+	Proof                common.Proof `json:"proof"`
 }
 
 type BalanceProof struct {
@@ -46,10 +51,11 @@ func (epp *EigenPodProofs) ProveValidatorContainers(oracleBlockHeader *phase0.Be
 	}
 
 	verifyValidatorFieldsCallParams := &VerifyValidatorFieldsCallParams{}
-	verifyValidatorFieldsCallParams.StateRootProof = &StateRootProof{}
 
 	// Get the state root proof
-	verifyValidatorFieldsCallParams.StateRootProof, err = getStateRootProof(oracleBlockHeader)
+	verifyValidatorFieldsCallParams.StateRootProof = &StateRootProof{}
+	verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
+	verifyValidatorFieldsCallParams.StateRootProof.Proof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -135,10 +141,11 @@ func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.Beaco
 	}
 
 	verifyCheckpointProofsCallParams := &VerifyCheckpointProofsCallParams{}
-	verifyCheckpointProofsCallParams.StateRootProof = &StateRootProof{}
 
 	// Get state root proof
-	verifyCheckpointProofsCallParams.StateRootProof, err = getStateRootProof(oracleBlockHeader)
+	verifyCheckpointProofsCallParams.StateRootProof = &StateRootProof{}
+	verifyCheckpointProofsCallParams.StateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
+	verifyCheckpointProofsCallParams.StateRootProof.Proof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -206,15 +213,4 @@ func (epp *EigenPodProofs) ProveValidatorBalanceAgainstValidatorBalancesList(slo
 
 	proof = append(proof, validatorBalancesListLenLE)
 	return validatorBalancesTree[0][validatorBalancesIndex], proof, nil
-}
-
-func getStateRootProof(oracleBlockHeader *phase0.BeaconBlockHeader) (*StateRootProof, error) {
-	var err error
-	stateRootProof := &StateRootProof{}
-	stateRootProof.BeaconStateRoot = oracleBlockHeader.StateRoot
-	stateRootProof.StateRootProof, err = beacon.ProveStateRootAgainstBlockHeader(oracleBlockHeader)
-	if err != nil {
-		return nil, err
-	}
-	return stateRootProof, nil
 }
