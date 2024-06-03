@@ -14,6 +14,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+const RPC_URL = "https://ethereum-holesky-rpc.publicnode.com"
+
+var BEACON_CHAIN_PROOFS_WRAPPER_ADDRESS = gethcommon.HexToAddress("0xf0B1Dd8D9476778564A515409c17c96705661e6A")
+
 var beaconHeader *phase0.BeaconBlockHeader
 var beaconState *spec.VersionedBeaconState
 var beaconChainProofsWrapper *contractBeaconChainProofsWrapper.ContractBeaconChainProofsWrapper
@@ -47,12 +51,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	holeskyClient, err := ethclient.Dial("https://ethereum-holesky-rpc.publicnode.com")
+	ethClient, err := ethclient.Dial(RPC_URL)
 	if err != nil {
 		panic(err)
 	}
 
-	beaconChainProofsWrapper, err = contractBeaconChainProofsWrapper.NewContractBeaconChainProofsWrapper(gethcommon.HexToAddress("0xf0B1Dd8D9476778564A515409c17c96705661e6A"), holeskyClient)
+	beaconChainProofsWrapper, err = contractBeaconChainProofsWrapper.NewContractBeaconChainProofsWrapper(BEACON_CHAIN_PROOFS_WRAPPER_ADDRESS, ethClient)
 	if err != nil {
 		panic(err)
 	}
