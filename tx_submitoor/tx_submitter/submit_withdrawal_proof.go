@@ -2,8 +2,8 @@ package txsubmitter
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"os"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
@@ -174,6 +174,7 @@ func parseWithdrawalProofConfig(filePath string) (*WithdrawalProofConfig, error)
 	}
 
 	var cfg WithdrawalProofConfig
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	err = json.Unmarshal(data, &cfg)
 	if err != nil {
 		log.Debug().Msg("error with JSON unmarshalling")

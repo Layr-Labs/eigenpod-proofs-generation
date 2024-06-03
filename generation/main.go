@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -55,4 +54,5 @@ func main() {
 		log.Debug().Str("Unknown command:", *command)
 	}
 	log.Debug().AnErr("Error: ", err)
+
 }

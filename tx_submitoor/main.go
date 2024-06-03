@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"flag"
+	"time"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	txsubmitter "github.com/Layr-Labs/eigenpod-proofs-generation/tx_submitoor/tx_submitter"
@@ -56,6 +57,8 @@ func main() {
 		*eigenPodProofs,
 	)
 
+	startedAt := time.Now()
+
 	// Handling commands based on the 'command' flag
 	switch *command {
 	case "WithdrawalFieldsProof":
@@ -76,6 +79,8 @@ func main() {
 		log.Debug().Str("Unknown command:", *command)
 	}
 	log.Debug().AnErr("Error: ", err)
+	log.Debug().Msgf("Took %f seconds", time.Since(startedAt).Seconds())
+
 }
 
 func parseConfig() Config {

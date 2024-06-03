@@ -2,8 +2,8 @@ package commonutils
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"io/ioutil"
 	"math"
 	"os"
@@ -202,8 +202,9 @@ func ExtractBlockHeader(blockHeaderFile string) (phase0.BeaconBlockHeader, error
 		return phase0.BeaconBlockHeader{}, err
 	}
 	// Decode JSON
+
 	var inputData InputDataBlockHeader
-	if err := json.Unmarshal(fileBytes, &inputData); err != nil {
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(fileBytes, &inputData); err != nil {
 		return phase0.BeaconBlockHeader{}, err
 	}
 
@@ -218,7 +219,7 @@ func ExtractBlock(blockFile string) (deneb.BeaconBlock, error) {
 
 	// Decode JSON
 	var data InputDataBlock
-	if err := json.Unmarshal(fileBytes, &data); err != nil {
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(fileBytes, &data); err != nil {
 		return deneb.BeaconBlock{}, err
 	}
 
@@ -234,7 +235,7 @@ func ExtractSignedDenebBlock(signedBlockFile string) (*spec.VersionedSignedBeaco
 
 	// Decode JSON
 	var data InputDataBlock
-	if err := json.Unmarshal(fileBytes, &data); err != nil {
+	if err := jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(fileBytes, &data); err != nil {
 		return nil, err
 	}
 
@@ -288,7 +289,7 @@ func ParseDenebStateJSONFile(filePath string) (*beaconStateJSONDeneb, error) {
 	}
 
 	var beaconState beaconStateVersionDeneb
-	err = json.Unmarshal(data, &beaconState)
+	err = jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &beaconState)
 	if err != nil {
 		log.Debug().Msgf("error with JSON unmarshalling: %v", err)
 		return nil, err
@@ -307,7 +308,7 @@ func ParseCapellaStateJSONFile(filePath string) (*beaconStateJSONCapella, error)
 	}
 
 	var beaconState beaconStateVersionCapella
-	err = json.Unmarshal(data, &beaconState)
+	err = jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(data, &beaconState)
 	if err != nil {
 		log.Debug().Msgf("error with JSON unmarshalling: %v", err)
 		return nil, err
