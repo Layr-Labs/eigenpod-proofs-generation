@@ -20,6 +20,9 @@ function create_binding {
 
     rm -f $binding_dir/${contract}/binding.go
     abigen --bin=data/tmp.bin --abi=data/tmp.abi --pkg=contract${contract} --out=$binding_dir/${contract}/binding.go
+
+    rm -f data/tmp.abi
+    rm -f data/tmp.bin
 }
 
 contracts="BeaconChainProofsWrapper"
