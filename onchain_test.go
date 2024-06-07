@@ -1,73 +1,104 @@
 package eigenpodproofs_test
 
-// import (
-// 	"fmt"
-// 	"math/big"
-// 	"testing"
+import (
+	"math/big"
+	"testing"
 
-// 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
-// 	"github.com/attestantio/go-eth2-client/spec/deneb"
-// 	"github.com/stretchr/testify/assert"
+	contractBeaconChainProofsWrapper "github.com/Layr-Labs/eigenpod-proofs-generation/bindings/BeaconChainProofsWrapper"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/stretchr/testify/assert"
+)
 
-// 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-// )
+func TestValidatorContainersProofOnChain(t *testing.T) {
+	validators, err := beaconState.Validators()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// func TestValidatorContainersProofOnChain(t *testing.T) {
-// 	var oracleState deneb.BeaconState
-// 	stateFile := "data/deneb_goerli_slot_7413760.json"
-// 	stateJSON, err := ParseJSONFileDeneb(stateFile)
-// 	if err != nil {
-// 		fmt.Println("error with JSON parsing beacon state")
-// 	}
-// 	ParseDenebBeaconStateFromJSON(*stateJSON, &oracleState)
+	validatorIndices := []uint64{}
+	for i := int(0); i < len(validators); i += 100000 {
+		validatorIndices = append(validatorIndices, uint64(i))
+	}
 
-// 	versionedOracleState, err := beacon.CreateVersionedState(&oracleState)
-// 	if err != nil {
-// 		fmt.Println("error", err)
-// 	}
+	verifyValidatorFieldsCallParams, err := epp.ProveValidatorContainers(beaconHeader, beaconState, validatorIndices)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	oracleBlockHeader, err = ExtractBlockHeader("data/deneb_goerli_block_header_7413760.json")
-// 	if err != nil {
-// 		fmt.Println("error", err)
-// 	}
+	blockRoot, err := beaconHeader.HashTreeRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	verifyValidatorFieldsCallParams, err := epp.ProveValidatorContainers(&oracleBlockHeader, &versionedOracleState, []uint64{VALIDATOR_INDEX})
-// 	if err != nil {
-// 		fmt.Println("error", err)
-// 	}
+	err = beaconChainProofsWrapper.VerifyStateRoot(
+		&bind.CallOpts{},
+		blockRoot,
+		contractBeaconChainProofsWrapper.BeaconChainProofsStateRootProof{
+			BeaconStateRoot: verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
+			Proof:           verifyValidatorFieldsCallParams.StateRootProof.Proof.ToByteSlice(),
+		},
+	)
+	assert.Nil(t, err)
 
-// 	validatorFieldsProof := verifyValidatorFieldsCallParams.ValidatorFieldsProofs[0].ToByteSlice()
-// 	validatorIndex := new(big.Int).SetUint64(verifyValidatorFieldsCallParams.ValidatorIndices[0])
-// 	oracleBlockHeaderRoot, err := oracleBlockHeader.HashTreeRoot()
-// 	if err != nil {
-// 		fmt.Println("error", err)
-// 	}
+	for i := 0; i < len(verifyValidatorFieldsCallParams.ValidatorFields); i++ {
+		validatorFields := [][32]byte{}
+		for _, field := range verifyValidatorFieldsCallParams.ValidatorFields[i] {
+			validatorFields = append(validatorFields, field)
+		}
 
-// 	err = beaconChainProofs.VerifyStateRootAgainstLatestBlockRoot(
-// 		&bind.CallOpts{},
-// 		oracleBlockHeaderRoot,
-// 		verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
-// 		verifyValidatorFieldsCallParams.StateRootProof.StateRootProof.ToByteSlice(),
-// 	)
-// 	if err != nil {
-// 		fmt.Println("error", err)
-// 	}
-// 	assert.Nil(t, err)
+		err = beaconChainProofsWrapper.VerifyValidatorFields(
+			&bind.CallOpts{},
+			verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
+			validatorFields,
+			verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i].ToByteSlice(),
+			new(big.Int).SetUint64(verifyValidatorFieldsCallParams.ValidatorIndices[i]),
+		)
+		assert.Nil(t, err)
+	}
+}
 
-// 	var validatorFields [][32]byte
-// 	for _, field := range verifyValidatorFieldsCallParams.ValidatorFields[0] {
-// 		validatorFields = append(validatorFields, field)
-// 	}
+func TestValidatorBalancesProofOnChain(t *testing.T) {
+	validators, err := beaconState.Validators()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-// 	err = beaconChainProofs.VerifyValidatorFields(
-// 		&bind.CallOpts{},
-// 		verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
-// 		validatorFields,
-// 		validatorFieldsProof,
-// 		validatorIndex,
-// 	)
-// 	if err != nil {
-// 		fmt.Println("error", err)
-// 	}
-// 	assert.Nil(t, err)
-// }
+	validatorIndices := []uint64{}
+	for i := int(0); i < len(validators); i += 100000 {
+		validatorIndices = append(validatorIndices, uint64(i))
+	}
+
+	verifyCheckpointProofsCallParams, err := epp.ProveCheckpointProofs(beaconHeader, beaconState, validatorIndices)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blockRoot, err := beaconHeader.HashTreeRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = beaconChainProofsWrapper.VerifyBalanceContainer(
+		&bind.CallOpts{},
+		blockRoot,
+		contractBeaconChainProofsWrapper.BeaconChainProofsBalanceContainerProof{
+			BalanceContainerRoot: verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot,
+			Proof:                verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.Proof.ToByteSlice(),
+		},
+	)
+	assert.Nil(t, err)
+
+	for i := 0; i < len(verifyCheckpointProofsCallParams.BalanceProofs); i++ {
+		err = beaconChainProofsWrapper.VerifyValidatorBalance(
+			&bind.CallOpts{},
+			verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot,
+			new(big.Int).SetUint64(validatorIndices[i]),
+			contractBeaconChainProofsWrapper.BeaconChainProofsBalanceProof{
+				PubkeyHash:  verifyCheckpointProofsCallParams.BalanceProofs[i].PubkeyHash,
+				BalanceRoot: verifyCheckpointProofsCallParams.BalanceProofs[i].BalanceRoot,
+				Proof:       verifyCheckpointProofsCallParams.BalanceProofs[i].Proof.ToByteSlice(),
+			},
+		)
+		assert.Nil(t, err)
+	}
+}

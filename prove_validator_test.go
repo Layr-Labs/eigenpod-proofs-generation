@@ -1,69 +1,17 @@
 package eigenpodproofs_test
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
-	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/stretchr/testify/assert"
 )
 
-var beaconHeader *phase0.BeaconBlockHeader
-var beaconState *spec.VersionedBeaconState
-var epp *eigenpodproofs.EigenPodProofs
-
-// before all
-func TestMain(m *testing.M) {
-	var err error
-
-	beaconHeaderFileName := "data/deneb_holesky_beacon_header_1650726.json"
-	beaconHeaderBytes, err := common.ReadFile(beaconHeaderFileName)
-	if err != nil {
-		fmt.Println("error", err)
-		return
-	}
-
-	beaconStateFileName := "data/deneb_holesky_beacon_state_1650726.ssz"
-	beaconStateBytes, err := common.ReadFile(beaconStateFileName)
-	if err != nil {
-		fmt.Println("error", err)
-		return
-	}
-
-	beaconHeader = &phase0.BeaconBlockHeader{}
-	err = beaconHeader.UnmarshalJSON(beaconHeaderBytes)
-	if err != nil {
-		fmt.Println("error", err)
-	}
-
-	beaconState, err = beacon.UnmarshalSSZVersionedBeaconState(beaconStateBytes)
-	if err != nil {
-		fmt.Println("error", err)
-	}
-
-	epp, err = eigenpodproofs.NewEigenPodProofs(17000, 600)
-	if err != nil {
-		fmt.Println("error", err)
-	}
-
-	code := m.Run()
-
-	// // Teardown
-	// log.Println("Tearing down suite")
-	// teardownSuite()
-
-	// Exit with test result code
-	os.Exit(code)
-}
-
 func TestProveValidatorContainers(t *testing.T) {
-
 	validators, err := beaconState.Validators()
 	if err != nil {
 		t.Fatal(err)
@@ -87,11 +35,6 @@ func TestProveValidatorContainers(t *testing.T) {
 }
 
 func TestProveValidatorBalances(t *testing.T) {
-	epp, err := eigenpodproofs.NewEigenPodProofs(17000, 600)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	validators, err := beaconState.Validators()
 	if err != nil {
 		t.Fatal(err)
