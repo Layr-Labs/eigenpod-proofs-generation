@@ -10,8 +10,6 @@ require (
 	github.com/ferranbt/fastssz v0.1.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/minio/sha256-simd v1.0.1
-	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -40,6 +38,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20210809151128-385d8c5e3fb7 // indirect
