@@ -14,35 +14,38 @@ import (
 )
 
 const (
-	BEACON_STATE_ROOT_PREFIX            = "BEACON_STATE_ROOT_"
-	BEACON_STATE_TOP_LEVEL_ROOTS_PREFIX = "BEACON_STATE_TOP_LEVEL_ROOTS_"
-	VALIDATOR_TREE_PREFIX               = "VALIDATOR_TREE_"
-	MAX_ORACLE_STATE_CACHE_SIZE         = 2000000
+	MAX_ORACLE_STATE_CACHE_SIZE = 2000000
 )
 
 type EigenPodProofs struct {
-	chainID                       uint64
-	oracleStateRootCache          *expirable.LRU[uint64, phase0.Root]
-	oracleStateTopLevelRootsCache *expirable.LRU[uint64, *beacon.BeaconStateTopLevelRoots]
-	oracleStateValidatorTreeCache *expirable.LRU[uint64, [][]phase0.Root]
-	oracleStateCacheExpirySeconds int
+	chainID                               uint64
+	oracleStateRootCache                  *expirable.LRU[uint64, phase0.Root]
+	oracleStateTopLevelRootsCache         *expirable.LRU[uint64, *beacon.BeaconStateTopLevelRoots]
+	oracleStateValidatorTreeCache         *expirable.LRU[uint64, [][]phase0.Root]
+	oracleStateValidatorBalancesTreeCache *expirable.LRU[uint64, [][]phase0.Root]
+	oracleStateCacheExpirySeconds         int
 }
 
+// NewEigenPodProofs creates a new EigenPodProofs instance.
+// chainID is the chain ID of the chain that the EigenPodProofs instance will be used for.
+// oracleStateCacheExpirySeconds is the expiry time for the oracle state cache in seconds. After this time caches of beacon state roots, validator trees and validator balances trees will be evicted.
 func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*EigenPodProofs, error) {
-	if chainID != 1 && chainID != 5 && chainID != 17000 {
+	if chainID != 1 && chainID != 17000 {
 		return nil, errors.New("chainID not supported")
 	}
 
 	oracleStateRootCache := expirable.NewLRU[uint64, phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 	oracleStateTopLevelRootsCache := expirable.NewLRU[uint64, *beacon.BeaconStateTopLevelRoots](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 	oracleStateValidatorTreeCache := expirable.NewLRU[uint64, [][]phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
+	oracleStateValidatorBalancesTreeCache := expirable.NewLRU[uint64, [][]phase0.Root](MAX_ORACLE_STATE_CACHE_SIZE, nil, time.Duration(oracleStateCacheExpirySeconds)*time.Second)
 
 	return &EigenPodProofs{
-		chainID:                       chainID,
-		oracleStateRootCache:          oracleStateRootCache,
-		oracleStateTopLevelRootsCache: oracleStateTopLevelRootsCache,
-		oracleStateValidatorTreeCache: oracleStateValidatorTreeCache,
-		oracleStateCacheExpirySeconds: oracleStateCacheExpirySeconds,
+		chainID:                               chainID,
+		oracleStateRootCache:                  oracleStateRootCache,
+		oracleStateTopLevelRootsCache:         oracleStateTopLevelRootsCache,
+		oracleStateValidatorTreeCache:         oracleStateValidatorTreeCache,
+		oracleStateCacheExpirySeconds:         oracleStateCacheExpirySeconds,
+		oracleStateValidatorBalancesTreeCache: oracleStateValidatorBalancesTreeCache,
 	}, nil
 }
 
@@ -91,8 +94,6 @@ func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState 
 	switch beaconState.Version {
 	case spec.DataVersionDeneb:
 		return beacon.ComputeBeaconStateTopLevelRootsDeneb(beaconState.Deneb)
-	case spec.DataVersionCapella:
-		return beacon.ComputeBeaconStateTopLevelRootsCapella(beaconState.Capella)
 	default:
 		return nil, errors.New("unsupported beacon state version")
 	}
@@ -109,7 +110,7 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 			}
 
 			// compute the validator tree
-			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, beacon.ValidatorListMerkleSubtreeNumLayers)
+			validatorTree, err := common.ComputeMerkleTreeFromLeaves(validatorLeaves, beacon.VALIDATOR_TREE_HEIGHT)
 			if err != nil {
 				return nil, err
 			}
@@ -123,6 +124,30 @@ func (epp *EigenPodProofs) ComputeValidatorTree(slot phase0.Slot, validators []*
 	}
 
 	return validatorTree, nil
+}
+
+func (epp *EigenPodProofs) ComputeValidatorBalancesTree(slot phase0.Slot, balances []phase0.Gwei) ([][]phase0.Root, error) {
+	validatorBalancesTree, err := epp.loadOrComputeValidatorBalancesTree(
+		slot,
+		func() ([][]phase0.Root, error) {
+			// compute the validator balances tree leaves
+			balanceRoots := beacon.ComputeValidatorBalancesTreeLeaves(balances)
+
+			// compute the validator balances tree
+			validatorBalancesTree, err := common.ComputeMerkleTreeFromLeaves(balanceRoots, beacon.GetValidatorBalancesProofDepth(len(balances)))
+			if err != nil {
+				return nil, err
+			}
+
+			// cache the validator balances tree
+			return validatorBalancesTree, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return validatorBalancesTree, nil
 }
 
 func (epp *EigenPodProofs) loadOrComputeBeaconStateRoot(slot phase0.Slot, getData func() (phase0.Root, error)) (phase0.Root, error) {
@@ -174,4 +199,21 @@ func (epp *EigenPodProofs) loadOrComputeValidatorTree(slot phase0.Slot, getData 
 	// cache the beacon state root
 	epp.oracleStateValidatorTreeCache.Add(uint64(slot), validatorTree)
 	return validatorTree, nil
+}
+
+func (epp *EigenPodProofs) loadOrComputeValidatorBalancesTree(slot phase0.Slot, getData func() ([][]phase0.Root, error)) ([][]phase0.Root, error) {
+	balancesTree, found := epp.oracleStateValidatorBalancesTreeCache.Get(uint64(slot))
+	if found {
+		return balancesTree, nil
+	}
+
+	// compute the data
+	balancesTree, err := getData()
+	if err != nil {
+		return nil, err
+	}
+
+	// cache the beacon state root
+	epp.oracleStateValidatorBalancesTreeCache.Add(uint64(slot), balancesTree)
+	return balancesTree, nil
 }

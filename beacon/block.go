@@ -6,16 +6,6 @@ import (
 	ssz "github.com/ferranbt/fastssz"
 )
 
-func ProveBlockBodyAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (common.Proof, error) {
-	blockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(blockHeader)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return common.GetProof(blockHeaderContainerRoots, BeaconBlockBodyRootIndex, blockHeaderMerkleSubtreeNumLayers)
-}
-
 // refer to this: https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/phase0/beaconblockheader_encoding.go
 func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (common.Proof, error) {
 
@@ -24,20 +14,11 @@ func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (common.Proof
 		return nil, err
 	}
 
-	return common.GetProof(beaconBlockHeaderContainerRoots, stateRootIndex, blockHeaderMerkleSubtreeNumLayers)
-}
-
-func ProveSlotAgainstBlockHeader(blockHeader *phase0.BeaconBlockHeader) (common.Proof, error) {
-	blockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(blockHeader)
-	if err != nil {
-		return nil, err
-	}
-
-	return common.GetProof(blockHeaderContainerRoots, SlotIndex, blockHeaderMerkleSubtreeNumLayers)
+	return common.GetProof(beaconBlockHeaderContainerRoots, STATE_ROOT_INDEX, BEACON_BLOCK_HEADER_TREE_HEIGHT)
 }
 
 func GetBlockHeaderFieldRoots(blockHeader *phase0.BeaconBlockHeader) ([]phase0.Root, error) {
-	blockHeaderContainerRoots := make([]phase0.Root, beaconBlockHeaderNumFields)
+	blockHeaderContainerRoots := make([]phase0.Root, BEACON_BLOCK_HEADER_NUM_FIELDS)
 
 	hh := ssz.NewHasher()
 

@@ -6,19 +6,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
-	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
-
-func GetHistoricalSummaries(state *spec.VersionedBeaconState) ([]*capella.HistoricalSummary, error) {
-	switch state.Version {
-	case spec.DataVersionCapella:
-		return state.Capella.HistoricalSummaries, nil
-	case spec.DataVersionDeneb:
-		return state.Deneb.HistoricalSummaries, nil
-	default:
-		return nil, errors.New("unsupported beacon state version")
-	}
-}
 
 func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	switch state.Version {
@@ -31,19 +19,6 @@ func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	}
 }
 
-func GetBlockRoots(beaconState spec.VersionedBeaconState) ([]phase0.Root, error) {
-	var blockRoots []phase0.Root
-
-	switch beaconState.Version {
-	case spec.DataVersionDeneb:
-		blockRoots = beaconState.Deneb.BlockRoots
-	case spec.DataVersionCapella:
-		blockRoots = beaconState.Capella.BlockRoots
-	default:
-		return nil, errors.New("unsupported beacon state version")
-	}
-	return blockRoots, nil
-}
 func CreateVersionedSignedBlock(block interface{}) (spec.VersionedSignedBeaconBlock, error) {
 	var versionedBlock spec.VersionedSignedBeaconBlock
 
