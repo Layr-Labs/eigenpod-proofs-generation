@@ -40,6 +40,10 @@ type VerifyCheckpointProofsCallParams struct {
 	BalanceProofs              []*BalanceProof             `json:"balanceProofs"`
 }
 
+// ProveValidatorContainers generates proofs for the validator containers.
+// oracleBlockHeader is the block header of block whose state root will be looked up from the EIP-4788 precompile
+// oracleBeaconState is the beacon state corresponding to the oracleBlockHeader
+// validatorIndices is the list of validator indices for which the proofs are to be generated
 func (epp *EigenPodProofs) ProveValidatorContainers(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndices []uint64) (*VerifyValidatorFieldsCallParams, error) {
 	oracleBeaconStateSlot, err := oracleBeaconState.Slot()
 	if err != nil {
@@ -77,7 +81,7 @@ func (epp *EigenPodProofs) ProveValidatorContainers(oracleBlockHeader *phase0.Be
 	for i, validatorIndex := range validatorIndices {
 		verifyValidatorFieldsCallParams.ValidatorIndices[i] = validatorIndex
 		// prove the validator fields against the beacon state
-		verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], err = epp.ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
+		verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], err = epp.proveValidatorAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -86,42 +90,6 @@ func (epp *EigenPodProofs) ProveValidatorContainers(oracleBlockHeader *phase0.Be
 	}
 
 	return verifyValidatorFieldsCallParams, nil
-}
-
-func (epp *EigenPodProofs) ProveValidatorAgainstBeaconState(beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, oracleBeaconStateSlot phase0.Slot, oracleBeaconStateValidators []*phase0.Validator, validatorIndex uint64) (common.Proof, error) {
-	// prove the validator list against the beacon state
-	validatorListProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, beacon.VALIDATORS_INDEX)
-	if err != nil {
-		return nil, err
-	}
-
-	// prove the validator root against the validator list root
-	validatorProof, err := epp.ProveValidatorAgainstValidatorList(oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	proof := append(validatorProof, validatorListProof...)
-
-	return proof, nil
-}
-
-func (epp *EigenPodProofs) ProveValidatorAgainstValidatorList(slot phase0.Slot, validators []*phase0.Validator, validatorIndex uint64) (common.Proof, error) {
-	validatorTree, err := epp.ComputeValidatorTree(slot, validators)
-	if err != nil {
-		return nil, err
-	}
-
-	proof, err := common.ComputeMerkleProofFromTree(validatorTree, validatorIndex, beacon.VALIDATOR_TREE_HEIGHT)
-	if err != nil {
-		return nil, err
-	}
-	//append the length of the validator array to the proof
-	//convert big endian to little endian
-	validatorListLenLE := BigToLittleEndian(big.NewInt(int64(len(validators))))
-
-	proof = append(proof, validatorListLenLE)
-	return proof, nil
 }
 
 func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.BeaconBlockHeader, oracleBeaconState *spec.VersionedBeaconState, validatorIndices []uint64) (*VerifyCheckpointProofsCallParams, error) {
@@ -166,7 +134,7 @@ func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.Beaco
 
 	verifyCheckpointProofsCallParams.BalanceProofs = make([]*BalanceProof, len(validatorIndices))
 	for i, validatorIndex := range validatorIndices {
-		balanceRoot, balanceProof, err := epp.ProveValidatorBalanceAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidatorBalances, validatorIndex)
+		balanceRoot, balanceProof, err := epp.proveValidatorBalanceAgainstBeaconState(beaconStateTopLevelRoots, oracleBeaconStateSlot, oracleBeaconStateValidatorBalances, validatorIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -185,9 +153,45 @@ func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.Beaco
 	return verifyCheckpointProofsCallParams, nil
 }
 
-func (epp *EigenPodProofs) ProveValidatorBalanceAgainstBeaconState(beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, oracleBeaconStateSlot phase0.Slot, oracleBeaconStateValidatorBalances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
+func (epp *EigenPodProofs) proveValidatorAgainstBeaconState(beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, oracleBeaconStateSlot phase0.Slot, oracleBeaconStateValidators []*phase0.Validator, validatorIndex uint64) (common.Proof, error) {
+	// prove the validator list against the beacon state
+	validatorListProof, err := beacon.ProveBeaconTopLevelRootAgainstBeaconState(beaconStateTopLevelRoots, beacon.VALIDATORS_INDEX)
+	if err != nil {
+		return nil, err
+	}
+
 	// prove the validator root against the validator list root
-	balanceRoot, balanceProof, err := epp.ProveValidatorBalanceAgainstValidatorBalancesList(oracleBeaconStateSlot, oracleBeaconStateValidatorBalances, validatorIndex)
+	validatorProof, err := epp.proveValidatorAgainstValidatorList(oracleBeaconStateSlot, oracleBeaconStateValidators, validatorIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	proof := append(validatorProof, validatorListProof...)
+
+	return proof, nil
+}
+
+func (epp *EigenPodProofs) proveValidatorAgainstValidatorList(slot phase0.Slot, validators []*phase0.Validator, validatorIndex uint64) (common.Proof, error) {
+	validatorTree, err := epp.ComputeValidatorTree(slot, validators)
+	if err != nil {
+		return nil, err
+	}
+
+	proof, err := common.ComputeMerkleProofFromTree(validatorTree, validatorIndex, beacon.VALIDATOR_TREE_HEIGHT)
+	if err != nil {
+		return nil, err
+	}
+	//append the length of the validator array to the proof
+	//convert big endian to little endian
+	validatorListLenLE := BigToLittleEndian(big.NewInt(int64(len(validators))))
+
+	proof = append(proof, validatorListLenLE)
+	return proof, nil
+}
+
+func (epp *EigenPodProofs) proveValidatorBalanceAgainstBeaconState(beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, oracleBeaconStateSlot phase0.Slot, oracleBeaconStateValidatorBalances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
+	// prove the validator root against the validator list root
+	balanceRoot, balanceProof, err := epp.proveValidatorBalanceAgainstValidatorBalancesList(oracleBeaconStateSlot, oracleBeaconStateValidatorBalances, validatorIndex)
 	if err != nil {
 		return phase0.Root{}, nil, err
 	}
@@ -195,7 +199,7 @@ func (epp *EigenPodProofs) ProveValidatorBalanceAgainstBeaconState(beaconStateTo
 	return balanceRoot, balanceProof, nil
 }
 
-func (epp *EigenPodProofs) ProveValidatorBalanceAgainstValidatorBalancesList(slot phase0.Slot, balances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
+func (epp *EigenPodProofs) proveValidatorBalanceAgainstValidatorBalancesList(slot phase0.Slot, balances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
 	validatorBalancesTree, err := epp.ComputeValidatorBalancesTree(slot, balances)
 	if err != nil {
 		return phase0.Root{}, nil, err

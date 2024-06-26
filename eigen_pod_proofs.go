@@ -26,6 +26,9 @@ type EigenPodProofs struct {
 	oracleStateCacheExpirySeconds         int
 }
 
+// NewEigenPodProofs creates a new EigenPodProofs instance.
+// chainID is the chain ID of the chain that the EigenPodProofs instance will be used for.
+// oracleStateCacheExpirySeconds is the expiry time for the oracle state cache in seconds. After this time caches of beacon state roots, validator trees and validator balances trees will be evicted.
 func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*EigenPodProofs, error) {
 	if chainID != 1 && chainID != 17000 {
 		return nil, errors.New("chainID not supported")
