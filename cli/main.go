@@ -8,9 +8,13 @@ import (
 	"log"
 	"math"
 	"os"
+	"strconv"
+	"time"
+
+	"context"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
-	client "github.com/attestantio/go-eth2-client"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/layr-labs/eigenlayer-backend/common/beacon"
@@ -49,28 +53,31 @@ func main() {
 		log.Fatal("Must specify: -eigenpod, -beacon, and -node.")
 	}
 
-	execute(*eigenpod, *beacon, *node, out)
+	ctx := context.Background()
+
+	execute(ctx, *eigenpod, *beacon, *node, out)
 }
 
-func getBeaconClient(beacon_uri string) (*client.Service, error) {
-	return beacon.NewBeaconClient(beacon_uri)
+func getBeaconClient(beacon_uri string) (beacon.BeaconClient, error) {
+	beaconClient, _, err := beacon.NewBeaconClient(beacon_uri)
+	return beaconClient, err
 }
 
 func lastCheckpointedForEigenpod(eigenpod string) uint64 {
 	panic("unimplemented")
 }
 
-func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64) uint64 {
+func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis time.Time) uint64 {
 	var genesisTimestampSeconds uint64 = 0 // TODO: get time for genesis block.
 	return uint64(math.Floor(float64(timestampSeconds)-float64(genesisTimestampSeconds)) / 12)
 }
 
-func findAllValidatorsForEigenpod(eigenpod string, beaconState any) {
+func findAllValidatorsForEigenpod(eigenpod string, beaconState *spec.VersionedBeaconState) {
 	// TODO: search through beacon state for validators whose withdrawal address is set to eigenpod.
 	panic("unimplemented")
 }
 
-func batchGetValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators any) []onchain.IEigenPodValidatorInfo {
+func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators any) []onchain.IEigenPodValidatorInfo {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), nil)
 	panicOnError(err)
 
@@ -86,27 +93,27 @@ func batchGetValidatorInfo(client *ethclient.Client, eigenpodAddress string, all
 	return validatorInfo
 }
 
-func getBeaconState(beacon client.Service, slot uint64) {
-
-}
-
 // Stub for the execute function
-func execute(eigenpod, beacon_node_uri, node string, out *string) {
+func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *string) {
 	eth, err := ethclient.Dial(node)
 	panicOnError(err)
 
 	beaconClient, err := getBeaconClient(beacon_node_uri)
 
-	// TODO: get last checkpoint timestamp from RPC.
 	lastCheckpoint := lastCheckpointedForEigenpod(eigenpod)
 
-	// TODO: fetch the beacon state which corresponds to the slot immediately prior to this timestamp.
-	slot := computeSlotImmediatelyPriorToTimestamp(lastCheckpoint)
-	beaconState, beaconHeader := getBeaconState(beaconClient, slot)
+	// fetch the beacon state which corresponds to the slot immediately prior to this timestamp.
+	genesis, err := beaconClient.GetChainGenesisTime(ctx)
+	slot := computeSlotImmediatelyPriorToTimestamp(lastCheckpoint, genesis)
+	header, err := beaconClient.GetBeaconHeader(ctx, strconv.FormatUint(slot, 10))
+	panicOnError(err)
+
+	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
+	panicOnError(err)
 
 	// TODO: filter through the beaconState's validators, and select only ones that have `eigenpod` set to the validator address.
 	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpod, beaconState)
-	allValidatorInfo := batchGetValidatorInfo(eth, allValidatorsForEigenpod)
+	allValidatorInfo := getOnchainValidatorInfo(eth, allValidatorsForEigenpod)
 
 	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
 	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
@@ -129,7 +136,7 @@ func execute(eigenpod, beacon_node_uri, node string, out *string) {
 		panic(err)
 	}
 
-	res, err := proofs.ProveCheckpointProofs(beaconHeader, beaconState, checkpointValidatorIndices)
+	res, err := proofs.ProveCheckpointProofs(header, beaconState, checkpointValidatorIndices)
 
 	jsonString, err := json.Marshal(res)
 	panicOnError(err)
