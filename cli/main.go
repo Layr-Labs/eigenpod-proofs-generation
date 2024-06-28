@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -28,12 +27,6 @@ import (
 type ValidatorWithIndex = struct {
 	Validator *phase0.Validator
 	Index     uint64
-}
-
-func panicOnError(err error) {
-	if err != nil {
-		panic(err)
-	}
 }
 
 func main() {
@@ -83,7 +76,7 @@ func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis tim
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
 func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
 	allValidators, err := beaconState.Validators()
-	panicOnError(err)
+	PanicOnError(err)
 
 	expectedCredentials := sha256.Sum256([]byte(eigenpodPubKey))
 	expectedCredentials[0] = 0 // the first byte of withdrawal credentials is set to 0.
@@ -108,7 +101,7 @@ func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.Versi
 
 func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), nil)
-	panicOnError(err)
+	PanicOnError(err)
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
@@ -116,7 +109,7 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 	for i := 0; i < len(allValidators); i++ {
 		pubKeyHash := sha256.Sum256((allValidators[i]).Validator.PublicKey[:])
 		info, err := eigenPod.ValidatorPubkeyHashToInfo(nil, pubKeyHash)
-		panicOnError(err)
+		PanicOnError(err)
 		validatorInfo = append(validatorInfo, info)
 	}
 
@@ -126,7 +119,7 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 // Stub for the execute function
 func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *string) {
 	eth, err := ethclient.Dial(node)
-	panicOnError(err)
+	PanicOnError(err)
 
 	beaconClient, err := getBeaconClient(beacon_node_uri)
 
@@ -136,10 +129,10 @@ func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *s
 	genesis, err := beaconClient.GetChainGenesisTime(ctx)
 	slot := computeSlotImmediatelyPriorToTimestamp(lastCheckpoint, genesis)
 	header, err := beaconClient.GetBeaconHeader(ctx, strconv.FormatUint(slot, 10))
-	panicOnError(err)
+	PanicOnError(err)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
-	panicOnError(err)
+	PanicOnError(err)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
 	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpod, beaconState)
@@ -169,11 +162,11 @@ func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *s
 	res, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
 
 	jsonString, err := json.Marshal(res)
-	panicOnError(err)
+	PanicOnError(err)
 
 	if out != nil {
-		ioutil.WriteFile(*out, jsonString, os.ModePerm)
-		panicOnError(err)
+		os.WriteFile(*out, jsonString, os.ModePerm)
+		PanicOnError(err)
 	} else {
 		fmt.Print(jsonString)
 	}
