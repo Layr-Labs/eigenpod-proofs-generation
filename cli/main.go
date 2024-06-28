@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
 	"github.com/attestantio/go-eth2-client/spec"
+	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/layr-labs/eigenlayer-backend/common/beacon"
@@ -72,19 +75,36 @@ func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis tim
 	return uint64(math.Floor(float64(timestampSeconds)-float64(genesisTimestampSeconds)) / 12)
 }
 
-func findAllValidatorsForEigenpod(eigenpod string, beaconState *spec.VersionedBeaconState) {
-	// TODO: search through beacon state for validators whose withdrawal address is set to eigenpod.
-	panic("unimplemented")
+// search through beacon state for validators whose withdrawal address is set to eigenpod.
+func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.VersionedBeaconState) []*phase0.Validator {
+	allValidators, err := beaconState.Validators()
+	panicOnError(err)
+
+	expectedCredentials := sha256.Sum256([]byte(eigenpodPubKey))
+	expectedCredentials[0] = 0 // the first byte of withdrawal credentials is set to 0.
+
+	var outputValidators []*phase0.Validator = []*phase0.Validator{}
+
+	for i := 0; i < len(allValidators); i++ {
+		validator := allValidators[i]
+		if validator == nil {
+			continue
+		}
+		if bytes.Equal(expectedCredentials[:], validator.WithdrawalCredentials) {
+			outputValidators = append(outputValidators, validator)
+		}
+	}
+	return outputValidators
 }
 
-func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators any) []onchain.IEigenPodValidatorInfo {
+func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []*phase0.Validator) []onchain.IEigenPodValidatorInfo {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), nil)
 	panicOnError(err)
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
 	for i := 0; i < len(allValidators); i++ {
-		pubKey := allValidators[i].pubKey
+		pubKey := (*allValidators[i]).PublicKey
 		info, err := eigenPod.ValidatorPubkeyHashToInfo(pubKey)
 		panicOnError(err)
 		validatorInfo = append(validatorInfo, info)
@@ -111,9 +131,9 @@ func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *s
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	panicOnError(err)
 
-	// TODO: filter through the beaconState's validators, and select only ones that have `eigenpod` set to the validator address.
+	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
 	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpod, beaconState)
-	allValidatorInfo := getOnchainValidatorInfo(eth, allValidatorsForEigenpod)
+	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpod, allValidatorsForEigenpod)
 
 	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
 	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
@@ -127,7 +147,7 @@ func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *s
 		notWithdrawn := validatorInfo.Status != 2                                           // (TODO: does `abigen` generate a constant for this enum?)
 
 		if notCheckpointed && notWithdrawn {
-			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.index)
+			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
 		}
 	}
 
