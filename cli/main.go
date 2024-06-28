@@ -8,10 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strconv"
-	"time"
 
 	"context"
 
@@ -73,10 +71,6 @@ func lastCheckpointedForEigenpod(eigenpodAddress string, client *ethclient.Clien
 	return timestamp
 }
 
-func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis time.Time) uint64 {
-	return uint64(math.Floor(float64(timestampSeconds)-float64(genesis.Unix())) / 12)
-}
-
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
 func findAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
 	allValidators, err := beaconState.Validators()
@@ -113,8 +107,16 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
 	// TODO: batch/multicall
+	zeroes := [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	for i := 0; i < len(allValidators); i++ {
-		pubKeyHash := sha256.Sum256((allValidators[i]).Validator.PublicKey[:])
+		// ssz requires values to be 32-byte aligned, which requires 16 bytes of 0's to be added
+		// prior to hashing.
+		pubKeyHash := sha256.Sum256(
+			append(
+				(allValidators[i]).Validator.PublicKey[:],
+				zeroes[:]...,
+			),
+		)
 		info, err := eigenPod.ValidatorPubkeyHashToInfo(nil, pubKeyHash)
 		PanicOnError(err)
 		validatorInfo = append(validatorInfo, info)
@@ -130,6 +132,7 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	}
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
+	PanicOnError(err)
 
 	return &checkpoint.BeaconBlockRoot, nil
 }
