@@ -25,6 +25,11 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 )
 
+type ValidatorWithIndex = struct {
+	Validator *phase0.Validator
+	Index     uint64
+}
+
 func panicOnError(err error) {
 	if err != nil {
 		panic(err)
@@ -76,36 +81,41 @@ func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis tim
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
-func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.VersionedBeaconState) []*phase0.Validator {
+func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
 	allValidators, err := beaconState.Validators()
 	panicOnError(err)
 
 	expectedCredentials := sha256.Sum256([]byte(eigenpodPubKey))
 	expectedCredentials[0] = 0 // the first byte of withdrawal credentials is set to 0.
 
-	var outputValidators []*phase0.Validator = []*phase0.Validator{}
-
-	for i := 0; i < len(allValidators); i++ {
+	var outputValidators []ValidatorWithIndex = []ValidatorWithIndex{}
+	var i uint64 = 0
+	maxValidators := uint64(len(allValidators))
+	for i = 0; i < maxValidators; i++ {
 		validator := allValidators[i]
 		if validator == nil {
 			continue
 		}
 		if bytes.Equal(expectedCredentials[:], validator.WithdrawalCredentials) {
-			outputValidators = append(outputValidators, validator)
+			outputValidators = append(outputValidators, ValidatorWithIndex{
+				Validator: validator,
+				Index:     i,
+			})
 		}
 	}
 	return outputValidators
 }
 
-func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []*phase0.Validator) []onchain.IEigenPodValidatorInfo {
+func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), nil)
 	panicOnError(err)
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
+	// TODO: batch/multicall
 	for i := 0; i < len(allValidators); i++ {
-		pubKey := (*allValidators[i]).PublicKey
-		info, err := eigenPod.ValidatorPubkeyHashToInfo(pubKey)
+		pubKeyHash := sha256.Sum256((allValidators[i]).Validator.PublicKey[:])
+		info, err := eigenPod.ValidatorPubkeyHashToInfo(nil, pubKeyHash)
 		panicOnError(err)
 		validatorInfo = append(validatorInfo, info)
 	}
@@ -156,7 +166,7 @@ func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *s
 		panic(err)
 	}
 
-	res, err := proofs.ProveCheckpointProofs(header, beaconState, checkpointValidatorIndices)
+	res, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
 
 	jsonString, err := json.Marshal(res)
 	panicOnError(err)
