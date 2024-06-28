@@ -38,7 +38,6 @@ func main() {
 	flag.Parse()
 
 	if help != nil && *help {
-		// TODO: help.
 		flag.Usage()
 		log.Fatal("Showing help.")
 	}
@@ -58,13 +57,17 @@ func getBeaconClient(beacon_uri string) (BeaconClient, error) {
 	return beaconClient, err
 }
 
-func lastCheckpointedForEigenpod(eigenpod string) uint64 {
-	panic("unimplemented")
+func lastCheckpointedForEigenpod(eigenpodAddress string, client *ethclient.Client) uint64 {
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
+	PanicOnError(err)
+
+	timestamp, err := eigenPod.LastCheckpointTimestamp(nil)
+	PanicOnError(err)
+	return timestamp
 }
 
 func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis time.Time) uint64 {
-	var genesisTimestampSeconds uint64 = 0 // TODO: get time for genesis block.
-	return uint64(math.Floor(float64(timestampSeconds)-float64(genesisTimestampSeconds)) / 12)
+	return uint64(math.Floor(float64(timestampSeconds)-float64(genesis.Unix())) / 12)
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
@@ -118,11 +121,14 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 		PanicOnError(err)
 	}
 	beaconClient, err := getBeaconClient(beacon_node_uri)
+	PanicOnError(err)
 
-	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress)
+	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
 
 	// fetch the beacon state which corresponds to the slot immediately prior to this timestamp.
 	genesis, err := beaconClient.GetChainGenesisTime(ctx)
+	PanicOnError(err)
+
 	slot := computeSlotImmediatelyPriorToTimestamp(lastCheckpoint, genesis)
 	header, err := beaconClient.GetBeaconHeader(ctx, strconv.FormatUint(slot, 10))
 	PanicOnError(err)
@@ -142,8 +148,8 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 		validator := allValidatorsForEigenpod[i]
 		validatorInfo := allValidatorInfo[i]
 
-		notCheckpointed := validatorInfo.MostRecentBalanceUpdateTimestamp != lastCheckpoint // TODO: determine from validatorInfo
-		notWithdrawn := validatorInfo.Status != 2                                           // (TODO: does `abigen` generate a constant for this enum?)
+		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
+		notWithdrawn := validatorInfo.Status != 2 // (TODO: does `abigen` generate a constant for this enum?)
 
 		if notCheckpointed && notWithdrawn {
 			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
@@ -156,6 +162,7 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 	}
 
 	res, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
+	PanicOnError(err)
 
 	jsonString, err := json.Marshal(res)
 	PanicOnError(err)
