@@ -9,7 +9,6 @@ import (
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/http"
 	"github.com/attestantio/go-eth2-client/spec"
-	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -24,13 +23,8 @@ var (
 )
 
 type BeaconClient interface {
-	GetLatestEpoch(ctx context.Context) (phase0.Epoch, error)
-	GetLatestSlot(ctx context.Context) (phase0.Slot, error)
 	GetBeaconHeader(ctx context.Context, blockId string) (*v1.BeaconBlockHeader, error)
-	GetSignedBeaconBlock(ctx context.Context, blockId string) (*spec.VersionedSignedBeaconBlock, error)
 	GetBeaconState(ctx context.Context, stateId string) (*spec.VersionedBeaconState, error)
-	GetValidator(ctx context.Context, stateID string, validatorIndex phase0.ValidatorIndex) (*v1.Validator, error)
-	GetChainGenesisTime(ctx context.Context) (time.Time, error)
 }
 
 type beaconClient struct {
@@ -69,40 +63,6 @@ func (b *beaconClient) GetBeaconHeader(ctx context.Context, blockId string) (*v1
 	return nil, ErrBeaconClientNotSupported
 }
 
-func (b *beaconClient) GetSignedBeaconBlock(ctx context.Context, blockId string) (*spec.VersionedSignedBeaconBlock, error) {
-	if provider, ok := b.eth2client.(eth2client.SignedBeaconBlockProvider); ok {
-		opts := &api.SignedBeaconBlockOpts{Block: blockId}
-		response, err := provider.SignedBeaconBlock(ctx, opts)
-		if err != nil {
-			return nil, err
-		}
-		return response.Data, nil
-	}
-
-	return nil, ErrBeaconClientNotSupported
-}
-
-func (b *beaconClient) GetValidator(ctx context.Context, stateID string, validatorIndex phase0.ValidatorIndex) (*v1.Validator, error) {
-	if provider, ok := b.eth2client.(eth2client.ValidatorsProvider); ok {
-		opts := &api.ValidatorsOpts{
-			State:   stateID,
-			Indices: []phase0.ValidatorIndex{validatorIndex},
-		}
-		response, err := provider.Validators(ctx, opts)
-		if err != nil {
-			return nil, err
-		}
-		validators := response.Data
-		var validator *v1.Validator
-		if validator, ok = validators[validatorIndex]; !ok {
-			return nil, ErrValidatorNotFound
-		}
-		return validator, nil
-	}
-
-	return nil, ErrBeaconClientNotSupported
-}
-
 func (b *beaconClient) GetBeaconState(ctx context.Context, stateId string) (*spec.VersionedBeaconState, error) {
 	if provider, ok := b.eth2client.(eth2client.BeaconStateProvider); ok {
 		log.Info().Msgf("downloading beacon state %s", stateId)
@@ -120,35 +80,4 @@ func (b *beaconClient) GetBeaconState(ctx context.Context, stateId string) (*spe
 	}
 
 	return nil, ErrBeaconClientNotSupported
-}
-
-func (b *beaconClient) GetLatestEpoch(ctx context.Context) (phase0.Epoch, error) {
-	header, err := b.GetBeaconHeader(ctx, "head")
-	if err != nil {
-		return 0, err
-	}
-
-	return phase0.Epoch(header.Header.Message.Slot / slotsPerEpoch), nil
-}
-
-func (b *beaconClient) GetLatestSlot(ctx context.Context) (phase0.Slot, error) {
-	header, err := b.GetBeaconHeader(ctx, "head")
-	if err != nil {
-		return 0, err
-	}
-
-	return header.Header.Message.Slot, nil
-}
-
-func (b *beaconClient) GetChainGenesisTime(ctx context.Context) (time.Time, error) {
-	if provider, ok := b.eth2client.(eth2client.GenesisProvider); ok {
-		opts := api.GenesisOpts{}
-		response, err := provider.Genesis(ctx, &opts)
-		if err != nil {
-			return time.Time{}, err
-		}
-		return response.Data.GenesisTime, nil
-	}
-
-	return time.Time{}, ErrBeaconClientNotSupported
 }

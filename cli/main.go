@@ -29,9 +29,10 @@ type ValidatorWithIndex = struct {
 }
 
 func main() {
-	eigenpod := flag.String("eigenpod", "", "[required] The onchain address of your eigenpod contract (0x123123123123)")
+	eigenpodAddress := flag.String("eigenpodAddress", "", "[required] The onchain address of your eigenpod contract (0x123123123123)")
 	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
 	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
+	chainId := flag.Uint64("chainId", 1, "The chain to generate the proof for (defaults to 1 / eth-mainnet)")
 	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
 	help := flag.Bool("help", false, "Prints the help message and exits.")
 
@@ -42,18 +43,23 @@ func main() {
 		log.Fatal("Showing help.")
 	}
 
-	if *eigenpod == "" || *beacon == "" || *node == "" {
+	if *eigenpodAddress == "" || *beacon == "" || *node == "" {
 		flag.Usage()
 		log.Fatal("Must specify: -eigenpod, -beacon, and -node.")
 	}
 
 	ctx := context.Background()
 
-	execute(ctx, *eigenpod, *beacon, *node, out)
+	var actualChainId uint64 = 1
+	if chainId != nil {
+		actualChainId = *chainId
+	}
+
+	execute(ctx, *eigenpodAddress, *beacon, *node, out, actualChainId)
 }
 
-func getBeaconClient(beacon_uri string) (BeaconClient, error) {
-	beaconClient, _, err := NewBeaconClient(beacon_uri)
+func getBeaconClient(beaconUri string) (BeaconClient, error) {
+	beaconClient, _, err := NewBeaconClient(beaconUri)
 	return beaconClient, err
 }
 
@@ -61,7 +67,7 @@ func lastCheckpointedForEigenpod(eigenpodAddress string, client *ethclient.Clien
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
 	PanicOnError(err)
 
-	timestamp, err := eigenPod.LastCheckpointTimestamp(nil)
+	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
 	PanicOnError(err)
 	return timestamp
 }
@@ -71,12 +77,11 @@ func computeSlotImmediatelyPriorToTimestamp(timestampSeconds uint64, genesis tim
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
-func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
+func findAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
 	allValidators, err := beaconState.Validators()
 	PanicOnError(err)
 
-	expectedCredentials := sha256.Sum256([]byte(eigenpodPubKey))
-	expectedCredentials[0] = 0 // the first byte of withdrawal credentials is set to 0.
+	eigenpodAddressBytes := common.FromHex(eigenpodAddress)
 
 	var outputValidators []ValidatorWithIndex = []ValidatorWithIndex{}
 	var i uint64 = 0
@@ -86,7 +91,11 @@ func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.Versi
 		if validator == nil {
 			continue
 		}
-		if bytes.Equal(expectedCredentials[:], validator.WithdrawalCredentials) {
+		// we check that the last 20 bytes of expectedCredentials matches validatorCredentials.
+		if bytes.Equal(
+			eigenpodAddressBytes[:],
+			validator.WithdrawalCredentials[12:], // first 12 bytes are not the pubKeyHash, see (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/pods/EigenPod.sol#L663)
+		) {
 			outputValidators = append(outputValidators, ValidatorWithIndex{
 				Validator: validator,
 				Index:     i,
@@ -113,8 +122,18 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 	return validatorInfo
 }
 
-// Stub for the execute function
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string, out *string) {
+func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	if err != nil {
+		return nil, err
+	}
+
+	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
+
+	return &checkpoint.BeaconBlockRoot, nil
+}
+
+func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string, out *string, chainId uint64) {
 	eth, err := ethclient.Dial(node)
 	if err != nil {
 		fmt.Printf("ERROR: Invalid node - Failed to connect to `%s`.\n\n", node)
@@ -125,12 +144,10 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 
 	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
 
-	// fetch the beacon state which corresponds to the slot immediately prior to this timestamp.
-	genesis, err := beaconClient.GetChainGenesisTime(ctx)
+	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	PanicOnError(err)
 
-	slot := computeSlotImmediatelyPriorToTimestamp(lastCheckpoint, genesis)
-	header, err := beaconClient.GetBeaconHeader(ctx, strconv.FormatUint(slot, 10))
+	header, err := beaconClient.GetBeaconHeader(ctx, *blockRoot)
 	PanicOnError(err)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
@@ -156,7 +173,7 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 		}
 	}
 
-	proofs, err := eigenpodproofs.NewEigenPodProofs(1 /* ETH */, 300 /* oracleStateCacheExpirySeconds - 5min */)
+	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId, 300 /* oracleStateCacheExpirySeconds - 5min */)
 	if err != nil {
 		panic(err)
 	}
