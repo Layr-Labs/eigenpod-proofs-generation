@@ -3,10 +3,9 @@ module github.com/Layr-Labs/eigenpod-proofs-generation/cli
 go 1.22.4
 
 require (
-	github.com/Layr-Labs/eigenpod-proofs-generation v0.0.13
+	github.com/Layr-Labs/eigenpod-proofs-generation v0.0.10-0.20240626225903-ccc088067101
 	github.com/attestantio/go-eth2-client v0.19.10
 	github.com/ethereum/go-ethereum v1.14.5
-	github.com/layr-labs/eigenlayer-backend v0.0.0-20240627235129-619428abe9e9
 )
 
 require (
