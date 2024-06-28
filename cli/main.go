@@ -19,7 +19,6 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/layr-labs/eigenlayer-backend/common/beacon"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 )
@@ -30,16 +29,11 @@ type ValidatorWithIndex = struct {
 }
 
 func main() {
-	eigenpod := flag.String("eigenpod", "", "The onchain address of your eigenpod contract")
-	beacon := flag.String("beacon", "", "URI to a functioning beacon node RPC")
-	node := flag.String("node", "", "URI to a functioning execution-layer RPC")
+	eigenpod := flag.String("eigenpod", "", "[required] The onchain address of your eigenpod contract (0x123123123123)")
+	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
+	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
 	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
 	help := flag.Bool("help", false, "Prints the help message and exits.")
-
-	flag.StringVar(eigenpod, "e", "", "The onchain address of your eigenpod contract (shorthand)")
-	flag.StringVar(beacon, "b", "", "URI to a functioning beacon node RPC (shorthand)")
-	flag.StringVar(node, "n", "", "URI to a functioning execution-layer RPC (shorthand)")
-	flag.StringVar(node, "o", "", "Output path for the proof. (defaults to stdout)")
 
 	flag.Parse()
 
@@ -59,8 +53,8 @@ func main() {
 	execute(ctx, *eigenpod, *beacon, *node, out)
 }
 
-func getBeaconClient(beacon_uri string) (beacon.BeaconClient, error) {
-	beaconClient, _, err := beacon.NewBeaconClient(beacon_uri)
+func getBeaconClient(beacon_uri string) (BeaconClient, error) {
+	beaconClient, _, err := NewBeaconClient(beacon_uri)
 	return beaconClient, err
 }
 
@@ -100,7 +94,7 @@ func findAllValidatorsForEigenpod(eigenpodPubKey string, beaconState *spec.Versi
 }
 
 func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), nil)
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
 	PanicOnError(err)
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
@@ -117,13 +111,15 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 }
 
 // Stub for the execute function
-func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *string) {
+func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string, out *string) {
 	eth, err := ethclient.Dial(node)
-	PanicOnError(err)
-
+	if err != nil {
+		fmt.Printf("ERROR: Invalid node - Failed to connect to `%s`.\n\n", node)
+		PanicOnError(err)
+	}
 	beaconClient, err := getBeaconClient(beacon_node_uri)
 
-	lastCheckpoint := lastCheckpointedForEigenpod(eigenpod)
+	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress)
 
 	// fetch the beacon state which corresponds to the slot immediately prior to this timestamp.
 	genesis, err := beaconClient.GetChainGenesisTime(ctx)
@@ -135,8 +131,8 @@ func execute(ctx context.Context, eigenpod, beacon_node_uri, node string, out *s
 	PanicOnError(err)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
-	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpod, beaconState)
-	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpod, allValidatorsForEigenpod)
+	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
 	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
 	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.

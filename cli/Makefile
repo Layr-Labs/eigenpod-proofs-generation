@@ -2,6 +2,9 @@ TMP_DIR :=$(shell mktemp -d)
 
 all: codegen
 
+build: all
+	go build
+
 clone: 
 	@echo "Cloning eigenlayer-contracts..."
 	git clone --depth=1 git@github.com:Layr-Labs/eigenlayer-contracts.git $(TMP_DIR)
