@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -147,7 +148,7 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	PanicOnError(err)
 
-	header, err := beaconClient.GetBeaconHeader(ctx, *blockRoot)
+	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+hex.EncodeToString((*blockRoot)[:]))
 	PanicOnError(err)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
