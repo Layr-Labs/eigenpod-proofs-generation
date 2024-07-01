@@ -170,7 +170,7 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 		validatorInfo := allValidatorInfo[i]
 
 		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
-		notWithdrawn := validatorInfo.Status != 2 // (TODO: does `abigen` generate a constant for this enum?)
+		notWithdrawn := validatorInfo.Status != ValidatorStatusWidrawn
 
 		if notCheckpointed && notWithdrawn {
 			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)

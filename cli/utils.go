@@ -7,6 +7,12 @@ import (
 	"github.com/fatih/color"
 )
 
+const (
+	ValidatorStatusInactive = 0
+	ValidatorStatusActive   = 1
+	ValidatorStatusWidrawn  = 2
+)
+
 func PanicOnError(message string, err error) {
 	if err != nil {
 		color.Red(fmt.Sprintf("error: %s\n\n", message))
