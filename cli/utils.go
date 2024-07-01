@@ -1,7 +1,9 @@
 package main
 
-func PanicOnError(err error) {
+import "fmt"
+
+func PanicOnError(message string, err error) {
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("%s\n\ncaused by: %w", message, err))
 	}
 }

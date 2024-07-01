@@ -64,17 +64,18 @@ func getBeaconClient(beaconUri string) (BeaconClient, error) {
 
 func lastCheckpointedForEigenpod(eigenpodAddress string, client *ethclient.Client) uint64 {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
-	PanicOnError(err)
+	PanicOnError("failed to access eigenpod. is your address correct?", err)
 
 	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
-	PanicOnError(err)
+	PanicOnError("failed to access eigenpod. Is your address correct?", err)
+
 	return timestamp
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
 func findAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
 	allValidators, err := beaconState.Validators()
-	PanicOnError(err)
+	PanicOnError("failed to fetch beacon state", err)
 
 	eigenpodAddressBytes := common.FromHex(eigenpodAddress)
 
@@ -102,7 +103,7 @@ func findAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 
 func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
-	PanicOnError(err)
+	PanicOnError("failed to access Eigenpod. Is your address correct?", err)
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
@@ -118,7 +119,7 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 			),
 		)
 		info, err := eigenPod.ValidatorPubkeyHashToInfo(nil, pubKeyHash)
-		PanicOnError(err)
+		PanicOnError("failed to fetch validator eigeninfo.", err)
 		validatorInfo = append(validatorInfo, info)
 	}
 
@@ -127,12 +128,10 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 
 func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	if err != nil {
-		return nil, err
-	}
+	PanicOnError("failed to access Eigenpod. Is your address correct?", err)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
-	PanicOnError(err)
+	PanicOnError("failed to reach eigenpod.", err)
 
 	return &checkpoint.BeaconBlockRoot, nil
 }
@@ -141,21 +140,21 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 	eth, err := ethclient.Dial(node)
 	if err != nil {
 		fmt.Printf("ERROR: Invalid node - Failed to connect to `%s`.\n\n", node)
-		PanicOnError(err)
+		PanicOnError("failed to reach eth --node.", err)
 	}
 	beaconClient, err := getBeaconClient(beacon_node_uri)
-	PanicOnError(err)
+	PanicOnError("failed to reach beacon chain.", err)
 
 	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
 
 	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
-	PanicOnError(err)
+	PanicOnError("failed to fetch last checkpoint.", err)
 
 	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+hex.EncodeToString((*blockRoot)[:]))
-	PanicOnError(err)
+	PanicOnError("failed to fetch beacon header.", err)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
-	PanicOnError(err)
+	PanicOnError("failed to fetch beacon state.", err)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
 	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
@@ -183,14 +182,14 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 	}
 
 	res, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
-	PanicOnError(err)
+	PanicOnError("failed to generate eigen proofs.", err)
 
 	jsonString, err := json.Marshal(res)
-	PanicOnError(err)
+	PanicOnError("failed to generate JSON proof data.", err)
 
 	if out != nil {
 		os.WriteFile(*out, jsonString, os.ModePerm)
-		PanicOnError(err)
+		PanicOnError("failed to write to disk", err)
 	} else {
 		fmt.Print(jsonString)
 	}
