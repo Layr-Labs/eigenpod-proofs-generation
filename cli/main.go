@@ -32,7 +32,6 @@ func main() {
 	eigenpodAddress := flag.String("eigenpodAddress", "", "[required] The onchain address of your eigenpod contract (0x123123123123)")
 	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
 	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
-	chainId := flag.Uint64("chainId", 1, "The chain to generate the proof for (defaults to 1 / eth-mainnet)")
 	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
 	help := flag.Bool("help", false, "Prints the help message and exits.")
 
@@ -45,17 +44,12 @@ func main() {
 
 	if *eigenpodAddress == "" || *beacon == "" || *node == "" {
 		flag.Usage()
-		log.Fatal("Must specify: -eigenpod, -beacon, and -node.")
+		log.Fatal("Must specify: --eigenpod, --beacon, and --node.")
 	}
 
 	ctx := context.Background()
 
-	var actualChainId uint64 = 1
-	if chainId != nil {
-		actualChainId = *chainId
-	}
-
-	execute(ctx, *eigenpodAddress, *beacon, *node, out, actualChainId)
+	execute(ctx, *eigenpodAddress, *beacon, *node, out)
 }
 
 func getBeaconClient(beaconUri string) (BeaconClient, error) {
@@ -137,12 +131,13 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string, out *string, chainId uint64) {
+func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string, out *string) {
 	eth, err := ethclient.Dial(node)
-	if err != nil {
-		fmt.Printf("ERROR: Invalid node - Failed to connect to `%s`.\n\n", node)
-		PanicOnError("failed to reach eth --node.", err)
-	}
+	PanicOnError("failed to reach eth --node.", err)
+
+	chainId, err := eth.ChainID(ctx)
+	PanicOnError("failed to fetch chain id", err)
+
 	beaconClient, err := getBeaconClient(beacon_node_uri)
 	PanicOnError("failed to reach beacon chain.", err)
 
@@ -177,7 +172,7 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 		}
 	}
 
-	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId, 300 /* oracleStateCacheExpirySeconds - 5min */)
+	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	if err != nil {
 		panic(err)
 	}
