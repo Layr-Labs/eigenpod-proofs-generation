@@ -18,6 +18,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 )
@@ -64,10 +65,10 @@ func getBeaconClient(beaconUri string) (BeaconClient, error) {
 
 func lastCheckpointedForEigenpod(eigenpodAddress string, client *ethclient.Client) uint64 {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
-	PanicOnError("failed to access eigenpod. is your address correct?", err)
+	PanicOnError("failed to locate eigenpod. is your address correct?", err)
 
 	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
-	PanicOnError("failed to access eigenpod. Is your address correct?", err)
+	PanicOnError("failed to locate eigenpod. Is your address correct?", err)
 
 	return timestamp
 }
@@ -103,7 +104,7 @@ func findAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 
 func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
-	PanicOnError("failed to access Eigenpod. Is your address correct?", err)
+	PanicOnError("failed to locate Eigenpod. Is your address correct?", err)
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
@@ -128,7 +129,7 @@ func getOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 
 func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	PanicOnError("failed to access Eigenpod. Is your address correct?", err)
+	PanicOnError("failed to locate Eigenpod. Is your address correct?", err)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
 	PanicOnError("failed to reach eigenpod.", err)
@@ -189,8 +190,9 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 
 	if out != nil {
 		os.WriteFile(*out, jsonString, os.ModePerm)
+		color.Green("Wrote output to %s\n", out)
 		PanicOnError("failed to write to disk", err)
 	} else {
-		fmt.Print(jsonString)
+		fmt.Println(jsonString)
 	}
 }
