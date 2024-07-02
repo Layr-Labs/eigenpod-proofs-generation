@@ -2,18 +2,18 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"math/big"
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 )
 
-func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out *string, owner *string) {
+func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, owner *string) (*eigenpodproofs.VerifyValidatorFieldsCallParams, []uint64, *types.Block) {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	PanicOnError("failed to load latest block", err)
 
@@ -35,7 +35,7 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 	var validatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
 	if len(validatorIndices) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")
-		return
+		return nil, nil, nil
 	}
 
 	color.Blue("Verifying %d inactive validators", len(validatorIndices))
@@ -47,43 +47,5 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
 	PanicOnError("failed to prove validators.", err)
 
-	jsonString, err := json.Marshal(validatorProofs)
-	PanicOnError("failed to generate JSON proof data.", err)
-
-	WriteOutputToFileOrStdout(jsonString, out)
-
-	if owner != nil {
-		ownerAccount, err := prepareAccount(owner, chainId)
-		PanicOnError("failed to parse private key", err)
-
-		eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-		PanicOnError("failed to reach eigenpod", err)
-
-		indices := Uint64ArrayToBigIntArray(validatorIndices)
-
-		var validatorFieldsProofs [][]byte = [][]byte{}
-		for i := 0; i < len(validatorProofs.ValidatorFieldsProofs); i++ {
-			pr := validatorProofs.ValidatorFieldsProofs[i].ToByteSlice()
-			validatorFieldsProofs = append(validatorFieldsProofs, pr)
-		}
-
-		var validatorFields [][][32]byte = castValidatorFields(validatorProofs.ValidatorFields)
-
-		color.Green("submitting onchain...")
-		txn, err := eigenPod.VerifyWithdrawalCredentials(
-			ownerAccount.TransactionOptions,
-			latestBlock.Time(),
-			onchain.BeaconChainProofsStateRootProof{
-				Proof:           validatorProofs.StateRootProof.Proof.ToByteSlice(),
-				BeaconStateRoot: validatorProofs.StateRootProof.BeaconStateRoot,
-			},
-			indices,
-			validatorFieldsProofs,
-			validatorFields,
-		)
-
-		PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
-
-		color.Green("transaction: %s", txn.Hash().Hex())
-	}
+	return validatorProofs, validatorIndices, latestBlock
 }

@@ -2,6 +2,9 @@ TMP_DIR :=$(shell mktemp -d)
 
 all: codegen
 
+wasm:
+	GOOS=js GOARCH=wasm go build -o pepe.wasm
+
 build: all
 	go build
 
