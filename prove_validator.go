@@ -1,11 +1,11 @@
 package eigenpodproofs
 
 import (
+	"crypto/sha256"
 	"math/big"
 
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-	"github.com/ethereum/go-ethereum/crypto"
 
 	beacon "github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
@@ -140,8 +140,8 @@ func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.Beaco
 		}
 
 		var pubkeyHash [32]byte
-		pubkeyHashVariable := crypto.Keccak256(oracleBeaconStateValidators[validatorIndex].PublicKey[:])
-		copy(pubkeyHash[:], pubkeyHashVariable)
+		pubkeyHashVariable := computePubkeyHash(oracleBeaconStateValidators[validatorIndex].PublicKey[:])
+		copy(pubkeyHash[:], pubkeyHashVariable[:])
 
 		verifyCheckpointProofsCallParams.BalanceProofs[i] = &BalanceProof{
 			PubkeyHash:  pubkeyHash,
@@ -151,6 +151,18 @@ func (epp *EigenPodProofs) ProveCheckpointProofs(oracleBlockHeader *phase0.Beaco
 	}
 
 	return verifyCheckpointProofsCallParams, nil
+}
+
+func computePubkeyHash(publicKey []byte) [32]byte {
+	// ssz requires 32 byte alignment, and publicKey is 48 bytes.
+	// tack on 16 bytes of 0's and compute the sha256 sum.
+	zeroes := [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	return sha256.Sum256(
+		append(
+			publicKey,
+			zeroes[:]...,
+		),
+	)
 }
 
 func (epp *EigenPodProofs) proveValidatorAgainstBeaconState(beaconStateTopLevelRoots *beacon.BeaconStateTopLevelRoots, oracleBeaconStateSlot phase0.Slot, oracleBeaconStateValidators []*phase0.Validator, validatorIndex uint64) (common.Proof, error) {
