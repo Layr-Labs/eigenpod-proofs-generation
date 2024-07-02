@@ -19,7 +19,7 @@ func main() {
 	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
 	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
 	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
-	owner := flag.String("owner", "", "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation.")
+	owner := flag.String("owner", "", "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using `checkpoint` mode, it will also begin a checkpoint if one hasn't been started already.")
 	command := flag.String("prove", "validators", "one of 'checkpoint' or 'validators'.\n\tIf checkpoint, produces a proof which can be submitted via EigenPod.VerifyCheckpointProofs().\n\tIf validators, generates a proof which can be submitted via EigenPod.VerifyWithdrawalCredentials().")
 	help := flag.Bool("help", false, "Prints the help message and exits.")
 

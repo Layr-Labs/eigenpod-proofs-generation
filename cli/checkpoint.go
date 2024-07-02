@@ -72,13 +72,13 @@ func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethcli
 		eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 		PanicOnError("failed to reach eigenpod", err)
 
-		color.Green("submitting onchain...")
+		color.Green("calling EigenPod.VerifyCheckpointProofs()...")
 
 		txn, err := eigenPod.VerifyCheckpointProofs(
 			ownerAccount.TransactionOptions,
 			onchain.BeaconChainProofsBalanceContainerProof{
-				BalanceContainerRoot: [32]byte(proof.ValidatorBalancesRootProof.Proof.ToByteSlice()),
-				Proof:                proof.ValidatorBalancesRootProof.Proof[0][:],
+				BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
+				Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
 			},
 			castBalanceProofs(proof.BalanceProofs),
 		)

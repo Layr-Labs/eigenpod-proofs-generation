@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"log"
@@ -46,7 +47,7 @@ type Owner = struct {
 	TransactionOptions *bind.TransactOpts
 }
 
-func startCheckpoint(eigenpodAddress string, owner string, chainId *big.Int, eth *ethclient.Client) error {
+func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, chainId *big.Int, eth *ethclient.Client) error {
 	ownerAccount, err := prepareAccount(&owner, chainId)
 	PanicOnError("failed to parse private key", err)
 
@@ -56,7 +57,11 @@ func startCheckpoint(eigenpodAddress string, owner string, chainId *big.Int, eth
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, true)
 	PanicOnError("failed to start checkpoint", err)
 
-	color.Green("started checkpoint: %s", txn.Hash().Hex())
+	color.Green("starting checkpoint: %s...", txn.Hash().Hex())
+
+	bind.WaitMined(ctx, eth, txn)
+
+	color.Green("startied checkpoint!", txn.Hash().Hex())
 	return nil
 }
 
