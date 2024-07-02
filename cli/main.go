@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
+	sha256 "crypto/sha256"
 	"flag"
 	"log"
 
@@ -10,21 +10,16 @@ import (
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
 	"github.com/attestantio/go-eth2-client/spec"
-	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-type ValidatorWithIndex = struct {
-	Validator *phase0.Validator
-	Index     uint64
-}
 
 func main() {
 	eigenpodAddress := flag.String("eigenpodAddress", "", "[required] The onchain address of your eigenpod contract (0x123123123123)")
 	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
 	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
 	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
+	owner := flag.String("owner", "", "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation.")
 	command := flag.String("prove", "validators", "one of 'checkpoint' or 'validators'.\n\tIf checkpoint, produces a proof which can be submitted via EigenPod.VerifyCheckpointProofs().\n\tIf validators, generates a proof which can be submitted via EigenPod.VerifyWithdrawalCredentials().")
 	help := flag.Bool("help", false, "Prints the help message and exits.")
 
@@ -47,7 +42,7 @@ func main() {
 
 	ctx := context.Background()
 
-	execute(ctx, *eigenpodAddress, *beacon, *node, *command, out)
+	execute(ctx, *eigenpodAddress, *beacon, *node, *command, out, owner)
 }
 
 func getBeaconClient(beaconUri string) (BeaconClient, error) {
@@ -129,7 +124,7 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string) {
+func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string, owner *string) {
 	eth, err := ethclient.Dial(node)
 	PanicOnError("failed to reach eth --node.", err)
 
@@ -140,9 +135,8 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, comman
 	PanicOnError("failed to reach beacon chain.", err)
 
 	if command == "checkpoint" {
-		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out)
+		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
 	} else {
-		RunValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out)
+		RunValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
 	}
-
 }

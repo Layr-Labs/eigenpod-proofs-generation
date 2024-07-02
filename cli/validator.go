@@ -7,10 +7,13 @@ import (
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 )
 
-func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out *string) {
+func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out *string, owner *string) {
 	header, err := beaconClient.GetBeaconHeader(ctx, "head")
 	PanicOnError("failed to fetch latest beacon header.", err)
 
@@ -20,17 +23,46 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
-	var checkpointValidatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
+	var validatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	PanicOnError("failled to initialize prover", err)
 
 	// validator proof
-	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, checkpointValidatorIndices)
+	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
 	PanicOnError("failed to prove validators.", err)
 
 	jsonString, err := json.Marshal(validatorProofs)
 	PanicOnError("failed to generate JSON proof data.", err)
 
 	WriteOutputToFileOrStdout(jsonString, out)
+
+	if owner != nil {
+		ownerAccount, err := prepareAccount(owner, chainId)
+		PanicOnError("failed to parse private key", err)
+
+		eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+		PanicOnError("failed to reach eigenpod", err)
+
+		indices := Uint64ArrayToBigIntArray(validatorIndices)
+
+		var validatorFieldsProofs [][]byte = castProof(validatorProofs.ValidatorFieldsProofs[0])
+		var validatorFields [][][32]byte = castValidatorFields(validatorProofs.ValidatorFields)
+
+		color.Green("submitting onchain...")
+		txn, err := eigenPod.VerifyWithdrawalCredentials(
+			ownerAccount.TransactionOptions,
+			validatorProofs.OracleTimestamp,
+			onchain.BeaconChainProofsStateRootProof{
+				Proof:           validatorProofs.StateRootProof.Proof.ToByteSlice(),
+				BeaconStateRoot: validatorProofs.StateRootProof.BeaconStateRoot,
+			},
+			indices,
+			validatorFieldsProofs,
+			validatorFields,
+		)
+
+		PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
+		color.Green("transaction: %s", txn.Hash)
+	}
 }

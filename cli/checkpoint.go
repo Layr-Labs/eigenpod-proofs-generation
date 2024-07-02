@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out *string) {
+func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out, owner *string) {
 	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
 	if lastCheckpoint == 0 {
 		PanicOnError("no checkpoint active", errors.New("no checkpoint"))
@@ -55,4 +55,9 @@ func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethcli
 	PanicOnError("failed to generate JSON proof data.", err)
 
 	WriteOutputToFileOrStdout(jsonString, out)
+
+	if owner != nil {
+		// submit the proof onchain
+
+	}
 }
