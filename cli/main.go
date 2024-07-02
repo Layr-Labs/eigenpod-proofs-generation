@@ -3,13 +3,8 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
-	"os"
-	"strconv"
 
 	"context"
 
@@ -18,9 +13,6 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/fatih/color"
-
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 )
 
 type ValidatorWithIndex = struct {
@@ -33,7 +25,13 @@ func main() {
 	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
 	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
 	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
+	command := flag.String("prove", "validators", "one of 'checkpoint' or 'validators'.\n\tIf checkpoint, produces a proof which can be submitted via EigenPod.VerifyCheckpointProofs().\n\tIf validators, generates a proof which can be submitted via EigenPod.VerifyWithdrawalCredentials().")
 	help := flag.Bool("help", false, "Prints the help message and exits.")
+
+	if !((*command == "validators") || (*command == "checkpoint")) {
+		flag.Usage()
+		log.Fatal("Invalid argument passed to --prove.")
+	}
 
 	flag.Parse()
 
@@ -49,7 +47,7 @@ func main() {
 
 	ctx := context.Background()
 
-	execute(ctx, *eigenpodAddress, *beacon, *node, out)
+	execute(ctx, *eigenpodAddress, *beacon, *node, *command, out)
 }
 
 func getBeaconClient(beaconUri string) (BeaconClient, error) {
@@ -131,7 +129,7 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string, out *string) {
+func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string) {
 	eth, err := ethclient.Dial(node)
 	PanicOnError("failed to reach eth --node.", err)
 
@@ -141,53 +139,10 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node string,
 	beaconClient, err := getBeaconClient(beacon_node_uri)
 	PanicOnError("failed to reach beacon chain.", err)
 
-	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
-
-	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
-	PanicOnError("failed to fetch last checkpoint.", err)
-
-	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+hex.EncodeToString((*blockRoot)[:]))
-	PanicOnError("failed to fetch beacon header.", err)
-
-	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
-	PanicOnError("failed to fetch beacon state.", err)
-
-	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
-	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
-	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
-
-	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
-	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
-	//			- determine the validator's index.
-	var checkpointValidatorIndices = []uint64{}
-	for i := 0; i < len(allValidatorsForEigenpod); i++ {
-		validator := allValidatorsForEigenpod[i]
-		validatorInfo := allValidatorInfo[i]
-
-		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
-		notWithdrawn := validatorInfo.Status != ValidatorStatusWidrawn
-
-		if notCheckpointed && notWithdrawn {
-			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
-		}
-	}
-
-	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
-	if err != nil {
-		panic(err)
-	}
-
-	res, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
-	PanicOnError("failed to generate eigen proofs.", err)
-
-	jsonString, err := json.Marshal(res)
-	PanicOnError("failed to generate JSON proof data.", err)
-
-	if out != nil {
-		os.WriteFile(*out, jsonString, os.ModePerm)
-		color.Green("Wrote output to %s\n", out)
-		PanicOnError("failed to write to disk", err)
+	if command == "checkpoint" {
+		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out)
 	} else {
-		fmt.Println(jsonString)
+		RunValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out)
 	}
+
 }
