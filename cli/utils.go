@@ -10,11 +10,11 @@ import (
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 )
 
@@ -35,15 +35,6 @@ func PanicOnError(message string, err error) {
 	}
 }
 
-// upcasts a proof from [][32]byte to [][]byte for onchain
-func castProof(proof common.Proof) [][]byte {
-	allBytes := [][]byte{}
-	for i := 0; i < len(proof); i++ {
-		allBytes = append(allBytes, proof[i][:])
-	}
-	return allBytes
-}
-
 type ValidatorWithIndex = struct {
 	Validator *phase0.Validator
 	Index     uint64
@@ -53,6 +44,35 @@ type Owner = struct {
 	FromAddress        gethCommon.Address
 	PublicKey          *ecdsa.PublicKey
 	TransactionOptions *bind.TransactOpts
+}
+
+func startCheckpoint(eigenpodAddress string, owner string, chainId *big.Int, eth *ethclient.Client) error {
+	ownerAccount, err := prepareAccount(&owner, chainId)
+	PanicOnError("failed to parse private key", err)
+
+	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+	PanicOnError("failed to reach eigenpod", err)
+
+	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, true)
+	PanicOnError("failed to start checkpoint", err)
+
+	color.Green("started checkpoint: %s", txn.Hash().Hex())
+	return nil
+}
+
+func castBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconChainProofsBalanceProof {
+	out := []onchain.BeaconChainProofsBalanceProof{}
+
+	for i := 0; i < len(proofs); i++ {
+		proof := proofs[i]
+		out = append(out, onchain.BeaconChainProofsBalanceProof{
+			PubkeyHash:  proof.PubkeyHash,
+			BalanceRoot: proof.BalanceRoot,
+			Proof:       proof.Proof.ToByteSlice(),
+		})
+	}
+
+	return out
 }
 
 func prepareAccount(owner *string, chainID *big.Int) (*Owner, error) {

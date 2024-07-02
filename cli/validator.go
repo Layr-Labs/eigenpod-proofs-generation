@@ -14,8 +14,11 @@ import (
 )
 
 func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out *string, owner *string) {
-	header, err := beaconClient.GetBeaconHeader(ctx, "head")
-	PanicOnError("failed to fetch latest beacon header.", err)
+	// TODO: where does this come from (latest non-missed-slot block-header)
+	oracleBump := "0xdec64b9ad990d457dbf465ee4b9f8ab70a70f6d56e7b6b8b472320a34c7e7b28"
+
+	header, err := beaconClient.GetBeaconHeader(ctx, oracleBump)
+	PanicOnError("failed to fetch beacon header.", err)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	PanicOnError("failed to fetch beacon state.", err)
@@ -46,13 +49,21 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 
 		indices := Uint64ArrayToBigIntArray(validatorIndices)
 
-		var validatorFieldsProofs [][]byte = castProof(validatorProofs.ValidatorFieldsProofs[0])
+		var validatorFieldsProofs [][]byte = [][]byte{}
+		for i := 0; i < len(validatorProofs.ValidatorFieldsProofs); i++ {
+			pr := validatorProofs.ValidatorFieldsProofs[i].ToByteSlice()
+			validatorFieldsProofs = append(validatorFieldsProofs, pr)
+		}
+
 		var validatorFields [][][32]byte = castValidatorFields(validatorProofs.ValidatorFields)
+
+		// TODO: where does this come from?
+		oracleTimestamp := 1719941892
 
 		color.Green("submitting onchain...")
 		txn, err := eigenPod.VerifyWithdrawalCredentials(
 			ownerAccount.TransactionOptions,
-			validatorProofs.OracleTimestamp,
+			uint64(oracleTimestamp), // TODO: timestamp
 			onchain.BeaconChainProofsStateRootProof{
 				Proof:           validatorProofs.StateRootProof.Proof.ToByteSlice(),
 				BeaconStateRoot: validatorProofs.StateRootProof.BeaconStateRoot,
@@ -63,6 +74,7 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 		)
 
 		PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
-		color.Green("transaction: %s", txn.Hash)
+
+		color.Green("transaction: %s", txn.Hash().Hex())
 	}
 }
