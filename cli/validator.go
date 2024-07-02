@@ -14,11 +14,21 @@ import (
 )
 
 func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out *string, owner *string) {
-	// TODO: where does this come from (latest non-missed-slot block-header)
-	oracleBump := "0xdec64b9ad990d457dbf465ee4b9f8ab70a70f6d56e7b6b8b472320a34c7e7b28"
+	latestBlock, err := eth.BlockByNumber(ctx, nil)
+	PanicOnError("failed to load latest block", err)
 
-	header, err := beaconClient.GetBeaconHeader(ctx, oracleBump)
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	PanicOnError("failed to reach eigenpod", err)
+
+	expectedBlockRoot, err := eigenPod.GetParentBlockRoot(nil, latestBlock.Time())
+	PanicOnError("failed to load parent block root", err)
+
+	color.Blue("Expected block root: %s", common.Bytes2Hex(expectedBlockRoot[:]))
+
+	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+common.Bytes2Hex(expectedBlockRoot[:]))
 	PanicOnError("failed to fetch beacon header.", err)
+
+	color.Blue("Proof should be based off state @ slot %d", header.Header.Message.Slot)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	PanicOnError("failed to fetch beacon state.", err)
@@ -27,6 +37,7 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
 	var validatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
+	color.Blue("Verifying %d inactive validators", len(validatorIndices))
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	PanicOnError("failled to initialize prover", err)
@@ -57,13 +68,10 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 
 		var validatorFields [][][32]byte = castValidatorFields(validatorProofs.ValidatorFields)
 
-		// TODO: where does this come from?
-		oracleTimestamp := 1719941892
-
 		color.Green("submitting onchain...")
 		txn, err := eigenPod.VerifyWithdrawalCredentials(
 			ownerAccount.TransactionOptions,
-			uint64(oracleTimestamp), // TODO: timestamp
+			latestBlock.Time(),
 			onchain.BeaconChainProofsStateRootProof{
 				Proof:           validatorProofs.StateRootProof.Proof.ToByteSlice(),
 				BeaconStateRoot: validatorProofs.StateRootProof.BeaconStateRoot,

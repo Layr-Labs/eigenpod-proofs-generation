@@ -3,8 +3,9 @@ package main
 import (
 	"bytes"
 	sha256 "crypto/sha256"
-	"flag"
-	"log"
+	"errors"
+	"fmt"
+	"os"
 
 	"context"
 
@@ -12,37 +13,85 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	cli "github.com/urfave/cli/v2"
 )
 
 func main() {
-	eigenpodAddress := flag.String("eigenpodAddress", "", "[required] The onchain address of your eigenpod contract (0x123123123123)")
-	beacon := flag.String("beacon", "", "[required] URI to a functioning beacon node RPC (https://)")
-	node := flag.String("node", "", "[required] URI to a functioning execution-layer RPC")
-	out := flag.String("output", "", "Output path for the proof. (defaults to stdout)")
-	owner := flag.String("owner", "", "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using `checkpoint` mode, it will also begin a checkpoint if one hasn't been started already.")
-	command := flag.String("prove", "validators", "one of 'checkpoint' or 'validators'.\n\tIf checkpoint, produces a proof which can be submitted via EigenPod.VerifyCheckpointProofs().\n\tIf validators, generates a proof which can be submitted via EigenPod.VerifyWithdrawalCredentials().")
-	help := flag.Bool("help", false, "Prints the help message and exits.")
+	app := &cli.App{
+		Name:                   "Eigenlayer Proofs CLi",
+		HelpName:               "eigenproofs",
+		Usage:                  "TODO: usage",
+		EnableBashCompletion:   true,
+		UseShortOptionHandling: true,
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "eigenpodAddress",
+				Aliases:  []string{},
+				Value:    "",
+				Usage:    "[required] The onchain address of your eigenpod contract (0x123123123123)",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:     "beacon",
+				Aliases:  []string{},
+				Value:    "",
+				Usage:    "[required] URI to a functioning beacon node RPC (https://)",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:     "node",
+				Aliases:  []string{},
+				Value:    "",
+				Usage:    "[required] URI to a functioning execution-layer RPC",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:    "output",
+				Aliases: []string{},
+				Value:   "",
+				Usage:   "Output path for the proof. (defaults to stdout)",
+			},
+			&cli.StringFlag{
+				Name:    "owner",
+				Aliases: []string{},
+				Value:   "",
+				Usage:   "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using `checkpoint` mode, it will also begin a checkpoint if one hasn't been started already.",
+			},
+			&cli.StringFlag{
+				Name:    "prove",
+				Aliases: []string{},
+				Value:   "",
+				Usage:   "one of 'checkpoint' or 'validators'.\n\tIf checkpoint, produces a proof which can be submitted via EigenPod.VerifyCheckpointProofs().\n\tIf validators, generates a proof which can be submitted via EigenPod.VerifyWithdrawalCredentials().",
+			},
+		},
+		Action: func(cctx *cli.Context) error {
+			eigenpodAddress := cctx.String("eigenpodAddress")
+			beacon := cctx.String("beacon")
+			prove := cctx.String("prove")
+			node := cctx.String("node")
+			ctx := context.Background()
 
-	if !((*command == "validators") || (*command == "checkpoint")) {
-		flag.Usage()
-		log.Fatal("Invalid argument passed to --prove.")
+			var out, owner *string = nil, nil
+
+			if len(cctx.String("out")) > 0 {
+				outProp := cctx.String("out")
+				out = &outProp
+			}
+
+			if len(cctx.String("owner")) > 0 {
+				ownerProp := cctx.String("owner")
+				owner = &ownerProp
+			}
+
+			execute(ctx, eigenpodAddress, beacon, node, prove, out, owner)
+
+			return nil
+		},
 	}
 
-	flag.Parse()
-
-	if help != nil && *help {
-		flag.Usage()
-		log.Fatal("Showing help.")
+	if err := app.Run(os.Args); err != nil {
+		panic(err) // burn it all to the ground
 	}
-
-	if *eigenpodAddress == "" || *beacon == "" || *node == "" {
-		flag.Usage()
-		log.Fatal("Must specify: --eigenpod, --beacon, and --node.")
-	}
-
-	ctx := context.Background()
-
-	execute(ctx, *eigenpodAddress, *beacon, *node, *command, out, owner)
 }
 
 func getBeaconClient(beaconUri string) (BeaconClient, error) {
@@ -72,7 +121,7 @@ func findAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 	maxValidators := uint64(len(allValidators))
 	for i = 0; i < maxValidators; i++ {
 		validator := allValidators[i]
-		if validator == nil {
+		if validator == nil || validator.WithdrawalCredentials[0] != 1 { // withdrawalCredentials _need_ their first byte set to 1 to withdraw to execution layer.
 			continue
 		}
 		// we check that the last 20 bytes of expectedCredentials matches validatorCredentials.
@@ -136,7 +185,9 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, comman
 
 	if command == "checkpoint" {
 		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
-	} else {
+	} else if command == "validator" {
 		RunValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
+	} else {
+		PanicOnError(fmt.Sprintf("invalid --prove argument. Expected 'checkpoint' or 'validator' (got `%s`)", command), errors.New("invalid command"))
 	}
 }

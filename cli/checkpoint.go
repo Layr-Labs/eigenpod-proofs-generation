@@ -20,7 +20,7 @@ func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethcli
 	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
 	if lastCheckpoint == 0 {
 		if owner != nil {
-			err := startCheckpoint(eigenpodAddress, *owner, chainId, eth)
+			err := startCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth)
 			PanicOnError("failed to start checkpoint", err)
 		} else {
 			PanicOnError("no checkpoint active", errors.New("no checkpoint"))
@@ -46,12 +46,15 @@ func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethcli
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
 	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidatorsForEigenpod))
+
 	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
 	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
 	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
 	//			- determine the validator's index.
 	var checkpointValidatorIndices = FilterNotCheckpointedOrWithdrawnValidators(allValidatorsForEigenpod, allValidatorInfo, lastCheckpoint)
+	color.Yellow("Proving validators at indices: %s", checkpointValidatorIndices)
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	PanicOnError("failled to initialize prover", err)

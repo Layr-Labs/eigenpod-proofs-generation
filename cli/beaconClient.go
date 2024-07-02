@@ -14,8 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const slotsPerEpoch = 32
-
 var (
 	ErrNoEigenPod               = errors.New("no eigenpod associated with owner")
 	ErrBeaconClientNotSupported = errors.New("could not instantiate beacon chain client")
