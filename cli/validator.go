@@ -23,12 +23,8 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 	expectedBlockRoot, err := eigenPod.GetParentBlockRoot(nil, latestBlock.Time())
 	PanicOnError("failed to load parent block root", err)
 
-	color.Blue("Expected block root: %s", common.Bytes2Hex(expectedBlockRoot[:]))
-
 	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+common.Bytes2Hex(expectedBlockRoot[:]))
 	PanicOnError("failed to fetch beacon header.", err)
-
-	color.Blue("Proof should be based off state @ slot %d", header.Header.Message.Slot)
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	PanicOnError("failed to fetch beacon state.", err)
@@ -37,6 +33,11 @@ func RunValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclie
 	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
 	var validatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
+	if len(validatorIndices) == 0 {
+		color.Red("You have no inactive validators to verify. Everything up-to-date.")
+		return
+	}
+
 	color.Blue("Verifying %d inactive validators", len(validatorIndices))
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)

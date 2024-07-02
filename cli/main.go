@@ -17,75 +17,97 @@ import (
 )
 
 func main() {
+	var eigenpodAddress, beacon, node, owner, output string
+	ctx := context.Background()
+
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
 		HelpName:               "eigenproofs",
 		Usage:                  "TODO: usage",
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "eigenpodAddress",
-				Aliases:  []string{},
-				Value:    "",
-				Usage:    "[required] The onchain address of your eigenpod contract (0x123123123123)",
-				Required: true,
+		Commands: []*cli.Command{
+			{
+				Name:  "checkpoint",
+				Usage: "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
+				Action: func(cctx *cli.Context) error {
+					var out, owner *string = nil, nil
+
+					if len(cctx.String("out")) > 0 {
+						outProp := cctx.String("out")
+						out = &outProp
+					}
+
+					if len(cctx.String("owner")) > 0 {
+						ownerProp := cctx.String("owner")
+						owner = &ownerProp
+					}
+
+					execute(ctx, eigenpodAddress, beacon, node, "checkpoint", out, owner)
+					return nil
+				},
 			},
-			&cli.StringFlag{
-				Name:     "beacon",
-				Aliases:  []string{},
-				Value:    "",
-				Usage:    "[required] URI to a functioning beacon node RPC (https://)",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:     "node",
-				Aliases:  []string{},
-				Value:    "",
-				Usage:    "[required] URI to a functioning execution-layer RPC",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:    "output",
-				Aliases: []string{},
-				Value:   "",
-				Usage:   "Output path for the proof. (defaults to stdout)",
-			},
-			&cli.StringFlag{
-				Name:    "owner",
-				Aliases: []string{},
-				Value:   "",
-				Usage:   "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using `checkpoint` mode, it will also begin a checkpoint if one hasn't been started already.",
-			},
-			&cli.StringFlag{
-				Name:    "prove",
-				Aliases: []string{},
-				Value:   "",
-				Usage:   "one of 'checkpoint' or 'validators'.\n\tIf checkpoint, produces a proof which can be submitted via EigenPod.VerifyCheckpointProofs().\n\tIf validators, generates a proof which can be submitted via EigenPod.VerifyWithdrawalCredentials().",
+			{
+				Name:  "validator",
+				Usage: "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
+				Action: func(cctx *cli.Context) error {
+
+					var out, owner *string = nil, nil
+
+					if len(cctx.String("out")) > 0 {
+						outProp := cctx.String("out")
+						out = &outProp
+					}
+
+					if len(cctx.String("owner")) > 0 {
+						ownerProp := cctx.String("owner")
+						owner = &ownerProp
+					}
+
+					execute(ctx, eigenpodAddress, beacon, node, "validator", out, owner)
+					return nil
+				},
 			},
 		},
-		Action: func(cctx *cli.Context) error {
-			eigenpodAddress := cctx.String("eigenpodAddress")
-			beacon := cctx.String("beacon")
-			prove := cctx.String("prove")
-			node := cctx.String("node")
-			ctx := context.Background()
-
-			var out, owner *string = nil, nil
-
-			if len(cctx.String("out")) > 0 {
-				outProp := cctx.String("out")
-				out = &outProp
-			}
-
-			if len(cctx.String("owner")) > 0 {
-				ownerProp := cctx.String("owner")
-				owner = &ownerProp
-			}
-
-			execute(ctx, eigenpodAddress, beacon, node, prove, out, owner)
-
-			return nil
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "eigenpodAddress",
+				Aliases:     []string{"e"},
+				Value:       "",
+				Usage:       "[required] The onchain address of your eigenpod contract (0x123123123123)",
+				Required:    true,
+				Destination: &eigenpodAddress,
+			},
+			&cli.StringFlag{
+				Name:        "beacon",
+				Aliases:     []string{"b"},
+				Value:       "",
+				Usage:       "[required] URI to a functioning beacon node RPC (https://)",
+				Required:    true,
+				Destination: &beacon,
+			},
+			&cli.StringFlag{
+				Name:        "node",
+				Aliases:     []string{"n"},
+				Value:       "",
+				Usage:       "[required] URI to a functioning execution-layer RPC",
+				Required:    true,
+				Destination: &node,
+			},
+			&cli.StringFlag{
+				Name:        "output",
+				Aliases:     []string{"o"},
+				Value:       "",
+				Usage:       "Output path for the proof. (defaults to stdout)",
+				Destination: &output,
+			},
+			&cli.StringFlag{
+				Name:        "owner",
+				Aliases:     []string{},
+				Destination: &owner,
+				Value:       "",
+				Usage:       "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using `checkpoint` mode, it will also begin a checkpoint if one hasn't been started already.",
+			},
 		},
 	}
 

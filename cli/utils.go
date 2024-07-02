@@ -57,11 +57,11 @@ func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, 
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, true)
 	PanicOnError("failed to start checkpoint", err)
 
-	color.Green("starting checkpoint: %s...", txn.Hash().Hex())
+	color.Green("starting checkpoint: %s.. (waiting for txn to be mined)...", txn.Hash().Hex())
 
 	bind.WaitMined(ctx, eth, txn)
 
-	color.Green("startied checkpoint!", txn.Hash().Hex())
+	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 	return nil
 }
 
