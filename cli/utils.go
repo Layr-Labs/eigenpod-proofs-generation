@@ -171,10 +171,9 @@ func FilterNotCheckpointedOrWithdrawnValidators(
 		validatorInfo := onchainInfo[i]
 
 		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
-		notWithdrawn := validatorInfo.Status != ValidatorStatusWithdrawn
-		notInactive := validatorInfo.Status != ValidatorStatusInactive
+		isActive := validatorInfo.Status == ValidatorStatusActive
 
-		if notCheckpointed && notWithdrawn && notInactive {
+		if notCheckpointed && isActive {
 			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
 		}
 	}
