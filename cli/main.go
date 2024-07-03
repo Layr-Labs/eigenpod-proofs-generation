@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	sha256 "crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
+	"time"
 
 	"context"
 
@@ -13,12 +16,18 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 	cli "github.com/urfave/cli/v2"
 )
+
+func shortenAddress(publicKey string) string {
+	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
+}
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
 	var forceCheckpoint bool
+	var useJson bool = false
 	ctx := context.Background()
 
 	app := &cli.App{
@@ -28,6 +37,98 @@ func main() {
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
+			{
+				Name:  "status",
+				Usage: "Checks the status of your eigenpod.",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "json",
+						Value:       false,
+						Usage:       "print only plain JSON",
+						Required:    false,
+						Destination: &useJson,
+					},
+				},
+				Action: func(cctx *cli.Context) error {
+					eth, err := ethclient.Dial(node)
+					PanicOnError("failed to reach eth --node.", err)
+
+					beaconClient, err := getBeaconClient(beacon)
+					PanicOnError("failed to reach beacon chain.", err)
+
+					status := getStatus(ctx, eigenpodAddress, eth, beaconClient)
+					eigenpod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+					PanicOnError("failed to reach eigenpod", err)
+
+					if useJson {
+						bytes, err := json.MarshalIndent(status, "", "      ")
+						PanicOnError("failed to get status", err)
+						statusStr := string(bytes)
+						fmt.Println(statusStr)
+					} else {
+						// pretty print everything
+						color.New(color.Bold, color.FgBlack).Printf("Eigenpod validators\n")
+						for index, validator := range status.Validators {
+
+							var targetColor color.Attribute
+							var description string
+
+							if validator.Status == ValidatorStatusActive {
+								targetColor = color.FgGreen
+								description = "active"
+							} else if validator.Status == ValidatorStatusInactive {
+								targetColor = color.FgHiYellow
+								description = "inactive"
+							} else if validator.Status == ValidatorStatusWithdrawn {
+								targetColor = color.FgHiRed
+								description = "withdrawn"
+							}
+
+							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, shortenAddress(validator.PublicKey), description)
+						}
+
+						bold := color.New(color.Bold, color.FgBlack)
+						ital := color.New(color.Italic, color.FgBlack)
+						fmt.Println()
+
+						eigenpodManagerContractAddress, err := eigenpod.EigenPodManager(nil)
+						PanicOnError("failed to get manager address", err)
+
+						eigenPodManager, err := onchain.NewEigenPodManager(eigenpodManagerContractAddress, eth)
+						PanicOnError("failed to get manager instance", err)
+
+						eigenPodOwner, err := eigenPodManager.Owner(nil)
+						PanicOnError("failed to get eigenpod owner", err)
+
+						ownerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
+						PanicOnError("failed to load pod owner shares", err)
+
+						if status.ActiveCheckpoint != nil {
+							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
+
+							bold.Printf("!NOTE: There is a checkpoint active! (started at: %s)\n", startTime.String())
+
+							endShares := gweiToEther(new(big.Float).SetUint64(status.ActiveCheckpoint.PendingSharesGWei))
+							ownerSharesFt, _ := ownerShares.Float64()
+
+							delta := endShares - ownerSharesFt
+							ital.Printf("\t- If you finish it, you may receive up to %f shares. (%f -> %f)\n", delta, ownerSharesFt, endShares)
+
+							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
+						} else {
+							bold.Printf("Runing a `checkpoint` right now will result in: \n")
+
+							startEther := gweiToEther(big.NewFloat(weiToGwei(ownerShares)))
+							endEther := status.SharesPendingCheckpointETH
+							delta := endEther - startEther
+
+							ital.Printf("\t%f new shares issued (%f ==> %f)\n", delta, startEther, endEther)
+						}
+
+					}
+					return nil
+				},
+			},
 			{
 				Name:    "checkpoint",
 				Aliases: []string{"cp"},
@@ -207,14 +308,14 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string, owner *string, forceCheckpoint bool) {
+func execute(ctx context.Context, eigenpodAddress, beaconNodeUri, node, command string, out *string, owner *string, forceCheckpoint bool) {
 	eth, err := ethclient.Dial(node)
 	PanicOnError("failed to reach eth --node.", err)
 
 	chainId, err := eth.ChainID(ctx)
 	PanicOnError("failed to fetch chain id", err)
 
-	beaconClient, err := getBeaconClient(beacon_node_uri)
+	beaconClient, err := getBeaconClient(beaconNodeUri)
 	PanicOnError("failed to reach beacon chain.", err)
 
 	if command == "checkpoint" {

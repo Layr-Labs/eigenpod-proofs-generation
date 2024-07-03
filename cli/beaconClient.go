@@ -64,7 +64,6 @@ func (b *beaconClient) GetBeaconHeader(ctx context.Context, blockId string) (*v1
 func (b *beaconClient) GetBeaconState(ctx context.Context, stateId string) (*spec.VersionedBeaconState, error) {
 	if provider, ok := b.eth2client.(eth2client.BeaconStateProvider); ok {
 		log.Info().Msgf("downloading beacon state %s", stateId)
-
 		opts := &api.BeaconStateOpts{State: stateId}
 		beaconState, err := provider.BeaconState(ctx, opts)
 		if err != nil {

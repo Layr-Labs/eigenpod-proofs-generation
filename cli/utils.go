@@ -16,6 +16,7 @@ import (
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/fatih/color"
 )
 
@@ -29,6 +30,17 @@ func Panic(message string) {
 	color.Red(fmt.Sprintf("error: %s\n\n", message))
 
 	os.Exit(1)
+}
+
+func weiToGwei(val *big.Int) float64 {
+	v, _ := new(big.Float).Quo(new(big.Float).SetUint64(val.Uint64()), big.NewFloat(params.GWei)).Float64()
+	return v
+}
+
+func gweiToEther(val *big.Float) float64 {
+	v, _ :=
+		new(big.Float).Quo(val, big.NewFloat(params.GWei)).Float64()
+	return v
 }
 
 func PanicOnError(message string, err error) {
