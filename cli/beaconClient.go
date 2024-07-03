@@ -74,6 +74,8 @@ func (b *beaconClient) GetBeaconState(ctx context.Context, stateId string) (*spe
 		if beaconState == nil {
 			return nil, errors.New("beacon state is nil")
 		}
+
+		log.Info().Msg("finished download")
 		return beaconState.Data, nil
 	}
 
