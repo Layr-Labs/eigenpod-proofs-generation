@@ -25,11 +25,17 @@ const (
 	ValidatorStatusWithdrawn = 2
 )
 
+func Panic(message string) {
+	color.Red(fmt.Sprintf("error: %s\n\n", message))
+
+	os.Exit(1)
+}
+
 func PanicOnError(message string, err error) {
 	if err != nil {
 		color.Red(fmt.Sprintf("error: %s\n\n", message))
 
-		info := color.New(color.FgBlack, color.Italic)
+		info := color.New(color.FgRed, color.Italic)
 		info.Printf(fmt.Sprintf("caused by: %s\n", err))
 
 		os.Exit(1)
@@ -47,14 +53,21 @@ type Owner = struct {
 	TransactionOptions *bind.TransactOpts
 }
 
-func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, chainId *big.Int, eth *ethclient.Client) error {
+func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool) (uint64, error) {
 	ownerAccount, err := prepareAccount(&owner, chainId)
 	PanicOnError("failed to parse private key", err)
 
 	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
 	PanicOnError("failed to reach eigenpod", err)
 
-	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, true)
+	// revertIfNoBalance == !forceCheckpoint
+	// The CLI exposes this as a `force` parameter for usability
+	revertIfNoBalance := true
+	if forceCheckpoint {
+		revertIfNoBalance = false
+	}
+
+	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, revertIfNoBalance)
 	PanicOnError("failed to start checkpoint", err)
 
 	color.Green("starting checkpoint: %s.. (waiting for txn to be mined)...", txn.Hash().Hex())
@@ -62,7 +75,9 @@ func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, 
 	bind.WaitMined(ctx, eth, txn)
 
 	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
-	return nil
+
+	currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
+	return currentCheckpoint, nil
 }
 
 func castBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconChainProofsBalanceProof {
@@ -162,8 +177,9 @@ func FilterNotCheckpointedOrWithdrawnValidators(
 
 		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
 		notWithdrawn := validatorInfo.Status != ValidatorStatusWithdrawn
+		notInactive := validatorInfo.Status != ValidatorStatusInactive
 
-		if notCheckpointed && notWithdrawn {
+		if notCheckpointed && notWithdrawn && notInactive {
 			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
 		}
 	}

@@ -16,19 +16,24 @@ import (
 	"github.com/fatih/color"
 )
 
-func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out, owner *string) {
-	lastCheckpoint := lastCheckpointedForEigenpod(eigenpodAddress, eth)
-	if lastCheckpoint == 0 {
+func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out, owner *string, forceCheckpoint bool) {
+	currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
+	if currentCheckpoint == 0 {
 		if owner != nil {
-			err := startCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth)
+			newCheckpoint, err := startCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
 			PanicOnError("failed to start checkpoint", err)
+			currentCheckpoint = newCheckpoint
 		} else {
-			PanicOnError("no checkpoint active", errors.New("no checkpoint"))
+			PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
 		}
 	}
+	color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
 
 	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	PanicOnError("failed to fetch last checkpoint.", err)
+	if blockRoot == nil {
+		Panic("failed to fetch last checkpoint - nil blockRoot")
+	}
 
 	if blockRoot != nil {
 		rootBytes := *blockRoot
@@ -53,7 +58,7 @@ func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethcli
 	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
 	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
 	//			- determine the validator's index.
-	var checkpointValidatorIndices = FilterNotCheckpointedOrWithdrawnValidators(allValidatorsForEigenpod, allValidatorInfo, lastCheckpoint)
+	var checkpointValidatorIndices = FilterNotCheckpointedOrWithdrawnValidators(allValidatorsForEigenpod, allValidatorInfo, currentCheckpoint)
 	color.Yellow("Proving validators at indices: %s", checkpointValidatorIndices)
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)

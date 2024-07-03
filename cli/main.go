@@ -18,6 +18,7 @@ import (
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
+	var forceCheckpoint bool
 	ctx := context.Background()
 
 	app := &cli.App{
@@ -28,8 +29,18 @@ func main() {
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
-				Name:  "checkpoint",
-				Usage: "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
+				Name:    "checkpoint",
+				Aliases: []string{"cp"},
+				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "force",
+						Aliases:     []string{"f"},
+						Value:       false,
+						Usage:       "If true, starts a checkpoint even if the pod has no native ETH to award shares",
+						Destination: &forceCheckpoint,
+					},
+				},
 				Action: func(cctx *cli.Context) error {
 					var out, owner *string = nil, nil
 
@@ -43,13 +54,14 @@ func main() {
 						owner = &ownerProp
 					}
 
-					execute(ctx, eigenpodAddress, beacon, node, "checkpoint", out, owner)
+					execute(ctx, eigenpodAddress, beacon, node, "checkpoint", out, owner, forceCheckpoint)
 					return nil
 				},
 			},
 			{
-				Name:  "validator",
-				Usage: "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
+				Name:    "credentials",
+				Aliases: []string{"cr", "creds"},
+				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Action: func(cctx *cli.Context) error {
 
 					var out, owner *string = nil, nil
@@ -64,49 +76,49 @@ func main() {
 						owner = &ownerProp
 					}
 
-					execute(ctx, eigenpodAddress, beacon, node, "validator", out, owner)
+					execute(ctx, eigenpodAddress, beacon, node, "validator", out, owner, false)
 					return nil
 				},
 			},
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:        "eigenpodAddress",
-				Aliases:     []string{"e"},
+				Name:        "podAddress",
+				Aliases:     []string{"p", "pod"},
 				Value:       "",
-				Usage:       "[required] The onchain address of your eigenpod contract (0x123123123123)",
+				Usage:       "[required] The onchain `address` of your eigenpod contract (0x123123123123)",
 				Required:    true,
 				Destination: &eigenpodAddress,
 			},
 			&cli.StringFlag{
-				Name:        "beacon",
+				Name:        "beaconNode",
 				Aliases:     []string{"b"},
 				Value:       "",
-				Usage:       "[required] URI to a functioning beacon node RPC (https://)",
+				Usage:       "[required] `URL` to a functioning beacon node RPC (https://)",
 				Required:    true,
 				Destination: &beacon,
 			},
 			&cli.StringFlag{
-				Name:        "node",
-				Aliases:     []string{"n"},
+				Name:        "execNode",
+				Aliases:     []string{"e"},
 				Value:       "",
-				Usage:       "[required] URI to a functioning execution-layer RPC",
+				Usage:       "[required] `URL` to a functioning execution-layer RPC (https://)",
 				Required:    true,
 				Destination: &node,
 			},
 			&cli.StringFlag{
-				Name:        "output",
-				Aliases:     []string{"o"},
+				Name:        "out",
+				Aliases:     []string{"O", "output"},
 				Value:       "",
-				Usage:       "Output path for the proof. (defaults to stdout)",
+				Usage:       "Output `path` for the proof. (defaults to stdout)",
 				Destination: &output,
 			},
 			&cli.StringFlag{
 				Name:        "owner",
-				Aliases:     []string{},
-				Destination: &owner,
+				Aliases:     []string{"o"},
 				Value:       "",
-				Usage:       "Private key of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using `checkpoint` mode, it will also begin a checkpoint if one hasn't been started already.",
+				Usage:       "`Private key` of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
+				Destination: &owner,
 			},
 		},
 	}
@@ -121,7 +133,7 @@ func getBeaconClient(beaconUri string) (BeaconClient, error) {
 	return beaconClient, err
 }
 
-func lastCheckpointedForEigenpod(eigenpodAddress string, client *ethclient.Client) uint64 {
+func getCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) uint64 {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
 	PanicOnError("failed to locate eigenpod. is your address correct?", err)
 
@@ -195,7 +207,7 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string, owner *string) {
+func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string, owner *string, forceCheckpoint bool) {
 	eth, err := ethclient.Dial(node)
 	PanicOnError("failed to reach eth --node.", err)
 
@@ -206,7 +218,7 @@ func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, comman
 	PanicOnError("failed to reach beacon chain.", err)
 
 	if command == "checkpoint" {
-		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
+		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner, forceCheckpoint)
 	} else if command == "validator" {
 		RunValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
 	} else {
