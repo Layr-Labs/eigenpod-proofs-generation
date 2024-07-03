@@ -60,12 +60,7 @@ func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, 
 	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
 	PanicOnError("failed to reach eigenpod", err)
 
-	// revertIfNoBalance == !forceCheckpoint
-	// The CLI exposes this as a `force` parameter for usability
-	revertIfNoBalance := true
-	if forceCheckpoint {
-		revertIfNoBalance = false
-	}
+	revertIfNoBalance := !forceCheckpoint
 
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, revertIfNoBalance)
 	PanicOnError("failed to start checkpoint", err)
