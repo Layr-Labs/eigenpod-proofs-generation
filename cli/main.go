@@ -108,7 +108,7 @@ func main() {
 								status.CurrentTotalSharesETH,
 							) // delta = endShares - currentOwnerSharesETH
 
-							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), currentOwnerSharesETH.String(), endSharesETH.String())
+							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), status.CurrentTotalSharesETH.String(), endSharesETH.String())
 
 							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
 						} else {
