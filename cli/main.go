@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	sha256 "crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
+	"time"
 
 	"context"
 
@@ -13,12 +16,18 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 	cli "github.com/urfave/cli/v2"
 )
 
+func shortenHex(publicKey string) string {
+	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
+}
+
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
-	var forceCheckpoint bool
+	var forceCheckpoint, disableColor, verbose bool
+	var useJson bool = false
 	ctx := context.Background()
 
 	app := &cli.App{
@@ -28,6 +37,99 @@ func main() {
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
+			{
+				Name:  "status",
+				Usage: "Checks the status of your eigenpod.",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "json",
+						Value:       false,
+						Usage:       "print only plain JSON",
+						Required:    false,
+						Destination: &useJson,
+					},
+				},
+				Action: func(cctx *cli.Context) error {
+					if disableColor {
+						color.NoColor = true
+					}
+
+					eth, err := ethclient.Dial(node)
+					PanicOnError("failed to reach eth --node.", err)
+
+					beaconClient, err := getBeaconClient(beacon)
+					PanicOnError("failed to reach beacon chain.", err)
+
+					status := getStatus(ctx, eigenpodAddress, eth, beaconClient)
+
+					if useJson {
+						bytes, err := json.MarshalIndent(status, "", "      ")
+						PanicOnError("failed to get status", err)
+						statusStr := string(bytes)
+						fmt.Println(statusStr)
+					} else {
+						// pretty print everything
+						color.New(color.Bold, color.FgBlue).Printf("Eigenpod validators\n")
+						for index, validator := range status.Validators {
+
+							var targetColor color.Attribute
+							var description string
+
+							if validator.Status == ValidatorStatusActive {
+								targetColor = color.FgGreen
+								description = "active"
+							} else if validator.Status == ValidatorStatusInactive {
+								targetColor = color.FgHiYellow
+								description = "inactive"
+							} else if validator.Status == ValidatorStatusWithdrawn {
+								targetColor = color.FgHiRed
+								description = "withdrawn"
+							}
+
+							if validator.Slashed {
+								description = description + " (slashed)"
+							}
+
+							publicKey := validator.PublicKey
+							if !verbose {
+								publicKey = shortenHex(publicKey)
+							}
+
+							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, publicKey, description)
+						}
+
+						bold := color.New(color.Bold, color.FgBlue)
+						ital := color.New(color.Italic, color.FgBlue)
+						fmt.Println()
+
+						if status.ActiveCheckpoint != nil {
+							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
+
+							bold.Printf("!NOTE: There is a checkpoint active! (started at: %s)\n", startTime.String())
+
+							endSharesETH := gweiToEther(status.ActiveCheckpoint.PendingSharesGwei)
+							deltaETH := new(big.Float).Sub(
+								endSharesETH,
+								status.CurrentTotalSharesETH,
+							) // delta = endShares - currentOwnerSharesETH
+
+							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), status.CurrentTotalSharesETH.String(), endSharesETH.String())
+
+							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
+						} else {
+							bold.Printf("Runing a `checkpoint` right now will result in: \n")
+
+							startEther := status.CurrentTotalSharesETH
+							endEther := status.TotalSharesAfterCheckpointETH
+							delta := new(big.Float).Sub(endEther, startEther)
+
+							ital.Printf("\t%f new shares issued (%f ==> %f)\n", delta, startEther, endEther)
+						}
+
+					}
+					return nil
+				},
+			},
 			{
 				Name:    "checkpoint",
 				Aliases: []string{"cp"},
@@ -42,6 +144,10 @@ func main() {
 					},
 				},
 				Action: func(cctx *cli.Context) error {
+					if disableColor {
+						color.NoColor = true
+					}
+
 					var out, owner *string = nil, nil
 
 					if len(cctx.String("out")) > 0 {
@@ -63,6 +169,9 @@ func main() {
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Action: func(cctx *cli.Context) error {
+					if disableColor {
+						color.NoColor = true
+					}
 
 					var out, owner *string = nil, nil
 
@@ -120,11 +229,24 @@ func main() {
 				Usage:       "`Private key` of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
 				Destination: &owner,
 			},
+			&cli.BoolFlag{
+				Name:        "no-color",
+				Value:       false,
+				Usage:       "Disables color output for terminals that do not support ANSI color codes.",
+				Destination: &disableColor,
+			},
+			&cli.BoolFlag{
+				Name:        "verbose",
+				Aliases:     []string{"v"},
+				Value:       false,
+				Usage:       "Enable verbose output.",
+				Destination: &verbose,
+			},
 		},
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		panic(err) // burn it all to the ground
+		panic(err)
 	}
 }
 
@@ -207,14 +329,14 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beacon_node_uri, node, command string, out *string, owner *string, forceCheckpoint bool) {
+func execute(ctx context.Context, eigenpodAddress, beaconNodeUri, node, command string, out *string, owner *string, forceCheckpoint bool) {
 	eth, err := ethclient.Dial(node)
 	PanicOnError("failed to reach eth --node.", err)
 
 	chainId, err := eth.ChainID(ctx)
 	PanicOnError("failed to fetch chain id", err)
 
-	beaconClient, err := getBeaconClient(beacon_node_uri)
+	beaconClient, err := getBeaconClient(beaconNodeUri)
 	PanicOnError("failed to reach beacon chain.", err)
 
 	if command == "checkpoint" {
