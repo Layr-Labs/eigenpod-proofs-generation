@@ -239,7 +239,7 @@ func main() {
 				Name:        "verbose",
 				Aliases:     []string{"v"},
 				Value:       false,
-				Usage:       "Show long-form data.",
+				Usage:       "Enable verbose output.",
 				Destination: &verbose,
 			},
 		},
