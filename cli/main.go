@@ -4,7 +4,6 @@ import (
 	"bytes"
 	sha256 "crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -160,7 +160,50 @@ func main() {
 						owner = &ownerProp
 					}
 
-					execute(ctx, eigenpodAddress, beacon, node, "checkpoint", out, owner, forceCheckpoint)
+					eth, beaconClient, chainId := getClients(ctx, node, beacon)
+
+					currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
+					if currentCheckpoint == 0 {
+						if owner != nil {
+							newCheckpoint, err := startCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
+							PanicOnError("failed to start checkpoint", err)
+							currentCheckpoint = newCheckpoint
+						} else {
+							PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
+						}
+					}
+					color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
+
+					proof := GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+
+					jsonString, err := json.Marshal(proof)
+					PanicOnError("failed to generate JSON proof data.", err)
+
+					WriteOutputToFileOrStdout(jsonString, out)
+
+					if owner != nil {
+						// submit the proof onchain
+						ownerAccount, err := prepareAccount(owner, chainId)
+						PanicOnError("failed to parse private key", err)
+
+						eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+						PanicOnError("failed to reach eigenpod", err)
+
+						color.Green("calling EigenPod.VerifyCheckpointProofs()...")
+
+						txn, err := eigenPod.VerifyCheckpointProofs(
+							ownerAccount.TransactionOptions,
+							onchain.BeaconChainProofsBalanceContainerProof{
+								BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
+								Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
+							},
+							castBalanceProofs(proof.BalanceProofs),
+						)
+
+						PanicOnError("failed to invoke verifyCheckpointProofs", err)
+						color.Green("transaction: %s", txn.Hash().Hex())
+					}
+
 					return nil
 				},
 			},
@@ -185,7 +228,54 @@ func main() {
 						owner = &ownerProp
 					}
 
-					execute(ctx, eigenpodAddress, beacon, node, "validator", out, owner, false)
+					eth, beaconClient, chainId := getClients(ctx, node, beacon)
+					validatorProofs, validatorIndices := GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					if validatorProofs == nil || validatorIndices == nil {
+						return nil
+					}
+
+					jsonString, err := json.Marshal(validatorProofs)
+					PanicOnError("failed to generate JSON proof data.", err)
+
+					WriteOutputToFileOrStdout(jsonString, out)
+
+					if owner != nil {
+						ownerAccount, err := prepareAccount(owner, chainId)
+						PanicOnError("failed to parse private key", err)
+
+						eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+						PanicOnError("failed to reach eigenpod", err)
+
+						indices := Uint64ArrayToBigIntArray(validatorIndices)
+
+						var validatorFieldsProofs [][]byte = [][]byte{}
+						for i := 0; i < len(validatorProofs.ValidatorFieldsProofs); i++ {
+							pr := validatorProofs.ValidatorFieldsProofs[i].ToByteSlice()
+							validatorFieldsProofs = append(validatorFieldsProofs, pr)
+						}
+
+						var validatorFields [][][32]byte = castValidatorFields(validatorProofs.ValidatorFields)
+
+						latestBlock, err := eth.BlockByNumber(ctx, nil)
+						PanicOnError("failed to load latest block", err)
+
+						color.Green("submitting onchain...")
+						txn, err := eigenPod.VerifyWithdrawalCredentials(
+							ownerAccount.TransactionOptions,
+							latestBlock.Time(),
+							onchain.BeaconChainProofsStateRootProof{
+								Proof:           validatorProofs.StateRootProof.Proof.ToByteSlice(),
+								BeaconStateRoot: validatorProofs.StateRootProof.BeaconStateRoot,
+							},
+							indices,
+							validatorFieldsProofs,
+							validatorFields,
+						)
+
+						PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
+
+						color.Green("transaction: %s", txn.Hash().Hex())
+					}
 					return nil
 				},
 			},
@@ -329,7 +419,7 @@ func getCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func execute(ctx context.Context, eigenpodAddress, beaconNodeUri, node, command string, out *string, owner *string, forceCheckpoint bool) {
+func getClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Client, BeaconClient, *big.Int) {
 	eth, err := ethclient.Dial(node)
 	PanicOnError("failed to reach eth --node.", err)
 
@@ -339,11 +429,5 @@ func execute(ctx context.Context, eigenpodAddress, beaconNodeUri, node, command 
 	beaconClient, err := getBeaconClient(beaconNodeUri)
 	PanicOnError("failed to reach beacon chain.", err)
 
-	if command == "checkpoint" {
-		RunCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner, forceCheckpoint)
-	} else if command == "validator" {
-		RunValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, out, owner)
-	} else {
-		PanicOnError(fmt.Sprintf("invalid --prove argument. Expected 'checkpoint' or 'validator' (got `%s`)", command), errors.New("invalid command"))
-	}
+	return eth, beaconClient, chainId
 }
