@@ -100,13 +100,9 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to load pod owner shares", err)
 	podOwnerSharesGwei := weiToGwei(podOwnerShares)
 
-	var sumEigenBalancesGwei uint64 = 0
-
 	for i := 0; i < len(allValidators); i++ {
 		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
 		PanicOnError("failed to fetch validator info", err)
-		sumEigenBalancesGwei = sumEigenBalancesGwei + validatorInfo.RestakedBalanceGwei
-
 		validators[fmt.Sprintf("%d", allValidators[i].Index)] = Validator{
 			Index:                               allValidators[i].Index,
 			Status:                              int(validatorInfo.Status),
@@ -121,11 +117,8 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			podOwnerSharesGwei,
 			new(big.Float).SetUint64(checkpoint.PodBalanceGwei),
 		),
-		new(big.Float).Sub(
-			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-			new(big.Float).SetUint64(sumEigenBalancesGwei),
-		),
-	) // pendingSharesGwei = podOwnerSharesGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei - sumEigenBalancesGwei
+		new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
+	) // pendingSharesGwei = podOwnerSharesGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei
 
 	if err == nil && timestamp != 0 {
 		activeCheckpoint = &Checkpoint{
@@ -136,6 +129,7 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	}
 
 	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
+	PanicOnError("failed to fetch pod balance", err)
 	latestPodBalanceGwei := weiToGwei(latestPodBalanceWei)
 
 	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
