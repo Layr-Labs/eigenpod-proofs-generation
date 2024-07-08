@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -21,12 +22,13 @@ import (
 */
 
 type Checkpoint struct {
-	PendingSharesGWei uint64
+	PendingSharesGwei *big.Float
 	ProofsRemaining   uint64
 	StartedAt         uint64
 }
 
 type Validator struct {
+	Slashed                             bool
 	Index                               uint64
 	Status                              int
 	PublicKey                           string
@@ -44,20 +46,23 @@ type EigenpodStatus struct {
 	// 		- If checkpoint is already started:
 	// 			sum(beacon chain balances) + currentCheckpoint.podBalanceGwei + pod.withdrawableRestakedExecutionLayerGwei()
 	// 		- If no checkpoint is started:
-	// 			sum(beacon chain balances) + native ETH balance of pod
-	SharesPendingCheckpointGwei *big.Float
-	SharesPendingCheckpointETH  *big.Float
+	// 			total_shares_after_checkpoint = sum(validator[i].regular_balance) + (balanceOf(pod) rounded down to gwei) - withdrawableRestakedExecutionLayerGwei
+	TotalSharesAfterCheckpointGwei *big.Float
+	TotalSharesAfterCheckpointETH  *big.Float
 }
 
-func sumBeaconChainBalancesGwei(allValidators []struct {
+func sumBeaconChainRegularBalancesGwei(allValidators []struct {
 	Validator *phase0.Validator
 	Index     uint64
-}) phase0.Gwei {
+}, state *spec.VersionedBeaconState) phase0.Gwei {
 	var sumGwei phase0.Gwei = 0
+
+	validatorBalances, err := state.ValidatorBalances()
+	PanicOnError("failed to load validator balances", err)
 
 	for i := 0; i < len(allValidators); i++ {
 		validator := allValidators[i]
-		sumGwei = sumGwei + validator.Validator.EffectiveBalance
+		sumGwei = sumGwei + validatorBalances[validator.Index]
 	}
 
 	return sumGwei
@@ -77,50 +82,78 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to fetch state", err)
 
 	allValidators := findAllValidatorsForEigenpod(eigenpodAddress, state)
-	sumBalancesGwei := sumBeaconChainBalancesGwei(allValidators)
+	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(allValidators, state)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
 	PanicOnError("failed to fetch checkpoint information", err)
-	if err == nil && timestamp != 0 {
-		withdrawableRestakedGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
-		PanicOnError("failed to fetch gwei info", err)
 
-		activeCheckpoint = &Checkpoint{
-			PendingSharesGWei: uint64(sumBalancesGwei) + checkpoint.PodBalanceGwei + withdrawableRestakedGwei,
-			ProofsRemaining:   checkpoint.ProofsRemaining.Uint64(),
-			StartedAt:         timestamp,
-		}
-	}
+	managerContract, err := eigenPod.EigenPodManager(nil)
+	PanicOnError("failed to load manager", err)
+
+	eigenPodManager, err := onchain.NewEigenPodManager(managerContract, eth)
+	PanicOnError("failed to get manager instance", err)
+
+	eigenPodOwner, err := eigenPod.PodOwner(nil)
+	PanicOnError("failed to get eigenpod owner", err)
+
+	podOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
+	PanicOnError("failed to load pod owner shares", err)
+	podOwnerSharesGwei := weiToGwei(podOwnerShares)
+
+	var sumEigenBalancesGwei uint64 = 0
 
 	for i := 0; i < len(allValidators); i++ {
 		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
 		PanicOnError("failed to fetch validator info", err)
+		sumEigenBalancesGwei = sumEigenBalancesGwei + validatorInfo.RestakedBalanceGwei
 
 		validators[fmt.Sprintf("%d", allValidators[i].Index)] = Validator{
 			Index:                               allValidators[i].Index,
 			Status:                              int(validatorInfo.Status),
+			Slashed:                             allValidators[i].Validator.Slashed,
 			PublicKey:                           allValidators[i].Validator.PublicKey.String(),
 			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && allValidators[i].Validator.ExitEpoch == FAR_FUTURE_EPOCH,
+		}
+	}
+
+	pendingSharesGwei := new(big.Float).Add(
+		new(big.Float).Add(
+			podOwnerSharesGwei,
+			new(big.Float).SetUint64(checkpoint.PodBalanceGwei),
+		),
+		new(big.Float).Sub(
+			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
+			new(big.Float).SetUint64(sumEigenBalancesGwei),
+		),
+	) // pendingSharesGwei = podOwnerSharesGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei - sumEigenBalancesGwei
+
+	if err == nil && timestamp != 0 {
+		activeCheckpoint = &Checkpoint{
+			PendingSharesGwei: pendingSharesGwei,
+			ProofsRemaining:   checkpoint.ProofsRemaining.Uint64(),
+			StartedAt:         timestamp,
 		}
 	}
 
 	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
 	latestPodBalanceGwei := weiToGwei(latestPodBalanceWei)
 
-	latestEffectPodBalanceGwei := new(big.Float).Sub(
-		latestPodBalanceGwei,
-		new(big.Float).SetUint64(checkpoint.PodBalanceGwei)) // latestPodBalanceGwei - checkpoint.PodBalanceGwei
-	PanicOnError("failed to fetch pod balance", err)
+	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
+	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
 
-	pendingGwei := new(big.Float).Add(
-		new(big.Float).SetUint64(uint64(sumBalancesGwei)),
-		latestEffectPodBalanceGwei)
+	pendingGwei :=
+		new(big.Float).Sub(
+			new(big.Float).Add(
+				new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
+				latestPodBalanceGwei),
+			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
+		)
 	pendingEth := gweiToEther(pendingGwei)
 
 	return EigenpodStatus{
-		Validators:                  validators,
-		ActiveCheckpoint:            activeCheckpoint,
-		SharesPendingCheckpointGwei: pendingGwei,
-		SharesPendingCheckpointETH:  pendingEth,
+		Validators:                     validators,
+		ActiveCheckpoint:               activeCheckpoint,
+		TotalSharesAfterCheckpointGwei: pendingGwei,
+		TotalSharesAfterCheckpointETH:  pendingEth,
 	}
 }

@@ -71,7 +71,7 @@ func main() {
 						fmt.Println(statusStr)
 					} else {
 						// pretty print everything
-						color.New(color.Bold, color.FgBlack).Printf("Eigenpod validators\n")
+						color.New(color.Bold, color.FgBlue).Printf("Eigenpod validators\n")
 						for index, validator := range status.Validators {
 
 							var targetColor color.Attribute
@@ -86,6 +86,10 @@ func main() {
 							} else if validator.Status == ValidatorStatusWithdrawn {
 								targetColor = color.FgHiRed
 								description = "withdrawn"
+							}
+
+							if validator.Slashed {
+								description = description + " (slashed)"
 							}
 
 							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, shortenAddress(validator.PublicKey), description)
@@ -104,29 +108,32 @@ func main() {
 						eigenPodOwner, err := eigenpod.PodOwner(nil)
 						PanicOnError("failed to get eigenpod owner", err)
 
-						ownerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
+						currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 						PanicOnError("failed to load pod owner shares", err)
-						ownerSharesETH := iweiToEther(ownerShares)
+						currentOwnerSharesETH := iweiToEther(currentOwnerShares)
+
+						// TODO: remove
+						fmt.Printf("pod owner shares: %s\n", currentOwnerShares.String())
 
 						if status.ActiveCheckpoint != nil {
 							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
 
 							bold.Printf("!NOTE: There is a checkpoint active! (started at: %s)\n", startTime.String())
 
-							endSharesETH := gweiToEther(new(big.Float).SetUint64(status.ActiveCheckpoint.PendingSharesGWei))
+							endSharesETH := gweiToEther(status.ActiveCheckpoint.PendingSharesGwei)
 							deltaETH := new(big.Float).Sub(
 								endSharesETH,
-								ownerSharesETH,
-							) // delta = endShares - ownerShares
+								currentOwnerSharesETH,
+							) // delta = endShares - currentOwnerSharesETH
 
-							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), ownerSharesETH.String(), endSharesETH.String())
+							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), currentOwnerSharesETH.String(), endSharesETH.String())
 
 							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
 						} else {
 							bold.Printf("Runing a `checkpoint` right now will result in: \n")
 
-							startEther := gweiToEther(weiToGwei(ownerShares))
-							endEther := status.SharesPendingCheckpointETH
+							startEther := iweiToEther(currentOwnerShares)
+							endEther := status.TotalSharesAfterCheckpointETH
 							delta := new(big.Float).Sub(endEther, startEther)
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", delta, startEther, endEther)

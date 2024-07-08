@@ -40,10 +40,6 @@ func gweiToEther(val *big.Float) *big.Float {
 	return new(big.Float).Quo(val, big.NewFloat(params.GWei))
 }
 
-func weiToEther(val *big.Float) *big.Float {
-	return new(big.Float).Quo(val, big.NewFloat(params.Ether))
-}
-
 func iweiToEther(val *big.Int) *big.Float {
 	return new(big.Float).Quo(new(big.Float).SetInt(val), big.NewFloat(params.Ether))
 }
