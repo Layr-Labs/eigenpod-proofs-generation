@@ -20,13 +20,13 @@ import (
 	cli "github.com/urfave/cli/v2"
 )
 
-func shortenAddress(publicKey string) string {
+func shortenHex(publicKey string) string {
 	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
 }
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
-	var forceCheckpoint, disableColor bool
+	var forceCheckpoint, disableColor, verbose bool
 	var useJson bool = false
 	ctx := context.Background()
 
@@ -90,7 +90,12 @@ func main() {
 								description = description + " (slashed)"
 							}
 
-							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, shortenAddress(validator.PublicKey), description)
+							publicKey := validator.PublicKey
+							if !verbose {
+								publicKey = shortenHex(publicKey)
+							}
+
+							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, publicKey, description)
 						}
 
 						bold := color.New(color.Bold, color.FgBlue)
@@ -229,6 +234,13 @@ func main() {
 				Value:       false,
 				Usage:       "Disables color output for terminals that do not support ANSI color codes.",
 				Destination: &disableColor,
+			},
+			&cli.BoolFlag{
+				Name:        "verbose",
+				Aliases:     []string{"v"},
+				Value:       false,
+				Usage:       "Show long-form data.",
+				Destination: &verbose,
 			},
 		},
 	}
