@@ -95,8 +95,8 @@ func main() {
 							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, shortenAddress(validator.PublicKey), description)
 						}
 
-						bold := color.New(color.Bold, color.FgBlack)
-						ital := color.New(color.Italic, color.FgBlack)
+						bold := color.New(color.Bold, color.FgBlue)
+						ital := color.New(color.Italic, color.FgBlue)
 						fmt.Println()
 
 						eigenpodManagerContractAddress, err := eigenpod.EigenPodManager(nil)
@@ -111,9 +111,6 @@ func main() {
 						currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 						PanicOnError("failed to load pod owner shares", err)
 						currentOwnerSharesETH := iweiToEther(currentOwnerShares)
-
-						// TODO: remove
-						fmt.Printf("pod owner shares: %s\n", currentOwnerShares.String())
 
 						if status.ActiveCheckpoint != nil {
 							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
