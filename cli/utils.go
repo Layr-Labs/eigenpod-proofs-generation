@@ -32,15 +32,20 @@ func Panic(message string) {
 	os.Exit(1)
 }
 
-func weiToGwei(val *big.Int) float64 {
-	v, _ := new(big.Float).Quo(new(big.Float).SetUint64(val.Uint64()), big.NewFloat(params.GWei)).Float64()
-	return v
+func weiToGwei(val *big.Int) *big.Float {
+	return new(big.Float).Quo(new(big.Float).SetUint64(val.Uint64()), big.NewFloat(params.GWei))
 }
 
-func gweiToEther(val *big.Float) float64 {
-	v, _ :=
-		new(big.Float).Quo(val, big.NewFloat(params.GWei)).Float64()
-	return v
+func gweiToEther(val *big.Float) *big.Float {
+	return new(big.Float).Quo(val, big.NewFloat(params.GWei))
+}
+
+func weiToEther(val *big.Float) *big.Float {
+	return new(big.Float).Quo(val, big.NewFloat(params.Ether))
+}
+
+func iweiToEther(val *big.Int) *big.Float {
+	return new(big.Float).Quo(new(big.Float).SetInt(val), big.NewFloat(params.Ether))
 }
 
 func PanicOnError(message string, err error) {

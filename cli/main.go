@@ -26,7 +26,7 @@ func shortenAddress(publicKey string) string {
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
-	var forceCheckpoint bool
+	var forceCheckpoint, disableColor bool
 	var useJson bool = false
 	ctx := context.Background()
 
@@ -50,6 +50,10 @@ func main() {
 					},
 				},
 				Action: func(cctx *cli.Context) error {
+					if disableColor {
+						color.NoColor = true
+					}
+
 					eth, err := ethclient.Dial(node)
 					PanicOnError("failed to reach eth --node.", err)
 
@@ -97,30 +101,33 @@ func main() {
 						eigenPodManager, err := onchain.NewEigenPodManager(eigenpodManagerContractAddress, eth)
 						PanicOnError("failed to get manager instance", err)
 
-						eigenPodOwner, err := eigenPodManager.Owner(nil)
+						eigenPodOwner, err := eigenpod.PodOwner(nil)
 						PanicOnError("failed to get eigenpod owner", err)
 
 						ownerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 						PanicOnError("failed to load pod owner shares", err)
+						ownerSharesETH := iweiToEther(ownerShares)
 
 						if status.ActiveCheckpoint != nil {
 							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
 
 							bold.Printf("!NOTE: There is a checkpoint active! (started at: %s)\n", startTime.String())
 
-							endShares := gweiToEther(new(big.Float).SetUint64(status.ActiveCheckpoint.PendingSharesGWei))
-							ownerSharesFt, _ := ownerShares.Float64()
+							endSharesETH := gweiToEther(new(big.Float).SetUint64(status.ActiveCheckpoint.PendingSharesGWei))
+							deltaETH := new(big.Float).Sub(
+								endSharesETH,
+								ownerSharesETH,
+							) // delta = endShares - ownerShares
 
-							delta := endShares - ownerSharesFt
-							ital.Printf("\t- If you finish it, you may receive up to %f shares. (%f -> %f)\n", delta, ownerSharesFt, endShares)
+							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), ownerSharesETH.String(), endSharesETH.String())
 
 							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
 						} else {
 							bold.Printf("Runing a `checkpoint` right now will result in: \n")
 
-							startEther := gweiToEther(big.NewFloat(weiToGwei(ownerShares)))
+							startEther := gweiToEther(weiToGwei(ownerShares))
 							endEther := status.SharesPendingCheckpointETH
-							delta := endEther - startEther
+							delta := new(big.Float).Sub(endEther, startEther)
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", delta, startEther, endEther)
 						}
@@ -143,6 +150,10 @@ func main() {
 					},
 				},
 				Action: func(cctx *cli.Context) error {
+					if disableColor {
+						color.NoColor = true
+					}
+
 					var out, owner *string = nil, nil
 
 					if len(cctx.String("out")) > 0 {
@@ -164,6 +175,9 @@ func main() {
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Action: func(cctx *cli.Context) error {
+					if disableColor {
+						color.NoColor = true
+					}
 
 					var out, owner *string = nil, nil
 
@@ -220,6 +234,12 @@ func main() {
 				Value:       "",
 				Usage:       "`Private key` of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
 				Destination: &owner,
+			},
+			&cli.BoolFlag{
+				Name:        "no-color",
+				Value:       false,
+				Usage:       "Disables color output for terminals that do not support ANSI color codes.",
+				Destination: &disableColor,
 			},
 		},
 	}

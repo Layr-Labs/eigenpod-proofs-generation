@@ -45,8 +45,8 @@ type EigenpodStatus struct {
 	// 			sum(beacon chain balances) + currentCheckpoint.podBalanceGwei + pod.withdrawableRestakedExecutionLayerGwei()
 	// 		- If no checkpoint is started:
 	// 			sum(beacon chain balances) + native ETH balance of pod
-	SharesPendingCheckpointGwei float64
-	SharesPendingCheckpointETH  float64
+	SharesPendingCheckpointGwei *big.Float
+	SharesPendingCheckpointETH  *big.Float
 }
 
 func sumBeaconChainBalancesGwei(allValidators []struct {
@@ -100,15 +100,22 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			Index:                               allValidators[i].Index,
 			Status:                              int(validatorInfo.Status),
 			PublicKey:                           allValidators[i].Validator.PublicKey.String(),
-			IsAwaitingWithdrawalCredentialProof: validatorInfo.Status == ValidatorStatusInactive,
+			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && allValidators[i].Validator.ExitEpoch == FAR_FUTURE_EPOCH,
 		}
 	}
 
 	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
+	latestPodBalanceGwei := weiToGwei(latestPodBalanceWei)
+
+	latestEffectPodBalanceGwei := new(big.Float).Sub(
+		latestPodBalanceGwei,
+		new(big.Float).SetUint64(checkpoint.PodBalanceGwei)) // latestPodBalanceGwei - checkpoint.PodBalanceGwei
 	PanicOnError("failed to fetch pod balance", err)
 
-	pendingGwei := float64(sumBalancesGwei) + weiToGwei(latestPodBalanceWei)
-	pendingEth := gweiToEther(new(big.Float).SetFloat64(pendingGwei))
+	pendingGwei := new(big.Float).Add(
+		new(big.Float).SetUint64(uint64(sumBalancesGwei)),
+		latestEffectPodBalanceGwei)
+	pendingEth := gweiToEther(pendingGwei)
 
 	return EigenpodStatus{
 		Validators:                  validators,
