@@ -33,7 +33,10 @@ func Panic(message string) {
 }
 
 func weiToGwei(val *big.Int) *big.Float {
-	return new(big.Float).Quo(new(big.Float).SetUint64(val.Uint64()), big.NewFloat(params.GWei))
+	return new(big.Float).Quo(
+		new(big.Float).SetInt(val),
+		big.NewFloat(params.GWei),
+	)
 }
 
 func gweiToEther(val *big.Float) *big.Float {

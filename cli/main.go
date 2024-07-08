@@ -61,8 +61,6 @@ func main() {
 					PanicOnError("failed to reach beacon chain.", err)
 
 					status := getStatus(ctx, eigenpodAddress, eth, beaconClient)
-					eigenpod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-					PanicOnError("failed to reach eigenpod", err)
 
 					if useJson {
 						bytes, err := json.MarshalIndent(status, "", "      ")
@@ -99,19 +97,6 @@ func main() {
 						ital := color.New(color.Italic, color.FgBlue)
 						fmt.Println()
 
-						eigenpodManagerContractAddress, err := eigenpod.EigenPodManager(nil)
-						PanicOnError("failed to get manager address", err)
-
-						eigenPodManager, err := onchain.NewEigenPodManager(eigenpodManagerContractAddress, eth)
-						PanicOnError("failed to get manager instance", err)
-
-						eigenPodOwner, err := eigenpod.PodOwner(nil)
-						PanicOnError("failed to get eigenpod owner", err)
-
-						currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
-						PanicOnError("failed to load pod owner shares", err)
-						currentOwnerSharesETH := iweiToEther(currentOwnerShares)
-
 						if status.ActiveCheckpoint != nil {
 							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
 
@@ -120,7 +105,7 @@ func main() {
 							endSharesETH := gweiToEther(status.ActiveCheckpoint.PendingSharesGwei)
 							deltaETH := new(big.Float).Sub(
 								endSharesETH,
-								currentOwnerSharesETH,
+								status.CurrentTotalSharesETH,
 							) // delta = endShares - currentOwnerSharesETH
 
 							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), currentOwnerSharesETH.String(), endSharesETH.String())
@@ -129,7 +114,7 @@ func main() {
 						} else {
 							bold.Printf("Runing a `checkpoint` right now will result in: \n")
 
-							startEther := iweiToEther(currentOwnerShares)
+							startEther := status.CurrentTotalSharesETH
 							endEther := status.TotalSharesAfterCheckpointETH
 							delta := new(big.Float).Sub(endEther, startEther)
 
@@ -249,7 +234,7 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		panic(err) // burn it all to the ground
+		panic(err)
 	}
 }
 

@@ -12,15 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-/*
-	- how many validators you have on the beacon chain pointed at your pod
-	- how many of those validators are awaiting a withdrawal credential proof
-	- how many extra shares you'd get if you completed a checkpoint right now
-	- whether you have an active checkpoint
-	- how many proofs remaining in your active checkpoint
-	- how many shares you'll get when you finish the checkpoint
-*/
-
 type Checkpoint struct {
 	PendingSharesGwei *big.Float
 	ProofsRemaining   uint64
@@ -40,6 +31,9 @@ type EigenpodStatus struct {
 
 	ActiveCheckpoint *Checkpoint
 
+	CurrentTotalSharesETH *big.Float
+	Status                int
+
 	// if you completed a new checkpoint right now, how many shares would you get?
 	//
 	//  this is computed as:
@@ -51,10 +45,7 @@ type EigenpodStatus struct {
 	TotalSharesAfterCheckpointETH  *big.Float
 }
 
-func sumBeaconChainRegularBalancesGwei(allValidators []struct {
-	Validator *phase0.Validator
-	Index     uint64
-}, state *spec.VersionedBeaconState) phase0.Gwei {
+func sumBeaconChainRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.VersionedBeaconState) phase0.Gwei {
 	var sumGwei phase0.Gwei = 0
 
 	validatorBalances, err := state.ValidatorBalances()
@@ -87,18 +78,18 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
 	PanicOnError("failed to fetch checkpoint information", err)
 
-	managerContract, err := eigenPod.EigenPodManager(nil)
-	PanicOnError("failed to load manager", err)
+	eigenpodManagerContractAddress, err := eigenPod.EigenPodManager(nil)
+	PanicOnError("failed to get manager address", err)
 
-	eigenPodManager, err := onchain.NewEigenPodManager(managerContract, eth)
+	eigenPodManager, err := onchain.NewEigenPodManager(eigenpodManagerContractAddress, eth)
 	PanicOnError("failed to get manager instance", err)
 
 	eigenPodOwner, err := eigenPod.PodOwner(nil)
 	PanicOnError("failed to get eigenpod owner", err)
 
-	podOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
+	currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 	PanicOnError("failed to load pod owner shares", err)
-	podOwnerSharesGwei := weiToGwei(podOwnerShares)
+	currentOwnerSharesETH := iweiToEther(currentOwnerShares)
 
 	for i := 0; i < len(allValidators); i++ {
 		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
@@ -112,13 +103,16 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		}
 	}
 
+	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
+	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
+
 	pendingSharesGwei := new(big.Float).Add(
 		new(big.Float).Add(
-			podOwnerSharesGwei,
+			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
 			new(big.Float).SetUint64(checkpoint.PodBalanceGwei),
 		),
 		new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-	) // pendingSharesGwei = podOwnerSharesGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei
+	) // pendingSharesGwei = withdrawableRestakedExecutionLayerGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei
 
 	if err == nil && timestamp != 0 {
 		activeCheckpoint = &Checkpoint{
@@ -131,10 +125,6 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
 	PanicOnError("failed to fetch pod balance", err)
 	latestPodBalanceGwei := weiToGwei(latestPodBalanceWei)
-
-	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
-	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
-
 	pendingGwei :=
 		new(big.Float).Sub(
 			new(big.Float).Add(
@@ -147,6 +137,7 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	return EigenpodStatus{
 		Validators:                     validators,
 		ActiveCheckpoint:               activeCheckpoint,
+		CurrentTotalSharesETH:          currentOwnerSharesETH,
 		TotalSharesAfterCheckpointGwei: pendingGwei,
 		TotalSharesAfterCheckpointETH:  pendingEth,
 	}
