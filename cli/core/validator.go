@@ -28,16 +28,20 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	PanicOnError("failed to fetch beacon state.", err)
 
-	allValidatorsForEigenpod := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
-	allValidatorInfo := GetOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
+	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	awaitingCredentialValidators := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidators)
 
-	var validatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
-	if len(validatorIndices) == 0 {
+	if len(awaitingCredentialValidators) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")
 		return nil, nil
+	} else {
+		color.Blue("Verifying %d inactive validators", len(awaitingCredentialValidators))
 	}
 
-	color.Blue("Verifying %d inactive validators", len(validatorIndices))
+	validatorIndices := make([]uint64, len(awaitingCredentialValidators))
+	for i, v := range awaitingCredentialValidators {
+		validatorIndices[i] = v.Index
+	}
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	PanicOnError("failled to initialize prover", err)

@@ -37,21 +37,21 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	PanicOnError("failed to fetch beacon state.", err)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
-	allValidatorsForEigenpod := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
-	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidatorsForEigenpod))
+	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
 
-	allValidatorInfo := GetOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
+	checkpointValidators := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpoint)
+	validatorIndices := make([]uint64, len(checkpointValidators))
+	for i, v := range checkpointValidators {
+		validatorIndices[i] = v.Index
+	}
 
-	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
-	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
-	//			- determine the validator's index.
-	var checkpointValidatorIndices = FilterNotCheckpointedOrWithdrawnValidators(allValidatorsForEigenpod, allValidatorInfo, currentCheckpoint)
-	color.Yellow("Proving validators at indices: %s", checkpointValidatorIndices)
+	color.Yellow("Proving validators at indices: %s", validatorIndices)
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	PanicOnError("failled to initialize prover", err)
 
-	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
+	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)
 	PanicOnError("failed to prove checkpoint.", err)
 
 	return proof

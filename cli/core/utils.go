@@ -272,42 +272,67 @@ func WriteOutputToFileOrStdout(output []byte, out *string) {
 	}
 }
 
-func FilterNotCheckpointedOrWithdrawnValidators(
-	allValidatorsForEigenpod []ValidatorWithIndex,
-	onchainInfo []onchain.IEigenPodValidatorInfo,
+func SelectCheckpointableValidators(
+	client *ethclient.Client,
+	eigenpodAddress string,
+	validators []ValidatorWithIndex,
 	lastCheckpoint uint64,
-) []uint64 {
-	var checkpointValidatorIndices = []uint64{}
-	for i := 0; i < len(allValidatorsForEigenpod); i++ {
-		validator := allValidatorsForEigenpod[i]
-		validatorInfo := onchainInfo[i]
+) []ValidatorWithIndex {
+	validatorInfos := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+
+	var checkpointValidators = []ValidatorWithIndex{}
+	for i := 0; i < len(validators); i++ {
+		validator := validators[i]
+		validatorInfo := validatorInfos[i]
 
 		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
 		isActive := validatorInfo.Status == ValidatorStatusActive
 
 		if notCheckpointed && isActive {
-			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
+			checkpointValidators = append(checkpointValidators, validator)
 		}
 	}
-	return checkpointValidatorIndices
+	return checkpointValidators
 }
 
 // (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/libraries/BeaconChainProofs.sol#L64)
 const FAR_FUTURE_EPOCH = math.MaxUint64
 
-func FilterInactiveValidators(
-	allValidatorsForEigenpod []ValidatorWithIndex,
-	onchainInfo []onchain.IEigenPodValidatorInfo,
-) []uint64 {
-	var checkpointValidatorIndices = []uint64{}
-	for i := 0; i < len(allValidatorsForEigenpod); i++ {
-		validator := allValidatorsForEigenpod[i]
-		validatorInfo := onchainInfo[i]
+func SelectAwaitingCredentialValidators(
+	client *ethclient.Client,
+	eigenpodAddress string,
+	validators []ValidatorWithIndex,
+) []ValidatorWithIndex {
+	validatorInfos := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+
+	var awaitingCredentialValidators = []ValidatorWithIndex{}
+	for i := 0; i < len(validators); i++ {
+		validator := validators[i]
+		validatorInfo := validatorInfos[i]
 
 		if (validatorInfo.Status == ValidatorStatusInactive) &&
 			(validator.Validator.ExitEpoch == FAR_FUTURE_EPOCH) {
-			checkpointValidatorIndices = append(checkpointValidatorIndices, validator.Index)
+			awaitingCredentialValidators = append(awaitingCredentialValidators, validator)
 		}
 	}
-	return checkpointValidatorIndices
+	return awaitingCredentialValidators
+}
+
+func SelectActiveValidators(
+	client *ethclient.Client,
+	eigenpodAddress string,
+	validators []ValidatorWithIndex,
+) []ValidatorWithIndex {
+	validatorInfos := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+
+	var activeValidators = []ValidatorWithIndex{}
+	for i := 0; i < len(validators); i++ {
+		validator := validators[i]
+		validatorInfo := validatorInfos[i]
+
+		if validatorInfo.Status == ValidatorStatusActive {
+			activeValidators = append(activeValidators, validator)
+		}
+	}
+	return activeValidators
 }

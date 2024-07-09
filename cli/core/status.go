@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
@@ -73,7 +72,8 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to fetch state", err)
 
 	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, state)
-	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(allValidators, state)
+	activeValidators := SelectActiveValidators(eth, eigenpodAddress, allValidators)
+	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(activeValidators, state)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
 	PanicOnError("failed to fetch checkpoint information", err)
@@ -90,18 +90,6 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 	PanicOnError("failed to load pod owner shares", err)
 	currentOwnerSharesETH := IweiToEther(currentOwnerShares)
-
-	for i := 0; i < len(allValidators); i++ {
-		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
-		PanicOnError("failed to fetch validator info", err)
-		validators[fmt.Sprintf("%d", allValidators[i].Index)] = Validator{
-			Index:                               allValidators[i].Index,
-			Status:                              int(validatorInfo.Status),
-			Slashed:                             allValidators[i].Validator.Slashed,
-			PublicKey:                           allValidators[i].Validator.PublicKey.String(),
-			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && allValidators[i].Validator.ExitEpoch == FAR_FUTURE_EPOCH,
-		}
-	}
 
 	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
 	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
