@@ -3,11 +3,12 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"math/big"
 	"math/bits"
+	"os"
 
-	"github.com/attestantio/go-eth2-client/spec/capella"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -140,25 +141,16 @@ func ConvertValidatorToValidatorFields(v *phase0.Validator) []Bytes32 {
 	return validatorFields
 }
 
-func ConvertWithdrawalToWithdrawalFields(w *capella.Withdrawal) []Bytes32 {
-	var withdrawalFields []Bytes32
-	hh := ssz.NewHasher()
+func ReadFile(fileName string) ([]byte, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
 
-	hh.PutUint64(uint64(w.Index))
-	withdrawalFields = append(withdrawalFields, ConvertTo32ByteArray(hh.Hash()))
-	hh.Reset()
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
 
-	hh.PutUint64(uint64(w.ValidatorIndex))
-	withdrawalFields = append(withdrawalFields, ConvertTo32ByteArray(hh.Hash()))
-	hh.Reset()
-
-	hh.PutBytes(w.Address[:])
-	withdrawalFields = append(withdrawalFields, ConvertTo32ByteArray(hh.Hash()))
-	hh.Reset()
-
-	hh.PutUint64(uint64(w.Amount))
-	withdrawalFields = append(withdrawalFields, ConvertTo32ByteArray(hh.Hash()))
-	hh.Reset()
-
-	return withdrawalFields
+	return fileBytes, nil
 }

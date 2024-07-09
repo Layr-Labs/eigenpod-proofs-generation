@@ -16,3 +16,5 @@ solidityProofGen/solidityProofGen
 test
 
 **/.DS_Store
+
+*.ssz

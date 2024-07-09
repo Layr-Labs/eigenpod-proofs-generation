@@ -52,5 +52,5 @@ func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateT
 		roots[i] = v.(phase0.Root)
 	}
 
-	return common.GetProof(roots, index, beaconStateMerkleSubtreeNumLayers)
+	return common.GetProof(roots, index, BEACON_STATE_TREE_HEIGHT)
 }
