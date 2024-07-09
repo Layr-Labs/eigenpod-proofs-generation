@@ -17,7 +17,6 @@ type StateRootProof struct {
 }
 
 type VerifyValidatorFieldsCallParams struct {
-	OracleTimestamp       uint64          `json:"oracleTimestamp"`
 	StateRootProof        *StateRootProof `json:"stateRootProof"`
 	ValidatorIndices      []uint64        `json:"validatorIndices"`
 	ValidatorFieldsProofs []common.Proof  `json:"validatorFieldsProofs"`
@@ -66,11 +65,6 @@ func (epp *EigenPodProofs) ProveValidatorContainers(oracleBlockHeader *phase0.Be
 
 	// Get beacon state top level roots
 	beaconStateTopLevelRoots, err := epp.ComputeBeaconStateTopLevelRoots(oracleBeaconState)
-	if err != nil {
-		return nil, err
-	}
-
-	verifyValidatorFieldsCallParams.OracleTimestamp, err = GetSlotTimestamp(oracleBeaconState, oracleBlockHeader)
 	if err != nil {
 		return nil, err
 	}
