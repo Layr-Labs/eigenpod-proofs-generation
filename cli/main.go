@@ -123,7 +123,6 @@ func main() {
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", delta, startEther, endEther)
 						}
-
 					}
 					return nil
 				},
