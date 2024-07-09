@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
@@ -73,6 +74,18 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	activeValidators := SelectActiveValidators(eth, eigenpodAddress, allValidators)
 	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(activeValidators, state)
+
+	for i := 0; i < len(allValidators); i++ {
+		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
+		PanicOnError("failed to fetch validator info", err)
+		validators[fmt.Sprintf("%d", allValidators[i].Index)] = Validator{
+			Index:                               allValidators[i].Index,
+			Status:                              int(validatorInfo.Status),
+			Slashed:                             allValidators[i].Validator.Slashed,
+			PublicKey:                           allValidators[i].Validator.PublicKey.String(),
+			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && allValidators[i].Validator.ExitEpoch == FAR_FUTURE_EPOCH,
+		}
+	}
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
 	PanicOnError("failed to fetch checkpoint information", err)
