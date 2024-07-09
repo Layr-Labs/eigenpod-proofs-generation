@@ -1,8 +1,10 @@
-package main
+package core
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"math"
@@ -10,9 +12,11 @@ import (
 	"os"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -32,18 +36,18 @@ func Panic(message string) {
 	os.Exit(1)
 }
 
-func weiToGwei(val *big.Int) *big.Float {
+func WeiToGwei(val *big.Int) *big.Float {
 	return new(big.Float).Quo(
 		new(big.Float).SetInt(val),
 		big.NewFloat(params.GWei),
 	)
 }
 
-func gweiToEther(val *big.Float) *big.Float {
+func GweiToEther(val *big.Float) *big.Float {
 	return new(big.Float).Quo(val, big.NewFloat(params.GWei))
 }
 
-func iweiToEther(val *big.Int) *big.Float {
+func IweiToEther(val *big.Int) *big.Float {
 	return new(big.Float).Quo(new(big.Float).SetInt(val), big.NewFloat(params.Ether))
 }
 
@@ -69,8 +73,8 @@ type Owner = struct {
 	TransactionOptions *bind.TransactOpts
 }
 
-func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool) (uint64, error) {
-	ownerAccount, err := prepareAccount(&owner, chainId)
+func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool) (uint64, error) {
+	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId)
 	PanicOnError("failed to parse private key", err)
 
 	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
@@ -87,11 +91,103 @@ func startCheckpoint(ctx context.Context, eigenpodAddress string, owner string, 
 
 	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 
-	currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
+	currentCheckpoint := GetCurrentCheckpoint(eigenpodAddress, eth)
 	return currentCheckpoint, nil
 }
 
-func castBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconChainProofsBalanceProof {
+func GetBeaconClient(beaconUri string) (BeaconClient, error) {
+	beaconClient, _, err := NewBeaconClient(beaconUri)
+	return beaconClient, err
+}
+
+func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) uint64 {
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
+	PanicOnError("failed to locate eigenpod. is your address correct?", err)
+
+	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
+	PanicOnError("failed to locate eigenpod. Is your address correct?", err)
+
+	return timestamp
+}
+
+// search through beacon state for validators whose withdrawal address is set to eigenpod.
+func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
+	allValidators, err := beaconState.Validators()
+	PanicOnError("failed to fetch beacon state", err)
+
+	eigenpodAddressBytes := common.FromHex(eigenpodAddress)
+
+	var outputValidators []ValidatorWithIndex = []ValidatorWithIndex{}
+	var i uint64 = 0
+	maxValidators := uint64(len(allValidators))
+	for i = 0; i < maxValidators; i++ {
+		validator := allValidators[i]
+		if validator == nil || validator.WithdrawalCredentials[0] != 1 { // withdrawalCredentials _need_ their first byte set to 1 to withdraw to execution layer.
+			continue
+		}
+		// we check that the last 20 bytes of expectedCredentials matches validatorCredentials.
+		if bytes.Equal(
+			eigenpodAddressBytes[:],
+			validator.WithdrawalCredentials[12:], // first 12 bytes are not the pubKeyHash, see (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/pods/EigenPod.sol#L663)
+		) {
+			outputValidators = append(outputValidators, ValidatorWithIndex{
+				Validator: validator,
+				Index:     i,
+			})
+		}
+	}
+	return outputValidators
+}
+
+func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
+	PanicOnError("failed to locate Eigenpod. Is your address correct?", err)
+
+	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
+
+	// TODO: batch/multicall
+	zeroes := [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	for i := 0; i < len(allValidators); i++ {
+		// ssz requires values to be 32-byte aligned, which requires 16 bytes of 0's to be added
+		// prior to hashing.
+		pubKeyHash := sha256.Sum256(
+			append(
+				(allValidators[i]).Validator.PublicKey[:],
+				zeroes[:]...,
+			),
+		)
+		info, err := eigenPod.ValidatorPubkeyHashToInfo(nil, pubKeyHash)
+		PanicOnError("failed to fetch validator eigeninfo.", err)
+		validatorInfo = append(validatorInfo, info)
+	}
+
+	return validatorInfo
+}
+
+func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	PanicOnError("failed to locate Eigenpod. Is your address correct?", err)
+
+	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
+	PanicOnError("failed to reach eigenpod.", err)
+
+	return &checkpoint.BeaconBlockRoot, nil
+}
+
+func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Client, BeaconClient, *big.Int) {
+	eth, err := ethclient.Dial(node)
+	PanicOnError("failed to reach eth --node.", err)
+
+	chainId, err := eth.ChainID(ctx)
+	PanicOnError("failed to fetch chain id", err)
+
+	beaconClient, err := GetBeaconClient(beaconNodeUri)
+	PanicOnError("failed to reach beacon chain.", err)
+
+	return eth, beaconClient, chainId
+}
+
+func CastBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconChainProofsBalanceProof {
 	out := []onchain.BeaconChainProofsBalanceProof{}
 
 	for i := 0; i < len(proofs); i++ {
@@ -106,7 +202,7 @@ func castBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconCh
 	return out
 }
 
-func prepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
+func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
 	if owner == nil {
 		return nil, fmt.Errorf("no owner")
 	}
@@ -135,7 +231,7 @@ func prepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
 }
 
 // golang was a mistake. these types are literally identical :'(
-func castValidatorFields(proof [][]eigenpodproofs.Bytes32) [][][32]byte {
+func CastValidatorFields(proof [][]eigenpodproofs.Bytes32) [][][32]byte {
 	result := make([][][32]byte, len(proof))
 
 	for i, slice := range proof {

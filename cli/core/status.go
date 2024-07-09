@@ -1,11 +1,11 @@
-package main
+package core
 
 import (
 	"context"
 	"fmt"
 	"math/big"
 
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
@@ -59,7 +59,7 @@ func sumBeaconChainRegularBalancesGwei(allValidators []ValidatorWithIndex, state
 	return sumGwei
 }
 
-func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, beaconClient BeaconClient) EigenpodStatus {
+func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, beaconClient BeaconClient) EigenpodStatus {
 	validators := map[string]Validator{}
 	var activeCheckpoint *Checkpoint = nil
 
@@ -72,7 +72,7 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	state, err := beaconClient.GetBeaconState(ctx, "head")
 	PanicOnError("failed to fetch state", err)
 
-	allValidators := findAllValidatorsForEigenpod(eigenpodAddress, state)
+	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(allValidators, state)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
@@ -89,7 +89,7 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 
 	currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 	PanicOnError("failed to load pod owner shares", err)
-	currentOwnerSharesETH := iweiToEther(currentOwnerShares)
+	currentOwnerSharesETH := IweiToEther(currentOwnerShares)
 
 	for i := 0; i < len(allValidators); i++ {
 		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
@@ -124,7 +124,7 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 
 	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
 	PanicOnError("failed to fetch pod balance", err)
-	latestPodBalanceGwei := weiToGwei(latestPodBalanceWei)
+	latestPodBalanceGwei := WeiToGwei(latestPodBalanceWei)
 	pendingGwei :=
 		new(big.Float).Sub(
 			new(big.Float).Add(
@@ -132,7 +132,7 @@ func getStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 				latestPodBalanceGwei),
 			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
 		)
-	pendingEth := gweiToEther(pendingGwei)
+	pendingEth := GweiToEther(pendingGwei)
 
 	return EigenpodStatus{
 		Validators:                     validators,

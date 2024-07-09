@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
@@ -28,8 +28,8 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	PanicOnError("failed to fetch beacon state.", err)
 
-	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
-	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
+	allValidatorsForEigenpod := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	allValidatorInfo := GetOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
 	var validatorIndices = FilterInactiveValidators(allValidatorsForEigenpod, allValidatorInfo)
 	if len(validatorIndices) == 0 {
