@@ -125,13 +125,9 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
 	PanicOnError("failed to fetch pod balance", err)
 	latestPodBalanceGwei := WeiToGwei(latestPodBalanceWei)
-	pendingGwei :=
-		new(big.Float).Sub(
-			new(big.Float).Add(
-				new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-				latestPodBalanceGwei),
-			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
-		)
+	pendingGwei := new(big.Float).Add(
+		new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
+		latestPodBalanceGwei)
 	pendingEth := GweiToEther(pendingGwei)
 
 	return EigenpodStatus{
