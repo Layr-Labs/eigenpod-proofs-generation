@@ -3,32 +3,19 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/onchain"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 )
 
-func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, out, owner *string, forceCheckpoint bool) {
-	currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
-	if currentCheckpoint == 0 {
-		if owner != nil {
-			newCheckpoint, err := startCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
-			PanicOnError("failed to start checkpoint", err)
-			currentCheckpoint = newCheckpoint
-		} else {
-			PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
-		}
-	}
-	color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
+// , out, owner *string, forceCheckpoint bool
 
+func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyCheckpointProofsCallParams {
+	currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
 	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	PanicOnError("failed to fetch last checkpoint.", err)
 	if blockRoot == nil {
@@ -67,31 +54,5 @@ func RunCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethcli
 	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, checkpointValidatorIndices)
 	PanicOnError("failed to prove checkpoint.", err)
 
-	jsonString, err := json.Marshal(proof)
-	PanicOnError("failed to generate JSON proof data.", err)
-
-	WriteOutputToFileOrStdout(jsonString, out)
-
-	if owner != nil {
-		// submit the proof onchain
-		ownerAccount, err := prepareAccount(owner, chainId)
-		PanicOnError("failed to parse private key", err)
-
-		eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-		PanicOnError("failed to reach eigenpod", err)
-
-		color.Green("calling EigenPod.VerifyCheckpointProofs()...")
-
-		txn, err := eigenPod.VerifyCheckpointProofs(
-			ownerAccount.TransactionOptions,
-			onchain.BeaconChainProofsBalanceContainerProof{
-				BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
-				Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
-			},
-			castBalanceProofs(proof.BalanceProofs),
-		)
-
-		PanicOnError("failed to invoke verifyCheckpointProofs", err)
-		color.Green("transaction: %s", txn.Hash().Hex())
-	}
+	return proof
 }
