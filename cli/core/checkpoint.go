@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -15,8 +15,8 @@ import (
 // , out, owner *string, forceCheckpoint bool
 
 func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyCheckpointProofsCallParams {
-	currentCheckpoint := getCurrentCheckpoint(eigenpodAddress, eth)
-	blockRoot, err := getCurrentCheckpointBlockRoot(eigenpodAddress, eth)
+	currentCheckpoint := GetCurrentCheckpoint(eigenpodAddress, eth)
+	blockRoot, err := GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	PanicOnError("failed to fetch last checkpoint.", err)
 	if blockRoot == nil {
 		Panic("failed to fetch last checkpoint - nil blockRoot")
@@ -37,10 +37,10 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	PanicOnError("failed to fetch beacon state.", err)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
-	allValidatorsForEigenpod := findAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	allValidatorsForEigenpod := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidatorsForEigenpod))
 
-	allValidatorInfo := getOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
+	allValidatorInfo := GetOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
 
 	// for each validator, request RPC information from the eigenpod (using the pubKeyHash), and;
 	//			- we want all un-checkpointed, non-withdrawn validators that belong to this eigenpoint.
