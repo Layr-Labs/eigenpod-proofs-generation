@@ -100,28 +100,24 @@ func main() {
 						ital := color.New(color.Italic, color.FgBlue)
 						fmt.Println()
 
+						// Calculate the change in shares for completing a checkpoint
+						deltaETH := new(big.Float).Sub(
+							status.TotalSharesAfterCheckpointETH,
+							status.CurrentTotalSharesETH,
+						)
+
 						if status.ActiveCheckpoint != nil {
 							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
 
 							bold.Printf("!NOTE: There is a checkpoint active! (started at: %s)\n", startTime.String())
 
-							endSharesETH := core.GweiToEther(status.ActiveCheckpoint.PendingSharesGwei)
-							deltaETH := new(big.Float).Sub(
-								endSharesETH,
-								status.CurrentTotalSharesETH,
-							) // delta = endShares - currentOwnerSharesETH
-
-							ital.Printf("\t- If you finish it, you may receive up to %s shares. (%s -> %s)\n", deltaETH.String(), status.CurrentTotalSharesETH.String(), endSharesETH.String())
+							ital.Printf("\t- If you finish it, you may receive up to %f shares. (%f -> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
 
 							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
 						} else {
-							bold.Printf("Runing a `checkpoint` right now will result in: \n")
+							bold.Printf("Running a `checkpoint` right now will result in: \n")
 
-							startEther := status.CurrentTotalSharesETH
-							endEther := status.TotalSharesAfterCheckpointETH
-							delta := new(big.Float).Sub(endEther, startEther)
-
-							ital.Printf("\t%f new shares issued (%f ==> %f)\n", delta, startEther, endEther)
+							ital.Printf("\t%f new shares issued (%f ==> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
 						}
 					}
 					return nil

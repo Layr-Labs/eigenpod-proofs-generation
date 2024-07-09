@@ -12,9 +12,8 @@ import (
 )
 
 type Checkpoint struct {
-	PendingSharesGwei *big.Float
-	ProofsRemaining   uint64
-	StartedAt         uint64
+	ProofsRemaining uint64
+	StartedAt       uint64
 }
 
 type Validator struct {
@@ -94,35 +93,46 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
 	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
 
-	pendingSharesGwei := new(big.Float).Add(
-		new(big.Float).Add(
-			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
-			new(big.Float).SetUint64(checkpoint.PodBalanceGwei),
-		),
-		new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-	) // pendingSharesGwei = withdrawableRestakedExecutionLayerGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei
+	var pendingSharesGwei *big.Float
+	// If we currently have an active checkpoint, estimate the total shares
+	// we'll have when we complete it:
+	//
+	// pendingSharesGwei = withdrawableRestakedExecutionLayerGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei
+	if timestamp != 0 {
+		pendingSharesGwei = new(big.Float).Add(
+			new(big.Float).Add(
+				new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
+				new(big.Float).SetUint64(checkpoint.PodBalanceGwei),
+			),
+			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
+		)
 
-	if err == nil && timestamp != 0 {
 		activeCheckpoint = &Checkpoint{
-			PendingSharesGwei: pendingSharesGwei,
-			ProofsRemaining:   checkpoint.ProofsRemaining.Uint64(),
-			StartedAt:         timestamp,
+			ProofsRemaining: checkpoint.ProofsRemaining.Uint64(),
+			StartedAt:       timestamp,
 		}
+	} else {
+		// If we don't have an active checkpoint, estimate the shares we'd have if
+		// we created one and then completed it:
+		//
+		// pendingSharesGwei = sumRegularBalancesGwei + latestPodBalanceGwei
+		latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
+		PanicOnError("failed to fetch pod balance", err)
+		latestPodBalanceGwei := WeiToGwei(latestPodBalanceWei)
+
+		pendingSharesGwei = new(big.Float).Add(
+			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
+			latestPodBalanceGwei,
+		)
 	}
 
-	latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
-	PanicOnError("failed to fetch pod balance", err)
-	latestPodBalanceGwei := WeiToGwei(latestPodBalanceWei)
-	pendingGwei := new(big.Float).Add(
-		new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-		latestPodBalanceGwei)
-	pendingEth := GweiToEther(pendingGwei)
+	pendingEth := GweiToEther(pendingSharesGwei)
 
 	return EigenpodStatus{
 		Validators:                     validators,
 		ActiveCheckpoint:               activeCheckpoint,
 		CurrentTotalSharesETH:          currentOwnerSharesETH,
-		TotalSharesAfterCheckpointGwei: pendingGwei,
+		TotalSharesAfterCheckpointGwei: pendingSharesGwei,
 		TotalSharesAfterCheckpointETH:  pendingEth,
 	}
 }
