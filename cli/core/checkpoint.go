@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
@@ -13,6 +15,20 @@ import (
 )
 
 // , out, owner *string, forceCheckpoint bool
+func LoadCheckpointProofFromFile(path string) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+	res := eigenpodproofs.VerifyCheckpointProofsCallParams{}
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(bytes, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
 
 func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyCheckpointProofsCallParams {
 	currentCheckpoint := GetCurrentCheckpoint(eigenpodAddress, eth)

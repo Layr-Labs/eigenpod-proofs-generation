@@ -9,6 +9,7 @@ import (
 
 	"context"
 
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,8 +23,30 @@ func shortenHex(publicKey string) string {
 	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
 }
 
+func submitCheckpointProof(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client) {
+	ownerAccount, err := core.PrepareAccount(&owner, chainId)
+	core.PanicOnError("failed to parse private key", err)
+
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	core.PanicOnError("failed to reach eigenpod", err)
+
+	color.Green("calling EigenPod.VerifyCheckpointProofs()...")
+	txn, err := eigenPod.VerifyCheckpointProofs(
+		ownerAccount.TransactionOptions,
+		onchain.BeaconChainProofsBalanceContainerProof{
+			BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
+			Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
+		},
+		core.CastBalanceProofs(proof.BalanceProofs),
+	)
+
+	core.PanicOnError("failed to invoke verifyCheckpointProofs", err)
+	color.Green("transaction: %s", txn.Hash().Hex())
+}
+
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
+	var checkpointProofPath string
 	var forceCheckpoint, disableColor, verbose bool
 	var useJson bool = false
 	ctx := context.Background()
@@ -135,6 +158,12 @@ func main() {
 						Usage:       "If true, starts a checkpoint even if the pod has no native ETH to award shares",
 						Destination: &forceCheckpoint,
 					},
+					&cli.StringFlag{
+						Name:        "proof",
+						Value:       "",
+						Usage:       "the path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--owner` flag.",
+						Destination: &checkpointProofPath,
+					},
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
@@ -155,6 +184,20 @@ func main() {
 
 					eth, beaconClient, chainId := core.GetClients(ctx, node, beacon)
 
+					if len(checkpointProofPath) > 0 {
+						// user specified the proof
+						if owner == nil || len(*owner) == 0 {
+							core.Panic("If using --proof, --owner <privateKey> must also be supplied.")
+						}
+
+						// load `proof` from file.
+						proof, err := core.LoadCheckpointProofFromFile(checkpointProofPath)
+						core.PanicOnError("failed to parse checkpoint proof from file", err)
+
+						submitCheckpointProof(*owner, eigenpodAddress, chainId, proof, eth)
+						return nil
+					}
+
 					currentCheckpoint := core.GetCurrentCheckpoint(eigenpodAddress, eth)
 					if currentCheckpoint == 0 {
 						if owner != nil {
@@ -172,28 +215,10 @@ func main() {
 					jsonString, err := json.Marshal(proof)
 					core.PanicOnError("failed to generate JSON proof data.", err)
 
-					core.WriteOutputToFileOrStdout(jsonString, out)
-
-					if owner != nil {
-						// submit the proof onchain
-						ownerAccount, err := core.PrepareAccount(owner, chainId)
-						core.PanicOnError("failed to parse private key", err)
-
-						eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-						core.PanicOnError("failed to reach eigenpod", err)
-
-						color.Green("calling EigenPod.VerifyCheckpointProofs()...")
-						txn, err := eigenPod.VerifyCheckpointProofs(
-							ownerAccount.TransactionOptions,
-							onchain.BeaconChainProofsBalanceContainerProof{
-								BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
-								Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
-							},
-							core.CastBalanceProofs(proof.BalanceProofs),
-						)
-
-						core.PanicOnError("failed to invoke verifyCheckpointProofs", err)
-						color.Green("transaction: %s", txn.Hash().Hex())
+					if out != nil {
+						core.WriteOutputToFileOrStdout(jsonString, out)
+					} else if owner != nil {
+						submitCheckpointProof(*owner, eigenpodAddress, chainId, proof, eth)
 					}
 
 					return nil
@@ -229,9 +254,9 @@ func main() {
 					jsonString, err := json.Marshal(validatorProofs)
 					core.PanicOnError("failed to generate JSON proof data.", err)
 
-					core.WriteOutputToFileOrStdout(jsonString, out)
-
-					if owner != nil {
+					if out != nil {
+						core.WriteOutputToFileOrStdout(jsonString, out)
+					} else if owner != nil {
 						ownerAccount, err := core.PrepareAccount(owner, chainId)
 						core.PanicOnError("failed to parse private key", err)
 
