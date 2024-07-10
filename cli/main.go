@@ -164,6 +164,13 @@ func main() {
 						Usage:       "the path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--owner` flag.",
 						Destination: &checkpointProofPath,
 					},
+					&cli.StringFlag{
+						Name:        "out",
+						Aliases:     []string{"O", "output"},
+						Value:       "",
+						Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--owner`, `--out` takes precedence and the proof will not be broadcast.",
+						Destination: &output,
+					},
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
@@ -233,12 +240,7 @@ func main() {
 						color.NoColor = true
 					}
 
-					var out, owner *string = nil, nil
-
-					if len(cctx.String("out")) > 0 {
-						outProp := cctx.String("out")
-						out = &outProp
-					}
+					var owner *string = nil
 
 					if len(cctx.String("owner")) > 0 {
 						ownerProp := cctx.String("owner")
@@ -251,12 +253,7 @@ func main() {
 						return nil
 					}
 
-					jsonString, err := json.Marshal(validatorProofs)
-					core.PanicOnError("failed to generate JSON proof data.", err)
-
-					if out != nil {
-						core.WriteOutputToFileOrStdout(jsonString, out)
-					} else if owner != nil {
+					if owner != nil {
 						ownerAccount, err := core.PrepareAccount(owner, chainId)
 						core.PanicOnError("failed to parse private key", err)
 
@@ -292,6 +289,17 @@ func main() {
 						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 
 						color.Green("transaction: %s", txn.Hash().Hex())
+					} else {
+
+						// print to stdout.
+						data := map[string]any{
+							"validatorIndices": validatorIndices,
+							"validatorProofs":  validatorProofs,
+						}
+						out, err := json.MarshalIndent(data, "", "   ")
+						core.PanicOnError("failed to process proof", err)
+
+						fmt.Printf("%s\n", out)
 					}
 					return nil
 				},
@@ -321,13 +329,6 @@ func main() {
 				Usage:       "[required] `URL` to a functioning execution-layer RPC (https://)",
 				Required:    true,
 				Destination: &node,
-			},
-			&cli.StringFlag{
-				Name:        "out",
-				Aliases:     []string{"O", "output"},
-				Value:       "",
-				Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--owner`, `--out` takes precedence and the proof will not be broadcast.",
-				Destination: &output,
 			},
 			&cli.StringFlag{
 				Name:        "owner",
