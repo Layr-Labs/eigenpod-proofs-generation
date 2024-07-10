@@ -75,11 +75,7 @@ func main() {
 						color.NoColor = true
 					}
 
-					eth, err := ethclient.Dial(node)
-					core.PanicOnError("failed to reach eth --node.", err)
-
-					beaconClient, err := core.GetBeaconClient(beacon)
-					core.PanicOnError("failed to reach beacon chain.", err)
+					eth, beaconClient, _ := core.GetClients(ctx, node, beacon)
 
 					status := core.GetStatus(ctx, eigenpodAddress, eth, beaconClient)
 
