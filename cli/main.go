@@ -326,7 +326,7 @@ func main() {
 				Name:        "out",
 				Aliases:     []string{"O", "output"},
 				Value:       "",
-				Usage:       "Output `path` for the proof. (defaults to stdout)",
+				Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--owner`, `--out` takes precedence and the proof will not be broadcast.",
 				Destination: &output,
 			},
 			&cli.StringFlag{
