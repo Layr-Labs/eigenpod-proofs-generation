@@ -286,8 +286,6 @@ func main() {
 
 						color.Green("transaction: %s", txn.Hash().Hex())
 					} else {
-
-						// print to stdout.
 						data := map[string]any{
 							"validatorIndices": validatorIndices,
 							"validatorProofs":  validatorProofs,
