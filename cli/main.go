@@ -20,8 +20,8 @@ func shortenHex(publicKey string) string {
 }
 
 // shared flag --batch
-func BatchBySize(destination *int, defaultValue int) *cli.IntFlag {
-	return &cli.IntFlag{
+func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
+	return &cli.Uint64Flag{
 		Name:        "batch",
 		Value:       defaultValue,
 		Usage:       "Submit proofs in groups of size `--batch <batchSize>`, to avoid gas limit.",
@@ -32,7 +32,7 @@ func BatchBySize(destination *int, defaultValue int) *cli.IntFlag {
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
-	var batchSize int
+	var batchSize uint64
 	var checkpointProofPath string
 	var forceCheckpoint, disableColor, verbose bool
 	var noPrompt bool

@@ -20,7 +20,7 @@ import (
 
 const PROOFS_PER_BATCH = 60 // about 60 proofs fit per transaction.
 
-func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize int, noPrompt bool) ([]*types.Transaction, error) {
+func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool) ([]*types.Transaction, error) {
 	allProofChunks := chunk(proof.BalanceProofs, PROOFS_PER_BATCH)
 
 	transactions := []*types.Transaction{}
@@ -47,7 +47,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 	return transactions, nil
 }
 
-func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, batchSize int) (*types.Transaction, error) {
+func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, batchSize uint64) (*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
 		return nil, err

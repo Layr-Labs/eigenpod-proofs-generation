@@ -62,7 +62,7 @@ func PanicOnError(message string, err error) {
 	}
 }
 
-func chunk[T any](arr []T, chunkSize int) [][]T {
+func chunk[T any](arr []T, chunkSize uint64) [][]T {
 	// Validate the chunkSize to ensure it's positive
 	if chunkSize <= 0 {
 		panic("chunkSize must be greater than 0")
@@ -72,10 +72,11 @@ func chunk[T any](arr []T, chunkSize int) [][]T {
 	var chunks [][]T
 
 	// Loop through the input slice and create chunks
-	for i := 0; i < len(arr); i += chunkSize {
-		end := i + chunkSize
-		if end > len(arr) {
-			end = len(arr)
+	arrLen := uint64(len(arr))
+	for i := uint64(0); i < arrLen; i += chunkSize {
+		end := uint64(i + chunkSize)
+		if end > arrLen {
+			end = arrLen
 		}
 		chunks = append(chunks, arr[i:end])
 	}
