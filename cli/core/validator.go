@@ -8,11 +8,81 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 )
 
-func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyValidatorFieldsCallParams, []uint64) {
+func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize int, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams) ([]*types.Transaction, error) {
+
+	ownerAccount, err := PrepareAccount(&owner, chainId)
+	if err != nil {
+		return nil, err
+	}
+	PanicOnError("failed to parse private key", err)
+
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	if err != nil {
+		return nil, err
+	}
+
+	indices := Uint64ArrayToBigIntArray(proofs.ValidatorIndices)
+	validatorIndicesChunks := chunk(indices, batchSize)
+	validatorProofsChunks := chunk(proofs.ValidatorFieldsProofs, batchSize)
+	validatorFieldsChunks := chunk(proofs.ValidatorFields, batchSize)
+
+	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn)", len(indices), batchSize)
+
+	latestBlock, err := eth.BlockByNumber(ctx, nil)
+	if err != nil {
+		return []*types.Transaction{}, err
+	}
+
+	transactions := []*types.Transaction{}
+	numChunks := len(validatorIndicesChunks)
+
+	color.Green("Submitting proofs with %d transactions", numChunks)
+
+	for i := 0; i < numChunks; i++ {
+		curValidatorIndices := validatorIndicesChunks[i]
+		curValidatorProofs := validatorProofsChunks[i]
+
+		var validatorFieldsProofs [][]byte = [][]byte{}
+		for i := 0; i < len(curValidatorProofs); i++ {
+			pr := curValidatorProofs[i].ToByteSlice()
+			validatorFieldsProofs = append(validatorFieldsProofs, pr)
+		}
+		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
+
+		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, latestBlock.Time())
+		if err != nil {
+			return transactions, err
+		}
+
+		transactions = append(transactions, txn)
+	}
+
+	return transactions, err
+}
+
+func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64) (*types.Transaction, error) {
+	color.Green("submitting onchain...")
+	txn, err := eigenPod.VerifyWithdrawalCredentials(
+		ownerAccount.TransactionOptions,
+		oracleBeaconTimesetamp,
+		onchain.BeaconChainProofsStateRootProof{
+			Proof:           proofs.StateRootProof.Proof.ToByteSlice(),
+			BeaconStateRoot: proofs.StateRootProof.BeaconStateRoot,
+		},
+		indices,
+		validatorFieldsProofs,
+		validatorFields,
+	)
+
+	return txn, err
+}
+
+func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyValidatorFieldsCallParams {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	PanicOnError("failed to load latest block", err)
 
@@ -33,7 +103,7 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 
 	if len(awaitingCredentialValidators) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")
-		return nil, nil
+		return nil
 	} else {
 		color.Blue("Verifying %d inactive validators", len(awaitingCredentialValidators))
 	}
@@ -50,5 +120,5 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
 	PanicOnError("failed to prove validators.", err)
 
-	return validatorProofs, validatorIndices
+	return validatorProofs
 }

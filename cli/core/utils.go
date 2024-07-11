@@ -62,9 +62,48 @@ func PanicOnError(message string, err error) {
 	}
 }
 
+func chunk[T any](arr []T, chunkSize int) [][]T {
+	// Validate the chunkSize to ensure it's positive
+	if chunkSize <= 0 {
+		panic("chunkSize must be greater than 0")
+	}
+
+	// Create a slice to hold the chunks
+	var chunks [][]T
+
+	// Loop through the input slice and create chunks
+	for i := 0; i < len(arr); i += chunkSize {
+		end := i + chunkSize
+		if end > len(arr) {
+			end = len(arr)
+		}
+		chunks = append(chunks, arr[i:end])
+	}
+
+	return chunks
+}
+
 type ValidatorWithIndex = struct {
 	Validator *phase0.Validator
 	Index     uint64
+}
+
+func withDryRun(opts *bind.TransactOpts) *bind.TransactOpts {
+	// golang doesn't have a spread operator for structs smh
+	return &bind.TransactOpts{
+		From:   opts.From,
+		Nonce:  opts.Nonce,
+		Signer: opts.Signer,
+
+		Value:     opts.Value,
+		GasPrice:  opts.GasPrice,
+		GasFeeCap: opts.GasFeeCap,
+		GasTipCap: opts.GasTipCap,
+		GasLimit:  0, // Gas limit to set for the transaction execution (0 = estimate)
+
+		Context: opts.Context, // Network context to support cancellation and timeouts (nil = no timeout)
+		NoSend:  true,         // Do all transact steps but do not send the transaction
+	}
 }
 
 type Owner = struct {
