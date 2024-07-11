@@ -35,6 +35,7 @@ func main() {
 	var batchSize int
 	var checkpointProofPath string
 	var forceCheckpoint, disableColor, verbose bool
+	var noPrompt bool
 	var useJson bool = false
 	ctx := context.Background()
 
@@ -185,13 +186,17 @@ func main() {
 						proof, err := core.LoadCheckpointProofFromFile(checkpointProofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize)
+						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
 						return nil
 					}
 
 					currentCheckpoint := core.GetCurrentCheckpoint(eigenpodAddress, eth)
 					if currentCheckpoint == 0 {
 						if owner != nil {
+							if !noPrompt {
+								core.PanicIfNoConsent("This will start a checkpoint on your eigenpod.")
+							}
+
 							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
 							core.PanicOnError("failed to start checkpoint", err)
 							currentCheckpoint = newCheckpoint
@@ -209,7 +214,7 @@ func main() {
 					if out != nil {
 						core.WriteOutputToFileOrStdout(jsonString, out)
 					} else if owner != nil {
-						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize)
+						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
 					}
 
 					return nil
@@ -240,7 +245,7 @@ func main() {
 					}
 
 					if owner != nil {
-						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs)
+						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs, noPrompt)
 						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 						for i, txn := range txns {
 							color.Green("transaction(%d): %s", i, txn.Hash().Hex())
@@ -295,6 +300,12 @@ func main() {
 				Value:       false,
 				Usage:       "Disables color output for terminals that do not support ANSI color codes.",
 				Destination: &disableColor,
+			},
+			&cli.BoolFlag{
+				Name:        "no-prompt",
+				Value:       false,
+				Usage:       "Disables prompts to approve any transactions occurring (e.g in CI).",
+				Destination: &noPrompt,
 			},
 			&cli.BoolFlag{
 				Name:        "verbose",

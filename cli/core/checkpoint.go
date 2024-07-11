@@ -20,10 +20,13 @@ import (
 
 const PROOFS_PER_BATCH = 60 // about 60 proofs fit per transaction.
 
-func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize int) ([]*types.Transaction, error) {
+func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize int, noPrompt bool) ([]*types.Transaction, error) {
 	allProofChunks := chunk(proof.BalanceProofs, PROOFS_PER_BATCH)
 
 	transactions := []*types.Transaction{}
+	if !noPrompt {
+		PanicIfNoConsent(fmt.Sprintf("This will call EigenPod.VerifyCheckpointProofs() %d time(s), to complete your checkpoint.", len(allProofChunks)))
+	}
 
 	color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
 

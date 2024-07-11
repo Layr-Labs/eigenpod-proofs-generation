@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 
@@ -13,7 +14,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize int, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams) ([]*types.Transaction, error) {
+func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize int, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, noPrompt bool) ([]*types.Transaction, error) {
 
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
@@ -30,6 +31,9 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	validatorIndicesChunks := chunk(indices, batchSize)
 	validatorProofsChunks := chunk(proofs.ValidatorFieldsProofs, batchSize)
 	validatorFieldsChunks := chunk(proofs.ValidatorFields, batchSize)
+	if !noPrompt {
+		PanicIfNoConsent(fmt.Sprintf("This will call EigenPod.VerifyWithdrawalCredentials() %d times, to link your validator to your eigenpod.", len(validatorIndicesChunks)))
+	}
 
 	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn)", len(indices), batchSize)
 
