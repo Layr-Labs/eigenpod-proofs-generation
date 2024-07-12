@@ -2,9 +2,11 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
@@ -13,6 +15,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 )
+
+func getAllFromChannel[T any](ch chan T) []T {
+	elements := []T{}
+	for s := range ch {
+		elements = append(elements, s)
+	}
+	return elements
+}
 
 func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, noPrompt bool) ([]*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId)
@@ -41,10 +51,15 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		return []*types.Transaction{}, err
 	}
 
-	transactions := []*types.Transaction{}
 	numChunks := len(validatorIndicesChunks)
 
 	color.Green("Submitting proofs with %d transactions", numChunks)
+
+	var wg sync.WaitGroup
+	txns := make(chan *types.Transaction)
+	errs := make(chan error)
+
+	color.Green("submitting onchain...")
 
 	for i := 0; i < numChunks; i++ {
 		curValidatorIndices := validatorIndicesChunks[i]
@@ -58,19 +73,27 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
 
 		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
-		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, latestBlock.Time())
-		if err != nil {
-			return transactions, err
-		}
 
-		transactions = append(transactions, txn)
+		wg.Add(1)
+
+		go SubmitValidatorProofChunk(ctx, txns, errs, &wg, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, latestBlock.Time())
 	}
 
-	return transactions, err
+	wg.Wait()
+
+	var resultErr error = nil
+	allTxns := getAllFromChannel(txns)
+	allErrs := getAllFromChannel(errs)
+
+	if len(allErrs) > 0 {
+		resultErr = fmt.Errorf("%d error(s) occurred while submitting transactions: %w", len(allErrs), errors.Join(allErrs...))
+	}
+
+	return allTxns, resultErr
 }
 
-func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64) (*types.Transaction, error) {
-	color.Green("submitting onchain...")
+func SubmitValidatorProofChunk(ctx context.Context, txOut chan *types.Transaction, errOut chan error, wg *sync.WaitGroup, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64) {
+	defer wg.Done()
 	txn, err := eigenPod.VerifyWithdrawalCredentials(
 		ownerAccount.TransactionOptions,
 		oracleBeaconTimesetamp,
@@ -83,7 +106,12 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
 		validatorFields,
 	)
 
-	return txn, err
+	if txn != nil {
+		txOut <- txn
+	}
+	if err != nil {
+		errOut <- err
+	}
 }
 
 func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyValidatorFieldsCallParams {
