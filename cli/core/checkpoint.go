@@ -23,7 +23,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 
 	transactions := []*types.Transaction{}
 	if !noPrompt {
-		PanicIfNoConsent(fmt.Sprintf("This will call EigenPod.VerifyCheckpointProofs() %d time(s), to complete your checkpoint.", len(allProofChunks)))
+		PanicIfNoConsent(SubmitCheckpointProofConsent(len(allProofChunks)))
 	}
 
 	color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
