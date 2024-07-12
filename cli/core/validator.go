@@ -14,7 +14,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, noPrompt bool) ([]*types.Transaction, error) {
+func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool) ([]*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
 		return nil, err
@@ -86,28 +86,38 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
 	return txn, err
 }
 
-func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyValidatorFieldsCallParams {
+func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
-	PanicOnError("failed to load latest block", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to load latest block: %w", err)
+	}
 
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	PanicOnError("failed to reach eigenpod", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to reach eigenpod: %w", err)
+	}
 
 	expectedBlockRoot, err := eigenPod.GetParentBlockRoot(nil, latestBlock.Time())
-	PanicOnError("failed to load parent block root", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to load parent block root: %w", err)
+	}
 
 	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+common.Bytes2Hex(expectedBlockRoot[:]))
-	PanicOnError("failed to fetch beacon header.", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch beacon header: %w", err)
+	}
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
-	PanicOnError("failed to fetch beacon state.", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch beacon state: %w", err)
+	}
 
 	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	awaitingCredentialValidators := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidators)
 
 	if len(awaitingCredentialValidators) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")
-		return nil
+		return nil, 0, nil
 	} else {
 		color.Blue("Verifying %d inactive validators", len(awaitingCredentialValidators))
 	}
@@ -118,11 +128,15 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 	}
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
-	PanicOnError("failled to initialize prover", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
+	}
 
 	// validator proof
 	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
-	PanicOnError("failed to prove validators.", err)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to prove validators: %w", err)
+	}
 
-	return validatorProofs
+	return validatorProofs, latestBlock.Time(), nil
 }

@@ -239,13 +239,14 @@ func main() {
 					}
 
 					eth, beaconClient, chainId := core.GetClients(ctx, node, beacon)
-					validatorProofs := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
-					if validatorProofs == nil {
-						return nil
+					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					if err != nil || validatorProofs == nil {
+						core.PanicOnError("Failed to generate validator proof", err)
+						core.Panic("no inactive validators")
 					}
 
 					if owner != nil {
-						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs, noPrompt)
+						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt)
 						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 						for i, txn := range txns {
 							color.Green("transaction(%d): %s", i, txn.Hash().Hex())
