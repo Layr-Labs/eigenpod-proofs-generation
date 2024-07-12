@@ -36,11 +36,6 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 
 	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn)", len(indices), batchSize)
 
-	latestBlock, err := eth.BlockByNumber(ctx, nil)
-	if err != nil {
-		return []*types.Transaction{}, err
-	}
-
 	transactions := []*types.Transaction{}
 	numChunks := len(validatorIndicesChunks)
 
@@ -58,7 +53,7 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
 
 		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
-		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, latestBlock.Time())
+		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, oracleBeaconTimesetamp)
 		if err != nil {
 			return transactions, err
 		}
