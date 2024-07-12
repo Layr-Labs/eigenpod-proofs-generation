@@ -3,17 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"time"
 
 	"context"
 
-	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
@@ -23,31 +20,27 @@ func shortenHex(publicKey string) string {
 	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
 }
 
-func submitCheckpointProof(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client) {
-	ownerAccount, err := core.PrepareAccount(&owner, chainId)
-	core.PanicOnError("failed to parse private key", err)
-
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	core.PanicOnError("failed to reach eigenpod", err)
-
-	color.Green("calling EigenPod.VerifyCheckpointProofs()...")
-	txn, err := eigenPod.VerifyCheckpointProofs(
-		ownerAccount.TransactionOptions,
-		onchain.BeaconChainProofsBalanceContainerProof{
-			BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
-			Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
-		},
-		core.CastBalanceProofs(proof.BalanceProofs),
-	)
-
-	core.PanicOnError("failed to invoke verifyCheckpointProofs", err)
-	color.Green("transaction: %s", txn.Hash().Hex())
+// shared flag --batch
+func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
+	return &cli.Uint64Flag{
+		Name:        "batch",
+		Value:       defaultValue,
+		Usage:       "Submit proofs in groups of size `--batch <batchSize>`, to avoid gas limit.",
+		Required:    false,
+		Destination: destination,
+	}
 }
+
+// maximum number of proofs per txn for each of the following proof types:
+const DEFAULT_BATCH_CREDENTIALS = 60
+const DEFAULT_BATCH_CHECKPOINT = 80
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
+	var batchSize uint64
 	var checkpointProofPath string
 	var forceCheckpoint, disableColor, verbose bool
+	var noPrompt bool
 	var useJson bool = false
 	ctx := context.Background()
 
@@ -137,6 +130,9 @@ func main() {
 							bold.Printf("Running a `checkpoint` right now will result in: \n")
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
+
+							bold.Printf("This will require:\n\t")
+							ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(80))))
 						}
 					}
 					return nil
@@ -147,6 +143,7 @@ func main() {
 				Aliases: []string{"cp"},
 				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
 				Flags: []cli.Flag{
+					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
 					&cli.BoolFlag{
 						Name:        "force",
 						Aliases:     []string{"f"},
@@ -197,13 +194,17 @@ func main() {
 						proof, err := core.LoadCheckpointProofFromFile(checkpointProofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						submitCheckpointProof(*owner, eigenpodAddress, chainId, proof, eth)
+						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
 						return nil
 					}
 
 					currentCheckpoint := core.GetCurrentCheckpoint(eigenpodAddress, eth)
 					if currentCheckpoint == 0 {
 						if owner != nil {
+							if !noPrompt {
+								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
+							}
+
 							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
 							core.PanicOnError("failed to start checkpoint", err)
 							currentCheckpoint = newCheckpoint
@@ -221,7 +222,7 @@ func main() {
 					if out != nil {
 						core.WriteOutputToFileOrStdout(jsonString, out)
 					} else if owner != nil {
-						submitCheckpointProof(*owner, eigenpodAddress, chainId, proof, eth)
+						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
 					}
 
 					return nil
@@ -231,64 +232,36 @@ func main() {
 				Name:    "credentials",
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
+				Flags: []cli.Flag{
+					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
+				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
 						color.NoColor = true
 					}
 
 					var owner *string = nil
-
 					if len(cctx.String("owner")) > 0 {
 						ownerProp := cctx.String("owner")
 						owner = &ownerProp
 					}
 
 					eth, beaconClient, chainId := core.GetClients(ctx, node, beacon)
-					validatorProofs, validatorIndices := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
-					if validatorProofs == nil || validatorIndices == nil {
-						return nil
+					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					if err != nil || validatorProofs == nil {
+						core.PanicOnError("Failed to generate validator proof", err)
+						core.Panic("no inactive validators")
 					}
 
 					if owner != nil {
-						ownerAccount, err := core.PrepareAccount(owner, chainId)
-						core.PanicOnError("failed to parse private key", err)
-
-						eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-						core.PanicOnError("failed to reach eigenpod", err)
-
-						indices := core.Uint64ArrayToBigIntArray(validatorIndices)
-
-						var validatorFieldsProofs [][]byte = [][]byte{}
-						for i := 0; i < len(validatorProofs.ValidatorFieldsProofs); i++ {
-							pr := validatorProofs.ValidatorFieldsProofs[i].ToByteSlice()
-							validatorFieldsProofs = append(validatorFieldsProofs, pr)
-						}
-
-						var validatorFields [][][32]byte = core.CastValidatorFields(validatorProofs.ValidatorFields)
-
-						latestBlock, err := eth.BlockByNumber(ctx, nil)
-						core.PanicOnError("failed to load latest block", err)
-
-						color.Green("submitting onchain...")
-						txn, err := eigenPod.VerifyWithdrawalCredentials(
-							ownerAccount.TransactionOptions,
-							latestBlock.Time(),
-							onchain.BeaconChainProofsStateRootProof{
-								Proof:           validatorProofs.StateRootProof.Proof.ToByteSlice(),
-								BeaconStateRoot: validatorProofs.StateRootProof.BeaconStateRoot,
-							},
-							indices,
-							validatorFieldsProofs,
-							validatorFields,
-						)
-
+						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt)
 						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
-
-						color.Green("transaction: %s", txn.Hash().Hex())
+						for i, txn := range txns {
+							color.Green("transaction(%d): %s", i, txn.Hash().Hex())
+						}
 					} else {
 						data := map[string]any{
-							"validatorIndices": validatorIndices,
-							"validatorProofs":  validatorProofs,
+							"validatorProofs": validatorProofs,
 						}
 						out, err := json.MarshalIndent(data, "", "   ")
 						core.PanicOnError("failed to process proof", err)
@@ -336,6 +309,12 @@ func main() {
 				Value:       false,
 				Usage:       "Disables color output for terminals that do not support ANSI color codes.",
 				Destination: &disableColor,
+			},
+			&cli.BoolFlag{
+				Name:        "no-prompt",
+				Value:       false,
+				Usage:       "Disables prompts to approve any transactions occurring (e.g in CI).",
+				Destination: &noPrompt,
 			},
 			&cli.BoolFlag{
 				Name:        "verbose",
