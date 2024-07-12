@@ -18,10 +18,8 @@ import (
 	"github.com/fatih/color"
 )
 
-const PROOFS_PER_BATCH = 60 // about 60 proofs fit per transaction.
-
 func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool) ([]*types.Transaction, error) {
-	allProofChunks := chunk(proof.BalanceProofs, PROOFS_PER_BATCH)
+	allProofChunks := chunk(proof.BalanceProofs, batchSize)
 
 	transactions := []*types.Transaction{}
 	if !noPrompt {
@@ -32,7 +30,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 
 	for i := 0; i < len(allProofChunks); i++ {
 		balanceProofs := allProofChunks[i]
-		txn, err := SubmitCheckpointProofBatch(owner, eigenpodAddress, chainId, proof, balanceProofs, eth, batchSize)
+		txn, err := SubmitCheckpointProofBatch(owner, eigenpodAddress, chainId, proof, balanceProofs, eth)
 		if err != nil {
 			// failed to submit batch.
 			return transactions, err
@@ -47,7 +45,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 	return transactions, nil
 }
 
-func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, batchSize uint64) (*types.Transaction, error) {
+func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client) (*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
 		return nil, err

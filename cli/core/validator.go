@@ -15,7 +15,6 @@ import (
 )
 
 func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, noPrompt bool) ([]*types.Transaction, error) {
-
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
 		return nil, err
@@ -58,6 +57,7 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		}
 		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
 
+		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
 		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, latestBlock.Time())
 		if err != nil {
 			return transactions, err
