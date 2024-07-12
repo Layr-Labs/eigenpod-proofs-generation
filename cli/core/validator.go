@@ -53,7 +53,7 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
 
 		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
-		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs, validatorFieldsProofs, oracleBeaconTimesetamp)
+		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs.StateRootProof, validatorFieldsProofs, oracleBeaconTimesetamp)
 		if err != nil {
 			return transactions, err
 		}
@@ -64,14 +64,14 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	return transactions, err
 }
 
-func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64) (*types.Transaction, error) {
+func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64) (*types.Transaction, error) {
 	color.Green("submitting onchain...")
 	txn, err := eigenPod.VerifyWithdrawalCredentials(
 		ownerAccount.TransactionOptions,
 		oracleBeaconTimesetamp,
 		onchain.BeaconChainProofsStateRootProof{
-			Proof:           proofs.StateRootProof.Proof.ToByteSlice(),
-			BeaconStateRoot: proofs.StateRootProof.BeaconStateRoot,
+			Proof:           stateRootProofs.Proof.ToByteSlice(),
+			BeaconStateRoot: stateRootProofs.BeaconStateRoot,
 		},
 		indices,
 		validatorFieldsProofs,

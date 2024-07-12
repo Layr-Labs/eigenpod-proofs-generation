@@ -27,7 +27,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 
 	for i := 0; i < len(allProofChunks); i++ {
 		balanceProofs := allProofChunks[i]
-		txn, err := SubmitCheckpointProofBatch(owner, eigenpodAddress, chainId, proof, balanceProofs, eth)
+		txn, err := SubmitCheckpointProofBatch(owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth)
 		if err != nil {
 			// failed to submit batch.
 			return transactions, err
@@ -42,7 +42,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 	return transactions, nil
 }
 
-func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client) (*types.Transaction, error) {
+func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client) (*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
 		return nil, err
@@ -56,10 +56,10 @@ func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int,
 	txn, err := eigenPod.VerifyCheckpointProofs(
 		ownerAccount.TransactionOptions,
 		onchain.BeaconChainProofsBalanceContainerProof{
-			BalanceContainerRoot: proof.ValidatorBalancesRootProof.ValidatorBalancesRoot,
-			Proof:                proof.ValidatorBalancesRootProof.Proof.ToByteSlice(),
+			BalanceContainerRoot: proof.ValidatorBalancesRoot,
+			Proof:                proof.Proof.ToByteSlice(),
 		},
-		CastBalanceProofs(proof.BalanceProofs),
+		CastBalanceProofs(balanceProofs),
 	)
 	if err != nil {
 		return nil, err
