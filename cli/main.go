@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"time"
@@ -29,6 +30,10 @@ func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
 		Destination: destination,
 	}
 }
+
+// maximum number of proofs per txn for each of the following proof types:
+const DEFAULT_BATCH_CREDENTIALS = 60
+const DEFAULT_BATCH_CHECKPOINT = 80
 
 func main() {
 	var eigenpodAddress, beacon, node, owner, output string
@@ -125,6 +130,9 @@ func main() {
 							bold.Printf("Running a `checkpoint` right now will result in: \n")
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
+
+							bold.Printf("This will require:\n\t")
+							ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(80))))
 						}
 					}
 					return nil
@@ -135,7 +143,7 @@ func main() {
 				Aliases: []string{"cp"},
 				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
 				Flags: []cli.Flag{
-					BatchBySize(&batchSize, 80),
+					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
 					&cli.BoolFlag{
 						Name:        "force",
 						Aliases:     []string{"f"},
@@ -194,7 +202,7 @@ func main() {
 					if currentCheckpoint == 0 {
 						if owner != nil {
 							if !noPrompt {
-								core.PanicIfNoConsent("This will start a checkpoint on your eigenpod.")
+								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
 							}
 
 							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
@@ -225,7 +233,7 @@ func main() {
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Flags: []cli.Flag{
-					BatchBySize(&batchSize, 60),
+					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {

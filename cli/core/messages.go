@@ -11,10 +11,10 @@ func plural(word string, amount int) string {
 	return word
 }
 
-func SubmitCheckpointProofConsent(numTransactions int) string {
-	return fmt.Sprintf(`This will start a new checkpoint on your eigenpod.
+func StartCheckpointProofConsent() string {
+	return `This will start a new checkpoint on your eigenpod.
 
-	Once started, you MUST complete this checkpoint. This may entail submitting %d or more transactions.
+	Once started, you MUST complete this checkpoint. To see the full impact and transaction requirement of the checkpoint, rerun with 'status'.
 
 	Note that if you lose the generated proofs, you'll need to recompute them. Beacon state is large, and many nodes do not retain
 	long amounts of state. You can always recompute the proofs against a full archival beacon node, but you may face issues if 
@@ -22,11 +22,7 @@ func SubmitCheckpointProofConsent(numTransactions int) string {
 
 	You should be comfortable with submitting all of these before beginning.
 	
-	PLAN: This will call EigenPod.VerifyCheckpointProofs() %d %s to complete your checkpoint.`,
-		numTransactions,
-		numTransactions,
-		plural("time", numTransactions),
-	)
+	PLAN: This will call EigenPod.VerifyCheckpointProofs(), with batches of proofs, to complete your checkpoint. For full details, run status.`
 }
 
 func SubmitCredentialsProofConsent(numTransactions int) string {

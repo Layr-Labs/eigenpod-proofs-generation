@@ -22,9 +22,6 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 	allProofChunks := chunk(proof.BalanceProofs, batchSize)
 
 	transactions := []*types.Transaction{}
-	if !noPrompt {
-		PanicIfNoConsent(SubmitCheckpointProofConsent(len(allProofChunks)))
-	}
 
 	color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
 

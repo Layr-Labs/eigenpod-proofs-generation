@@ -30,6 +30,8 @@ type EigenpodStatus struct {
 
 	ActiveCheckpoint *Checkpoint
 
+	NumberValidatorsToCheckpoint int
+
 	CurrentTotalSharesETH *big.Float
 	Status                int
 
@@ -73,6 +75,9 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 
 	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	activeValidators := SelectActiveValidators(eth, eigenpodAddress, allValidators)
+
+	checkpointableValidators := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, timestamp)
+
 	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(activeValidators, state)
 
 	for i := 0; i < len(allValidators); i++ {
@@ -147,5 +152,6 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		CurrentTotalSharesETH:          currentOwnerSharesETH,
 		TotalSharesAfterCheckpointGwei: pendingSharesGwei,
 		TotalSharesAfterCheckpointETH:  pendingEth,
+		NumberValidatorsToCheckpoint:   len(checkpointableValidators),
 	}
 }
