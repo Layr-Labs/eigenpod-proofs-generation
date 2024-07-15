@@ -84,6 +84,11 @@ func LoadCheckpointProofFromFile(path string) (*eigenpodproofs.VerifyCheckpointP
 	return &res, nil
 }
 
+func asJSON(obj interface{}) string {
+	bytes, _ := json.Marshal(obj)
+	return string(bytes)
+}
+
 func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyCheckpointProofsCallParams {
 	currentCheckpoint := GetCurrentCheckpoint(eigenpodAddress, eth)
 	blockRoot, err := GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
@@ -116,7 +121,7 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 		validatorIndices[i] = v.Index
 	}
 
-	color.Yellow("Proving validators at indices: %s", validatorIndices)
+	color.Yellow("Proving validators at indices: %s", asJSON(validatorIndices))
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	PanicOnError("failled to initialize prover", err)
