@@ -2,9 +2,6 @@ TMP_DIR :=$(shell mktemp -d)
 
 all: codegen
 
-build: all
-	go build
-
 clone: 
 	@echo "Cloning eigenlayer-contracts..."
 	git clone -b feat/partial-withdrawal-batching --depth=1 git@github.com:Layr-Labs/eigenlayer-contracts.git $(TMP_DIR)
