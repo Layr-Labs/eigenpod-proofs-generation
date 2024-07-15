@@ -221,6 +221,10 @@ func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Cli
 	chainId, err := eth.ChainID(ctx)
 	PanicOnError("failed to fetch chain id", err)
 
+	if chainId == nil || chainId.Int64() != 17000 {
+		Panic("This tool only supports the Holesky network.")
+	}
+
 	beaconClient, err := GetBeaconClient(beaconNodeUri)
 	PanicOnError("failed to reach beacon chain.", err)
 
