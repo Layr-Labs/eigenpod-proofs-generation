@@ -194,7 +194,11 @@ func main() {
 						proof, err := core.LoadCheckpointProofFromFile(checkpointProofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+						txns, err := core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+						for _, txn := range txns {
+							color.Green("submitted txn: %s", txn.Hash())
+						}
+						core.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
 						return nil
 					}
 
@@ -222,7 +226,11 @@ func main() {
 					if out != nil {
 						core.WriteOutputToFileOrStdout(jsonString, out)
 					} else if owner != nil {
-						core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+						txns, err := core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+						for _, txn := range txns {
+							color.Green("submitted txn: %s", txn.Hash())
+						}
+						core.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
 					}
 
 					return nil
@@ -255,10 +263,10 @@ func main() {
 
 					if owner != nil {
 						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt)
-						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 						for i, txn := range txns {
 							color.Green("transaction(%d): %s", i, txn.Hash().Hex())
 						}
+						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 					} else {
 						data := map[string]any{
 							"validatorProofs": validatorProofs,

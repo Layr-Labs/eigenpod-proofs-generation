@@ -48,6 +48,8 @@ func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int,
 		return nil, err
 	}
 
+	fmt.Printf("Using account(0x%s) to submit onchain\n", common.Bytes2Hex(ownerAccount.FromAddress[:]))
+
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, err
