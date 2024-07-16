@@ -73,10 +73,14 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	state, err := beaconClient.GetBeaconState(ctx, "head")
 	PanicOnError("failed to fetch state", err)
 
-	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, state)
-	activeValidators := SelectActiveValidators(eth, eigenpodAddress, allValidators)
+	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
+	PanicOnError("failed to find validators", err)
 
-	checkpointableValidators := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, timestamp)
+	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidators)
+	PanicOnError("failed to find active validators", err)
+
+	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, timestamp)
+	PanicOnError("failed to find checkpointable validators", err)
 
 	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(activeValidators, state)
 
