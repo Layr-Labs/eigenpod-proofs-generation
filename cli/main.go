@@ -68,7 +68,8 @@ func main() {
 						color.NoColor = true
 					}
 
-					eth, beaconClient, _ := core.GetClients(ctx, node, beacon)
+					eth, beaconClient, _, err := core.GetClients(ctx, node, beacon)
+					core.PanicOnError("failed to load ethereum clients", err)
 
 					status := core.GetStatus(ctx, eigenpodAddress, eth, beaconClient)
 
@@ -182,7 +183,8 @@ func main() {
 						owner = &ownerProp
 					}
 
-					eth, beaconClient, chainId := core.GetClients(ctx, node, beacon)
+					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
+					core.PanicOnError("failed to reach ethereum clients", err)
 
 					if len(checkpointProofPath) > 0 {
 						// user specified the proof
@@ -202,7 +204,9 @@ func main() {
 						return nil
 					}
 
-					currentCheckpoint := core.GetCurrentCheckpoint(eigenpodAddress, eth)
+					currentCheckpoint, err := core.GetCurrentCheckpoint(eigenpodAddress, eth)
+					core.PanicOnError("failed to load checkpoint", err)
+
 					if currentCheckpoint == 0 {
 						if owner != nil {
 							if !noPrompt {
@@ -218,7 +222,8 @@ func main() {
 					}
 					color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
 
-					proof := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					proof, err := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					core.PanicOnError("failed to generate checkpoint proof", err)
 
 					jsonString, err := json.Marshal(proof)
 					core.PanicOnError("failed to generate JSON proof data.", err)
@@ -254,7 +259,9 @@ func main() {
 						owner = &ownerProp
 					}
 
-					eth, beaconClient, chainId := core.GetClients(ctx, node, beacon)
+					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
+					core.PanicOnError("failed to reach ethereum clients", err)
+
 					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
 					if err != nil || validatorProofs == nil {
 						core.PanicOnError("Failed to generate validator proof", err)

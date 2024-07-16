@@ -91,33 +91,51 @@ func asJSON(obj interface{}) string {
 	return string(bytes)
 }
 
-func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) *eigenpodproofs.VerifyCheckpointProofsCallParams {
-	currentCheckpoint := GetCurrentCheckpoint(eigenpodAddress, eth)
+func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
+	if err != nil {
+		return nil, err
+	}
+
 	blockRoot, err := GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
-	PanicOnError("failed to fetch last checkpoint.", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch last checkpoint: %w", err)
+	}
 	if blockRoot == nil {
-		Panic("failed to fetch last checkpoint - nil blockRoot")
+		return nil, fmt.Errorf("failed to fetch last checkpoint - nil blockRoot")
 	}
 
 	if blockRoot != nil {
 		rootBytes := *blockRoot
 		if AllZero(rootBytes[:]) {
-			PanicOnError("No checkpoint active. Are you sure you started a checkpoint?", fmt.Errorf("no checkpoint"))
+			return nil, fmt.Errorf("no checkpoint active. Are you sure you started a checkpoint?")
 		}
 	}
 
 	headerBlock := "0x" + hex.EncodeToString((*blockRoot)[:])
 	header, err := beaconClient.GetBeaconHeader(ctx, headerBlock)
-	PanicOnError(fmt.Sprintf("failed to fetch beacon header (%s).", headerBlock), err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch beacon header (%s): %w", headerBlock, err)
+	}
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
-	PanicOnError("failed to fetch beacon state.", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch beacon state: %w", err)
+	}
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
-	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	if err != nil {
+		return nil, err
+	}
+
 	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
 
-	checkpointValidators := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpoint)
+	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	validatorIndices := make([]uint64, len(checkpointValidators))
 	for i, v := range checkpointValidators {
 		validatorIndices[i] = v.Index
@@ -126,10 +144,14 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	color.Yellow("Proving validators at indices: %s", asJSON(validatorIndices))
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
-	PanicOnError("failled to initialize prover", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize prover: %w", err)
+	}
 
 	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)
-	PanicOnError("failed to prove checkpoint.", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to prove checkpoint: %w", err)
+	}
 
-	return proof
+	return proof, nil
 }

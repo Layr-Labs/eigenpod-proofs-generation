@@ -107,8 +107,11 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to fetch beacon state: %w", err)
 	}
 
-	allValidators := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
-	awaitingCredentialValidators := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidators)
+	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	PanicOnError("failed to find validators", err)
+
+	awaitingCredentialValidators, err := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidators)
+	PanicOnError("failed to find validators awaiting credential proofs", err)
 
 	if len(awaitingCredentialValidators) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")

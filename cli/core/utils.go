@@ -115,15 +115,21 @@ type Owner = struct {
 
 func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool) (uint64, error) {
 	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId)
-	PanicOnError("failed to parse private key", err)
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse private key: %w", err)
+	}
 
 	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
-	PanicOnError("failed to reach eigenpod", err)
+	if err != nil {
+		return 0, fmt.Errorf("failed to reach eigenpod: %w", err)
+	}
 
 	revertIfNoBalance := !forceCheckpoint
 
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, revertIfNoBalance)
-	PanicOnError("failed to start checkpoint", err)
+	if err != nil {
+		return 0, fmt.Errorf("failed to start checkpoint: %w", err)
+	}
 
 	color.Green("starting checkpoint: %s.. (waiting for txn to be mined)...", txn.Hash().Hex())
 
@@ -131,7 +137,11 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 
 	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 
-	currentCheckpoint := GetCurrentCheckpoint(eigenpodAddress, eth)
+	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch current checkpoint: %w", err)
+	}
+
 	return currentCheckpoint, nil
 }
 
@@ -140,20 +150,27 @@ func GetBeaconClient(beaconUri string) (BeaconClient, error) {
 	return beaconClient, err
 }
 
-func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) uint64 {
+func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uint64, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
-	PanicOnError("failed to locate eigenpod. is your address correct?", err)
+	if err != nil {
+		return 0, fmt.Errorf("failed to locate eigenpod. is your address correct?: %w", err)
+	}
 
 	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
-	PanicOnError("failed to locate eigenpod. Is your address correct?", err)
+	if err != nil {
+		return 0, fmt.Errorf("failed to locate eigenpod. Is your address correct?: %w", err)
 
-	return timestamp
+	}
+
+	return timestamp, nil
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
-func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) []ValidatorWithIndex {
+func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) ([]ValidatorWithIndex, error) {
 	allValidators, err := beaconState.Validators()
-	PanicOnError("failed to fetch beacon state", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch beacon state", err)
+	}
 
 	eigenpodAddressBytes := common.FromHex(eigenpodAddress)
 
@@ -176,12 +193,14 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 			})
 		}
 	}
-	return outputValidators
+	return outputValidators, nil
 }
 
-func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) []onchain.IEigenPodValidatorInfo {
+func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) ([]onchain.IEigenPodValidatorInfo, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
-	PanicOnError("failed to locate Eigenpod. Is your address correct?", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate Eigenpod. Is your address correct?: %w", err)
+	}
 
 	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
 
@@ -197,38 +216,50 @@ func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 			),
 		)
 		info, err := eigenPod.ValidatorPubkeyHashToInfo(nil, pubKeyHash)
-		PanicOnError("failed to fetch validator eigeninfo.", err)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch validator eigeninfo: %w", err)
+		}
 		validatorInfo = append(validatorInfo, info)
 	}
 
-	return validatorInfo
+	return validatorInfo, nil
 }
 
 func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	PanicOnError("failed to locate Eigenpod. Is your address correct?", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate Eigenpod. Is your address correct?", err)
+	}
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
-	PanicOnError("failed to reach eigenpod.", err)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reach eigenpod.", err)
+	}
 
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Client, BeaconClient, *big.Int) {
+func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Client, BeaconClient, *big.Int, error) {
 	eth, err := ethclient.Dial(node)
-	PanicOnError("failed to reach eth --node.", err)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to reach eth --node: %w", err)
+	}
 
 	chainId, err := eth.ChainID(ctx)
-	PanicOnError("failed to fetch chain id", err)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to fetch chain id: %w", err)
+	}
 
 	if chainId == nil || chainId.Int64() != 17000 {
-		Panic("This tool only supports the Holesky network.")
+		return nil, nil, nil, fmt.Errorf("This tool only supports the Holesky network.")
 	}
 
 	beaconClient, err := GetBeaconClient(beaconNodeUri)
-	PanicOnError("failed to reach beacon chain.", err)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to reach beacon client: %w", err)
+	}
 
-	return eth, beaconClient, chainId
+	return eth, beaconClient, chainId, nil
 }
 
 func CastBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconChainProofsBalanceProof {
@@ -318,14 +349,19 @@ func AllZero(s []byte) bool {
 	return true
 }
 
-func WriteOutputToFileOrStdout(output []byte, out *string) {
+func WriteOutputToFileOrStdout(output []byte, out *string) error {
 	if out != nil && *out != "" {
 		err := os.WriteFile(*out, output, os.ModePerm)
+		if err != nil {
+			return err
+		}
 		PanicOnError("failed to write to disk", err)
 		color.Green("Wrote output to %s\n", *out)
 	} else {
 		fmt.Println(string(output))
 	}
+
+	return nil
 }
 
 func SelectCheckpointableValidators(
@@ -333,8 +369,11 @@ func SelectCheckpointableValidators(
 	eigenpodAddress string,
 	validators []ValidatorWithIndex,
 	lastCheckpoint uint64,
-) []ValidatorWithIndex {
-	validatorInfos := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+) ([]ValidatorWithIndex, error) {
+	validatorInfos, err := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+	if err != nil {
+		return nil, err
+	}
 
 	var checkpointValidators = []ValidatorWithIndex{}
 	for i := 0; i < len(validators); i++ {
@@ -348,7 +387,7 @@ func SelectCheckpointableValidators(
 			checkpointValidators = append(checkpointValidators, validator)
 		}
 	}
-	return checkpointValidators
+	return checkpointValidators, nil
 }
 
 // (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/libraries/BeaconChainProofs.sol#L64)
@@ -358,8 +397,11 @@ func SelectAwaitingCredentialValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
 	validators []ValidatorWithIndex,
-) []ValidatorWithIndex {
-	validatorInfos := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+) ([]ValidatorWithIndex, error) {
+	validatorInfos, err := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+	if err != nil {
+		return nil, err
+	}
 
 	var awaitingCredentialValidators = []ValidatorWithIndex{}
 	for i := 0; i < len(validators); i++ {
@@ -371,15 +413,18 @@ func SelectAwaitingCredentialValidators(
 			awaitingCredentialValidators = append(awaitingCredentialValidators, validator)
 		}
 	}
-	return awaitingCredentialValidators
+	return awaitingCredentialValidators, nil
 }
 
 func SelectActiveValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
 	validators []ValidatorWithIndex,
-) []ValidatorWithIndex {
-	validatorInfos := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+) ([]ValidatorWithIndex, error) {
+	validatorInfos, err := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
+	if err != nil {
+		return nil, err
+	}
 
 	var activeValidators = []ValidatorWithIndex{}
 	for i := 0; i < len(validators); i++ {
@@ -390,5 +435,5 @@ func SelectActiveValidators(
 			activeValidators = append(activeValidators, validator)
 		}
 	}
-	return activeValidators
+	return activeValidators, nil
 }
