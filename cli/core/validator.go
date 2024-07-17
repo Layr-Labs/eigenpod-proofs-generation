@@ -8,6 +8,8 @@ import (
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	v1 "github.com/attestantio/go-eth2-client/api/v1"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -107,6 +109,11 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to fetch beacon state: %w", err)
 	}
 
+	proofs, err := GenerateValidatorProofAtState(eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time())
+	return proofs, latestBlock.Time(), err
+}
+
+func GenerateValidatorProofAtState(eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	PanicOnError("failed to find validators", err)
 
@@ -115,7 +122,7 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 
 	if len(awaitingCredentialValidators) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")
-		return nil, 0, nil
+		return nil, nil
 	} else {
 		color.Blue("Verifying %d inactive validators", len(awaitingCredentialValidators))
 	}
@@ -127,14 +134,14 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 
 	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
+		return nil, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
 	// validator proof
 	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to prove validators: %w", err)
+		return nil, fmt.Errorf("failed to prove validators: %w", err)
 	}
 
-	return validatorProofs, latestBlock.Time(), nil
+	return validatorProofs, nil
 }
