@@ -49,6 +49,12 @@ func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*Eige
 	}, nil
 }
 
+func (epp *EigenPodProofs) PrecomputeCache(state *spec.VersionedBeaconState) {
+	epp.ComputeBeaconStateRoot(state.Deneb)
+	epp.ComputeBeaconStateTopLevelRoots(state)
+	epp.ComputeVersionedBeaconStateTopLevelRoots(state)
+}
+
 func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState) (phase0.Root, error) {
 	beaconStateRoot, err := epp.loadOrComputeBeaconStateRoot(
 		beaconState.Slot,
