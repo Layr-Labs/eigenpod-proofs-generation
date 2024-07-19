@@ -8,7 +8,7 @@ require (
 	github.com/Layr-Labs/eigensdk-go v0.1.3
 	github.com/attestantio/go-eth2-client v0.19.9
 	github.com/caarlos0/env v3.5.0+incompatible
-	github.com/ethereum/go-ethereum v1.13.14
+	github.com/ethereum/go-ethereum v1.13.15
 	github.com/ferranbt/fastssz v0.1.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/minio/sha256-simd v1.0.1
