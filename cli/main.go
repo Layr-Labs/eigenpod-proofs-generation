@@ -45,7 +45,7 @@ func main() {
 	ctx := context.Background()
 
 	app := &cli.App{
-		Name:                   "Eigenlayer Proofs CLi",
+		Name:                   "EigenLayer Proofs CLI",
 		HelpName:               "eigenproofs",
 		Usage:                  "Generates proofs to (1) checkpoint your validators, or (2) verify the withdrawal credentials of an inactive validator.",
 		EnableBashCompletion:   true,
