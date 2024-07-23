@@ -11,6 +11,9 @@ import (
 	"context"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
@@ -51,6 +54,60 @@ func main() {
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
+			{
+				Name:  "assign-submitter",
+				Args:  true,
+				Usage: "Assign a different address to be able to submit your proofs. You'll always be able to submit from your EigenPod owner PK.",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:        "json",
+						Value:       false,
+						Usage:       "print only plain JSON",
+						Required:    false,
+						Destination: &useJson,
+					},
+				},
+				Action: func(cctx *cli.Context) error {
+					targetAddress := cctx.Args().First()
+					if len(targetAddress) == 0 {
+						return fmt.Errorf("usage: `assign-submitter <0xsubmitter>")
+					}
+
+					eth, err := ethclient.Dial(node)
+					if err != nil {
+						return fmt.Errorf("failed to reach eth --node: %w", err)
+					}
+
+					chainId, err := eth.ChainID(ctx)
+					if err != nil {
+						return fmt.Errorf("failed to reach eth node for chain id: %w", err)
+					}
+
+					ownerAccount, err := core.PrepareAccount(&owner, chainId)
+					if err != nil {
+						return fmt.Errorf("failed to parse --owner: %w", err)
+					}
+
+					pod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+					if err != nil {
+						return fmt.Errorf("error contacting eigenpod: %w", err)
+					}
+
+					if !noPrompt {
+						core.PanicIfNoConsent(fmt.Sprintf("This will update your EigenPod to allow %s to submit proofs on its behalf. You can always change this later using the EigenPod's PK.", targetAddress))
+					}
+
+					txn, err := pod.SetProofSubmitter(ownerAccount.TransactionOptions, gethCommon.HexToAddress(targetAddress))
+					if err != nil {
+						return fmt.Errorf("error updating submitter role: %w", err)
+					}
+
+					color.Green("submitted txn: %s", txn.Hash())
+					color.Green("updated!")
+
+					return nil
+				},
+			},
 			{
 				Name:  "status",
 				Usage: "Checks the status of your eigenpod.",
