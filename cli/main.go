@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"runtime/trace"
 	"time"
 
 	"context"
@@ -43,6 +44,11 @@ func main() {
 	var noPrompt bool
 	var useJson bool = false
 	ctx := context.Background()
+
+	f, _ := os.Create("trace.out")
+	trace.Start(f)
+	defer trace.Stop()
+	defer f.Close()
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",

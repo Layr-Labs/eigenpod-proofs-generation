@@ -1,7 +1,9 @@
 package beacon
 
 import (
+	"context"
 	"errors"
+	"runtime/trace"
 	"sync"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
@@ -12,9 +14,10 @@ import (
 )
 
 // taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
-func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
+func ComputeBeaconStateTopLevelRootsDeneb(ctx context.Context, b *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
 	var err error
 	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
+	defer trace.StartRegion(ctx, "ComputeBeaconStateTopLevelRootsDeneb").End()
 
 	var errs = make(chan error)
 	var wg sync.WaitGroup
@@ -22,6 +25,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (0) 'GenesisTime'
 	go func() {
+		defer trace.StartRegion(ctx, "GenesisTime").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		hh.PutUint64(b.GenesisTime)
@@ -31,6 +35,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (1) 'GenesisValidatorsRoot'
 	go func() {
+		defer trace.StartRegion(ctx, "GenesisValidatorsRoot").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.GenesisValidatorsRoot); size != 32 {
@@ -45,6 +50,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (2) 'Slot'
 	go func() {
+		defer trace.StartRegion(ctx, "Slot").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		hh.PutUint64(uint64(b.Slot))
@@ -54,6 +60,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (3) 'Fork'
 	go func() {
+		defer trace.StartRegion(ctx, "Fork").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.Fork == nil {
@@ -69,6 +76,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (4) 'LatestBlockHeader'
 	go func() {
+		defer trace.StartRegion(ctx, "LatestBlockHeader").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.LatestBlockHeader == nil {
@@ -84,6 +92,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (5) 'BlockRoots'
 	go func() {
+		defer trace.StartRegion(ctx, "BlockRoots").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.BlockRoots); size != 8192 {
@@ -107,6 +116,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (6) 'StateRoots'
 	go func() {
+		defer trace.StartRegion(ctx, "StateRoots").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.StateRoots); size != 8192 {
@@ -130,6 +140,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (7) 'HistoricalRoots'
 	go func() {
+		defer trace.StartRegion(ctx, "HistoricalRoots").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.HistoricalRoots); size > 16777216 {
@@ -154,6 +165,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (8) 'ETH1Data'
 	go func() {
+		defer trace.StartRegion(ctx, "ETH1Data").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.ETH1Data == nil {
@@ -169,6 +181,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (9) 'ETH1DataVotes'
 	go func() {
+		defer trace.StartRegion(ctx, "ETH1DataVotes").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		subIndx := hh.Index()
@@ -191,6 +204,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (10) 'ETH1DepositIndex'
 	go func() {
+		defer trace.StartRegion(ctx, "ETH1DepositIndex").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		hh.PutUint64(b.ETH1DepositIndex)
@@ -200,6 +214,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (11) 'Validators'
 	go func() {
+		defer trace.StartRegion(ctx, "Validators").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		subIndx := hh.Index()
@@ -222,6 +237,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (12) 'Balances'
 	go func() {
+		defer trace.StartRegion(ctx, "Balances").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.Balances); size > 1099511627776 {
@@ -243,6 +259,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (13) 'RANDAOMixes'
 	go func() {
+		defer trace.StartRegion(ctx, "RANDAOMixes").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.RANDAOMixes); size != 65536 {
@@ -266,6 +283,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (14) 'Slashings'
 	go func() {
+		defer trace.StartRegion(ctx, "Slashings").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.Slashings); size != 8192 {
@@ -284,6 +302,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (15) 'PreviousEpochParticipation'
 	go func() {
+		defer trace.StartRegion(ctx, "PreviousEpochParticipation").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.PreviousEpochParticipation); size > 1099511627776 {
@@ -303,6 +322,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (16) 'CurrentEpochParticipation'
 	go func() {
+		defer trace.StartRegion(ctx, "CurrentEpochParticipation").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.CurrentEpochParticipation); size > 1099511627776 {
@@ -322,6 +342,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (17) 'JustificationBits'
 	go func() {
+		defer trace.StartRegion(ctx, "JustificationBits").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.JustificationBits); size != 1 {
@@ -335,6 +356,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (18) 'PreviousJustifiedCheckpoint'
 	go func() {
+		defer trace.StartRegion(ctx, "PreviousJustifiedCheckpoint").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.PreviousJustifiedCheckpoint == nil {
@@ -350,6 +372,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (19) 'CurrentJustifiedCheckpoint'
 	go func() {
+		defer trace.StartRegion(ctx, "CurrentJustifiedCheckpoint").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.CurrentJustifiedCheckpoint == nil {
@@ -365,6 +388,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (20) 'FinalizedCheckpoint'
 	go func() {
+		defer trace.StartRegion(ctx, "FinalizedCheckpoint").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.FinalizedCheckpoint == nil {
@@ -380,6 +404,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (21) 'InactivityScores'
 	go func() {
+		defer trace.StartRegion(ctx, "InactivityScores").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if size := len(b.InactivityScores); size > 1099511627776 {
@@ -399,6 +424,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (22) 'CurrentSyncCommittee'
 	go func() {
+		defer trace.StartRegion(ctx, "CurrentSyncCommittee").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.CurrentSyncCommittee == nil {
@@ -414,6 +440,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (23) 'NextSyncCommittee'
 	go func() {
+		defer trace.StartRegion(ctx, "NextSyncCommittee").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if b.NextSyncCommittee == nil {
@@ -429,6 +456,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (24) 'LatestExecutionPayloadHeader'
 	go func() {
+		defer trace.StartRegion(ctx, "LatestExecutionPayloadHeader").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		if err = b.LatestExecutionPayloadHeader.HashTreeRootWith(hh); err != nil {
@@ -441,6 +469,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (25) 'NextWithdrawalIndex'
 	go func() {
+		defer trace.StartRegion(ctx, "NextWithdrawalIndex").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		hh.PutUint64(uint64(b.NextWithdrawalIndex))
@@ -450,6 +479,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (26) 'NextWithdrawalValidatorIndex'
 	go func() {
+		defer trace.StartRegion(ctx, "NextWithdrawalValidatorIndex").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		hh.PutUint64(uint64(b.NextWithdrawalValidatorIndex))
@@ -459,6 +489,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 
 	// Field (27) 'HistoricalSummaries'
 	go func() {
+		defer trace.StartRegion(ctx, "HistoricalSummaries").End()
 		defer wg.Done()
 		hh := ssz.NewHasher()
 		subIndx := hh.Index()

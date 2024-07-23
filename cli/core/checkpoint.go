@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"runtime/trace"
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
@@ -92,6 +93,8 @@ func asJSON(obj interface{}) string {
 }
 
 func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+	defer trace.StartRegion(ctx, "GenerateCheckpointProof").End()
+
 	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
 	if err != nil {
 		return nil, err
@@ -148,7 +151,7 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 		return nil, fmt.Errorf("failed to initialize prover: %w", err)
 	}
 
-	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)
+	proof, err := proofs.ProveCheckpointProofs(ctx, header.Header.Message, beaconState, validatorIndices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prove checkpoint: %w", err)
 	}

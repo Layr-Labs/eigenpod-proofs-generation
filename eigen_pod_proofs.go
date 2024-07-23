@@ -1,7 +1,9 @@
 package eigenpodproofs
 
 import (
+	"context"
 	"errors"
+	"runtime/trace"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec"
@@ -49,7 +51,7 @@ func NewEigenPodProofs(chainID uint64, oracleStateCacheExpirySeconds int) (*Eige
 	}, nil
 }
 
-func (epp *EigenPodProofs) PrecomputeCache(state *spec.VersionedBeaconState) error {
+func (epp *EigenPodProofs) PrecomputeCache(ctx context.Context, state *spec.VersionedBeaconState) error {
 	slot, err := state.Slot()
 	if err != nil {
 		return err
@@ -65,8 +67,8 @@ func (epp *EigenPodProofs) PrecomputeCache(state *spec.VersionedBeaconState) err
 	}
 
 	epp.ComputeBeaconStateRoot(state.Deneb)
-	epp.ComputeBeaconStateTopLevelRoots(state)
-	epp.ComputeVersionedBeaconStateTopLevelRoots(state)
+	epp.ComputeBeaconStateTopLevelRoots(ctx, state)
+	epp.ComputeVersionedBeaconStateTopLevelRoots(ctx, state)
 	epp.ComputeValidatorTree(slot, validators)
 	epp.ComputeValidatorBalancesTree(slot, balances)
 	return nil
@@ -90,8 +92,10 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 	return beaconStateRoot, nil
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(ctx context.Context, beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
 	//get the versioned beacon state's slot
+	defer trace.StartRegion(ctx, "ComputeBeaconStateTopLevelRoots").End()
+
 	slot, err := beaconState.Slot()
 	if err != nil {
 		return nil, err
@@ -100,7 +104,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 	beaconStateTopLevelRoots, err := epp.loadOrComputeBeaconStateTopLevelRoots(
 		slot,
 		func() (*beacon.BeaconStateTopLevelRoots, error) {
-			beaconStateTopLevelRoots, err := epp.ComputeVersionedBeaconStateTopLevelRoots(beaconState)
+			beaconStateTopLevelRoots, err := epp.ComputeVersionedBeaconStateTopLevelRoots(ctx, beaconState)
 			if err != nil {
 				return nil, err
 			}
@@ -113,10 +117,10 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 	return beaconStateTopLevelRoots, err
 }
 
-func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
+func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(ctx context.Context, beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
 	switch beaconState.Version {
 	case spec.DataVersionDeneb:
-		return beacon.ComputeBeaconStateTopLevelRootsDeneb(beaconState.Deneb)
+		return beacon.ComputeBeaconStateTopLevelRootsDeneb(ctx, beaconState.Deneb)
 	default:
 		return nil, errors.New("unsupported beacon state version")
 	}

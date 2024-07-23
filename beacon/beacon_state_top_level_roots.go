@@ -1,7 +1,9 @@
 package beacon
 
 import (
+	"context"
 	"reflect"
+	"runtime/trace"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -38,7 +40,8 @@ type BeaconStateTopLevelRoots struct {
 	HistoricalSummariesRoot          *phase0.Root
 }
 
-func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateTopLevelRoots, index uint64) (common.Proof, error) {
+func ProveBeaconTopLevelRootAgainstBeaconState(ctx context.Context, beaconTopLevelRoots *BeaconStateTopLevelRoots, index uint64) (common.Proof, error) {
+	defer trace.StartRegion(ctx, "ProveBeaconTopLevelRootAgainstBeaconState").End()
 	v := reflect.ValueOf(*beaconTopLevelRoots)
 	beaconTopLevelRootsList := make([]interface{}, v.NumField())
 	for i := 0; i < v.NumField(); i++ {

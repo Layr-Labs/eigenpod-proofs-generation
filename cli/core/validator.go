@@ -114,11 +114,11 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time())
+	proofs, err := GenerateValidatorProofAtState(ctx, proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time())
 	return proofs, latestBlock.Time(), err
 }
 
-func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
+func GenerateValidatorProofAtState(ctx context.Context, proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	PanicOnError("failed to find validators", err)
 
@@ -138,7 +138,7 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 	}
 
 	// validator proof
-	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
+	validatorProofs, err := proofs.ProveValidatorContainers(ctx, header.Header.Message, beaconState, validatorIndices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prove validators: %w", err)
 	}
