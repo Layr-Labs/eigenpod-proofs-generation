@@ -155,7 +155,7 @@ func main() {
 					&cli.StringFlag{
 						Name:        "proof",
 						Value:       "",
-						Usage:       "the path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--owner` flag.",
+						Usage:       "The path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--owner` flag.",
 						Destination: &checkpointProofPath,
 					},
 					&cli.StringFlag{
