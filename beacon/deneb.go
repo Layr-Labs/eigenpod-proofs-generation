@@ -1,3 +1,6 @@
+//go:build !noasm && !appengine && gc
+// +build !noasm,!appengine,gc
+
 package beacon
 
 import (
@@ -9,6 +12,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
+	"github.com/minio/sha256-simd"
 )
 
 // taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
@@ -19,6 +23,9 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	var errs = make(chan error)
 	var wg sync.WaitGroup
 	wg.Add(28)
+
+	server := sha256.NewAvx512Server()
+	h512 := sha256.NewAvx512(server)
 
 	// Field (0) 'GenesisTime'
 	go func() {
