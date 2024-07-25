@@ -128,6 +128,10 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, revertIfNoBalance)
 	if err != nil {
+		if !forceCheckpoint {
+			return 0, fmt.Errorf("failed to start checkpoint (try running again with `--force`): %w", err)
+		}
+
 		return 0, fmt.Errorf("failed to start checkpoint: %w", err)
 	}
 
