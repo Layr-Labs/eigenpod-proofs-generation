@@ -19,7 +19,7 @@
 
 # Proof Generation
 
-The CLI produces two kinds of proofs, each corresponding to a different action you can take with your eigenpod. The CLI takes an additional `--owner <privateKey>` argument; if supplied, the CLI will submit proofs and act onchain for you.
+The CLI produces two kinds of proofs, each corresponding to a different action you can take with your eigenpod. The CLI takes an additional `--sender <privateKey>` argument; if supplied, the CLI will submit proofs and act onchain for you.
 
 Note that this is testnet software -- we aim to be addressing any bugs communicated with the team in a timely manner. We appreciate your understanding :) 
 
@@ -30,14 +30,14 @@ the _balance_ of that Validator, to represent your full staked balance within Ei
 
 To generate and submit a credential proof,
 
-`./cli --beaconNode $NODE_BEACON --podAddress $EIGENPOD_ADDRESS --execNode $NODE_ETH --owner $EIGENPOD_PK credentials`
+`./cli credentials --beaconNode $NODE_BEACON --podAddress $EIGENPOD_ADDRESS --execNode $NODE_ETH --sender $EIGENPOD_PK`
 
 If this is your first time, the CLI will post a transaction onchain linking your validator and eigenpod.
 
 NOTE: If you've already linked your Validator to your EigenPod, you will see: `You have no inactive validators to verify. Everything up-to-date.`.
 
 Once this is done, running the status command should show an "active" validator:
-`./cli --beaconNode $NODE_BEACON --podAddress $EIGENPOD_ADDRESS --execNode $NODE_ETH --owner $EIGENPOD_PK status`
+`./cli status --beaconNode $NODE_BEACON --podAddress $EIGENPOD_ADDRESS --execNode $NODE_ETH`
 
 
 ## Checkpoint Proofs
@@ -60,7 +60,7 @@ Proofs are submitted to networks in batches by default. You can adjust the batch
 
 - Once a checkpoint is completed, verify with the status command:
 
-`./cli --beaconNode $NODE_BEACON --podAddress $EIGENPOD_ADDRESS --execNode $NODE_ETH --owner $EIGENPOD_PK status`
+`./cli status --beaconNode $NODE_BEACON --podAddress $EIGENPOD_ADDRESS --execNode $NODE_ETH`
 
 Congrats! Your pod balance is up-to-date.
 
