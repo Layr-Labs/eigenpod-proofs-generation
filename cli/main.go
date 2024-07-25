@@ -204,7 +204,7 @@ func main() {
 						return nil
 					}
 
-					currentCheckpoint, err := core.GetCurrentCheckpoint(eigenpodAddress, eth)
+					currentCheckpoint, err := core.GetCurrentCheckpointTimestamp(eigenpodAddress, eth)
 					core.PanicOnError("failed to load checkpoint", err)
 
 					if currentCheckpoint == 0 {
@@ -222,7 +222,14 @@ func main() {
 					}
 					color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
 
+					then := time.Now()
 					proof, err := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					now := time.Now()
+
+					totalTime := now.UnixMilli() - then.UnixMilli()
+
+					color.Blue("Total time to generate checkpoint: %dms", totalTime)
+
 					core.PanicOnError("failed to generate checkpoint proof", err)
 
 					jsonString, err := json.Marshal(proof)

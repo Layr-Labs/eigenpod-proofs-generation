@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"time"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
@@ -92,7 +93,7 @@ func asJSON(obj interface{}) string {
 }
 
 func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
-	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
+	currentCheckpoint, err := GetCurrentCheckpointTimestamp(eigenpodAddress, eth)
 	if err != nil {
 		return nil, err
 	}
@@ -105,11 +106,9 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 		return nil, fmt.Errorf("failed to fetch last checkpoint - nil blockRoot")
 	}
 
-	if blockRoot != nil {
-		rootBytes := *blockRoot
-		if AllZero(rootBytes[:]) {
-			return nil, fmt.Errorf("no checkpoint active. Are you sure you started a checkpoint?")
-		}
+	rootBytes := *blockRoot
+	if AllZero(rootBytes[:]) {
+		return nil, fmt.Errorf("no checkpoint active. Are you sure you started a checkpoint?")
 	}
 
 	headerBlock := "0x" + hex.EncodeToString((*blockRoot)[:])
@@ -148,10 +147,13 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 		return nil, fmt.Errorf("failed to initialize prover: %w", err)
 	}
 
+	then := time.Now().UnixMilli()
 	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prove checkpoint: %w", err)
 	}
+	now := time.Now().UnixMilli()
+	fmt.Printf("Time spent generating proofs: %dms\n", now-then)
 
 	return proof, nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
+	"github.com/prysmaticlabs/gohashtree"
 )
 
 // taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
@@ -23,7 +24,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (0) 'GenesisTime'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		hh.PutUint64(b.GenesisTime)
 		tmp0 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
 		beaconStateTopLevelRoots.GenesisTimeRoot = &tmp0
@@ -32,7 +33,7 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (1) 'GenesisValidatorsRoot'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.GenesisValidatorsRoot); size != 32 {
 			err = ssz.ErrBytesLengthFn("BeaconState.GenesisValidatorsRoot", size, 32)
 			errs <- err
@@ -46,7 +47,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (2) 'Slot'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		hh.PutUint64(uint64(b.Slot))
 		tmp2 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
 		beaconStateTopLevelRoots.SlotRoot = &tmp2
@@ -55,7 +57,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (3) 'Fork'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.Fork == nil {
 			b.Fork = new(phase0.Fork)
 		}
@@ -70,7 +73,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (4) 'LatestBlockHeader'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.LatestBlockHeader == nil {
 			b.LatestBlockHeader = new(phase0.BeaconBlockHeader)
 		}
@@ -85,7 +89,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (5) 'BlockRoots'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.BlockRoots); size != 8192 {
 			err = ssz.ErrVectorLengthFn("BeaconState.BlockRoots", size, 8192)
 			errs <- err
@@ -108,7 +113,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (6) 'StateRoots'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.StateRoots); size != 8192 {
 			err = ssz.ErrVectorLengthFn("BeaconState.StateRoots", size, 8192)
 			errs <- err
@@ -131,7 +137,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (7) 'HistoricalRoots'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.HistoricalRoots); size > 16777216 {
 			err = ssz.ErrListTooBigFn("BeaconState.HistoricalRoots", size, 16777216)
 			errs <- err
@@ -155,7 +162,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (8) 'ETH1Data'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.ETH1Data == nil {
 			b.ETH1Data = new(phase0.ETH1Data)
 		}
@@ -170,7 +178,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (9) 'ETH1DataVotes'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		subIndx := hh.Index()
 		num := uint64(len(b.ETH1DataVotes))
 		if num > 2048 {
@@ -192,7 +201,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (10) 'ETH1DepositIndex'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		hh.PutUint64(b.ETH1DepositIndex)
 		tmp10 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
 		beaconStateTopLevelRoots.ETH1DepositIndexRoot = &tmp10
@@ -201,7 +211,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (11) 'Validators'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		subIndx := hh.Index()
 		num := uint64(len(b.Validators))
 		if num > 1099511627776 {
@@ -223,7 +234,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (12) 'Balances'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.Balances); size > 1099511627776 {
 			err = ssz.ErrListTooBigFn("BeaconState.Balances", size, 1099511627776)
 			errs <- err
@@ -244,7 +256,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (13) 'RANDAOMixes'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.RANDAOMixes); size != 65536 {
 			err = ssz.ErrVectorLengthFn("BeaconState.RANDAOMixes", size, 65536)
 			errs <- err
@@ -267,7 +280,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (14) 'Slashings'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.Slashings); size != 8192 {
 			err = ssz.ErrVectorLengthFn("BeaconState.Slashings", size, 8192)
 			errs <- err
@@ -285,7 +299,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (15) 'PreviousEpochParticipation'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.PreviousEpochParticipation); size > 1099511627776 {
 			errs <- ssz.ErrListTooBigFn("BeaconState.PreviousEpochParticipation", size, 1099511627776)
 			return
@@ -304,7 +319,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (16) 'CurrentEpochParticipation'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.CurrentEpochParticipation); size > 1099511627776 {
 			errs <- ssz.ErrListTooBigFn("BeaconState.CurrentEpochParticipation", size, 1099511627776)
 			return
@@ -323,7 +339,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (17) 'JustificationBits'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.JustificationBits); size != 1 {
 			errs <- ssz.ErrBytesLengthFn("BeaconState.JustificationBits", size, 1)
 			return
@@ -336,7 +353,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (18) 'PreviousJustifiedCheckpoint'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.PreviousJustifiedCheckpoint == nil {
 			b.PreviousJustifiedCheckpoint = new(phase0.Checkpoint)
 		}
@@ -351,7 +369,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (19) 'CurrentJustifiedCheckpoint'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.CurrentJustifiedCheckpoint == nil {
 			b.CurrentJustifiedCheckpoint = new(phase0.Checkpoint)
 		}
@@ -366,7 +385,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (20) 'FinalizedCheckpoint'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.FinalizedCheckpoint == nil {
 			b.FinalizedCheckpoint = new(phase0.Checkpoint)
 		}
@@ -381,7 +401,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (21) 'InactivityScores'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if size := len(b.InactivityScores); size > 1099511627776 {
 			errs <- ssz.ErrListTooBigFn("BeaconState.InactivityScores", size, 1099511627776)
 			return
@@ -400,7 +421,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (22) 'CurrentSyncCommittee'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.CurrentSyncCommittee == nil {
 			b.CurrentSyncCommittee = new(altair.SyncCommittee)
 		}
@@ -415,7 +437,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (23) 'NextSyncCommittee'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if b.NextSyncCommittee == nil {
 			b.NextSyncCommittee = new(altair.SyncCommittee)
 		}
@@ -430,7 +453,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (24) 'LatestExecutionPayloadHeader'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		if err = b.LatestExecutionPayloadHeader.HashTreeRootWith(hh); err != nil {
 			errs <- err
 			return
@@ -442,7 +466,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (25) 'NextWithdrawalIndex'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		hh.PutUint64(uint64(b.NextWithdrawalIndex))
 		tmp25 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
 		beaconStateTopLevelRoots.NextWithdrawalIndexRoot = &tmp25
@@ -451,7 +476,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (26) 'NextWithdrawalValidatorIndex'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		hh.PutUint64(uint64(b.NextWithdrawalValidatorIndex))
 		tmp26 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
 		beaconStateTopLevelRoots.NextWithdrawalValidatorIndexRoot = &tmp26
@@ -460,7 +486,8 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTop
 	// Field (27) 'HistoricalSummaries'
 	go func() {
 		defer wg.Done()
-		hh := ssz.NewHasher()
+
+		hh := ssz.NewHasherWithHashFn(gohashtree.HashByteSlice)
 		subIndx := hh.Index()
 		num := uint64(len(b.HistoricalSummaries))
 		if num > 16777216 {

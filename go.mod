@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.21.7
 
 require (
+	github.com/alethio/web3-multicall-go v0.0.15
 	github.com/attestantio/go-eth2-client v0.19.9
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/fatih/color v1.16.0
@@ -12,6 +13,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
+	github.com/prysmaticlabs/gohashtree v0.0.4-beta
 	github.com/rs/zerolog v1.29.1
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.27.1
@@ -20,6 +22,7 @@ require (
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/alethio/web3-go v0.0.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
@@ -56,6 +59,7 @@ require (
 	github.com/r3labs/sse/v2 v2.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
@@ -69,6 +73,7 @@ require (
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect

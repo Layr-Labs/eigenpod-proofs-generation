@@ -137,7 +137,7 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 
 	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 
-	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
+	currentCheckpoint, err := GetCurrentCheckpointTimestamp(eigenpodAddress, eth)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch current checkpoint: %w", err)
 	}
@@ -150,7 +150,7 @@ func GetBeaconClient(beaconUri string) (BeaconClient, error) {
 	return beaconClient, err
 }
 
-func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uint64, error) {
+func GetCurrentCheckpointTimestamp(eigenpodAddress string, client *ethclient.Client) (uint64, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
 	if err != nil {
 		return 0, fmt.Errorf("failed to locate eigenpod. is your address correct?: %w", err)
