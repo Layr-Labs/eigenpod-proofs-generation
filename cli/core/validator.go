@@ -84,46 +84,64 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
 }
 
 func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
+	timer, ctx := TimerFromContext(ctx)
+
+	timer.Start("BlockByNumber")
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to load latest block: %w", err)
 	}
+	timer.End()
 
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
 
+	timer.Start("GetParentBlockRoot")
 	expectedBlockRoot, err := eigenPod.GetParentBlockRoot(nil, latestBlock.Time())
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to load parent block root: %w", err)
 	}
+	timer.End()
 
+	timer.Start("GetBeaconHeader")
 	header, err := beaconClient.GetBeaconHeader(ctx, "0x"+common.Bytes2Hex(expectedBlockRoot[:]))
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch beacon header: %w", err)
 	}
+	timer.End()
 
+	timer.Start("GetBeaconState")
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch beacon state: %w", err)
 	}
+	timer.End()
 
 	proofExecutor, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time())
+	timer.Start("GenerateValidatorProofAtState")
+	proofs, err := GenerateValidatorProofAtState(ctx, proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time())
+	timer.End()
 	return proofs, latestBlock.Time(), err
 }
 
-func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
+func GenerateValidatorProofAtState(ctx context.Context, proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
+	timer, _ := TimerFromContext(ctx)
+
+	timer.Start("FindAllValidatorsForEigenpod")
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	PanicOnError("failed to find validators", err)
+	timer.End()
 
+	timer.Start("SelectAwaitingCredentialValidators")
 	awaitingCredentialValidators, err := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidators)
 	PanicOnError("failed to find validators awaiting credential proofs", err)
+	timer.End()
 
 	if len(awaitingCredentialValidators) == 0 {
 		color.Red("You have no inactive validators to verify. Everything up-to-date.")
@@ -138,10 +156,12 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 	}
 
 	// validator proof
+	timer.Start("ProveValidatorContainers")
 	validatorProofs, err := proofs.ProveValidatorContainers(header.Header.Message, beaconState, validatorIndices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prove validators: %w", err)
 	}
+	timer.End()
 
 	return validatorProofs, nil
 }
