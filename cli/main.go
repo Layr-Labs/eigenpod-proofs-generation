@@ -276,6 +276,10 @@ func main() {
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
 
+							if status.MustForceCheckpoint {
+								ylw.Printf("\tNote: pod does not have checkpointable native ETH. To checkpoint anyway, run `checkpoint` with the `--force` flag.\n")
+							}
+
 							bold.Printf("Batching %d proofs per txn, this will require:\n\t", DEFAULT_BATCH_CHECKPOINT)
 							ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(DEFAULT_BATCH_CHECKPOINT))))
 						}

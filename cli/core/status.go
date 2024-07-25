@@ -48,6 +48,10 @@ type EigenpodStatus struct {
 
 	PodOwner       gethCommon.Address
 	ProofSubmitter gethCommon.Address
+
+	// Whether the checkpoint would need to be started with the `--force` flag.
+	// This would be due to the pod not having any uncheckpointed native ETH
+	MustForceCheckpoint bool
 }
 
 func sumBeaconChainRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.VersionedBeaconState) phase0.Gwei {
@@ -123,6 +127,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
 
 	var pendingSharesGwei *big.Float
+	mustForceCheckpoint := false
 	// If we currently have an active checkpoint, estimate the total shares
 	// we'll have when we complete it:
 	//
@@ -153,6 +158,16 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
 			latestPodBalanceGwei,
 		)
+
+		// Determine whether the checkpoint needs to be run with `--force`
+		checkpointableBalance := new(big.Float).Sub(
+			latestPodBalanceGwei,
+			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
+		)
+
+		if checkpointableBalance.Sign() == 0 {
+			mustForceCheckpoint = true
+		}
 	}
 
 	pendingEth := GweiToEther(pendingSharesGwei)
@@ -166,5 +181,6 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		NumberValidatorsToCheckpoint:   len(checkpointableValidators),
 		PodOwner:                       eigenPodOwner,
 		ProofSubmitter:                 proofSubmitter,
+		MustForceCheckpoint:            mustForceCheckpoint,
 	}
 }
