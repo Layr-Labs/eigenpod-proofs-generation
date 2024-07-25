@@ -276,8 +276,8 @@ func main() {
 
 							ital.Printf("\t%f new shares issued (%f ==> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
 
-							bold.Printf("This will require:\n\t")
-							ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(80))))
+							bold.Printf("Batching %d proofs per txn, this will require:\n\t", DEFAULT_BATCH_CHECKPOINT)
+							ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(DEFAULT_BATCH_CHECKPOINT))))
 						}
 					}
 					return nil

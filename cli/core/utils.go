@@ -380,7 +380,7 @@ func SelectCheckpointableValidators(
 		validator := validators[i]
 		validatorInfo := validatorInfos[i]
 
-		notCheckpointed := validatorInfo.LastCheckpointedAt != lastCheckpoint
+		notCheckpointed := (validatorInfo.LastCheckpointedAt != lastCheckpoint) || (validatorInfo.LastCheckpointedAt == 0)
 		isActive := validatorInfo.Status == ValidatorStatusActive
 
 		if notCheckpointed && isActive {
