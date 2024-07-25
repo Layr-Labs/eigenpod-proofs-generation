@@ -9,6 +9,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/common"
+	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -44,6 +45,9 @@ type EigenpodStatus struct {
 	// 			total_shares_after_checkpoint = sum(validator[i].regular_balance) + (balanceOf(pod) rounded down to gwei) - withdrawableRestakedExecutionLayerGwei
 	TotalSharesAfterCheckpointGwei *big.Float
 	TotalSharesAfterCheckpointETH  *big.Float
+
+	PodOwner       gethCommon.Address
+	ProofSubmitter gethCommon.Address
 }
 
 func sumBeaconChainRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.VersionedBeaconState) phase0.Gwei {
@@ -108,6 +112,9 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	eigenPodOwner, err := eigenPod.PodOwner(nil)
 	PanicOnError("failed to get eigenpod owner", err)
 
+	proofSubmitter, err := eigenPod.ProofSubmitter(nil)
+	PanicOnError("failed to get eigenpod proof submitter", err)
+
 	currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
 	PanicOnError("failed to load pod owner shares", err)
 	currentOwnerSharesETH := IweiToEther(currentOwnerShares)
@@ -157,5 +164,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		TotalSharesAfterCheckpointGwei: pendingSharesGwei,
 		TotalSharesAfterCheckpointETH:  pendingEth,
 		NumberValidatorsToCheckpoint:   len(checkpointableValidators),
+		PodOwner:                       eigenPodOwner,
+		ProofSubmitter:                 proofSubmitter,
 	}
 }

@@ -11,6 +11,9 @@ import (
 	"context"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
@@ -31,17 +34,83 @@ func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
 	}
 }
 
+// Hack to make a copy of a flag that sets `Required` to true
+func Require(flag *cli.StringFlag) *cli.StringFlag {
+	return &cli.StringFlag{
+		Name:        flag.Name,
+		Aliases:     flag.Aliases,
+		Value:       flag.Value,
+		Usage:       flag.Usage,
+		Destination: flag.Destination,
+		Required:    true,
+	}
+}
+
+// Destinations for values set by various flags
+var eigenpodAddress, beacon, node, sender, output string
+var useJson bool = false
+
+// Required flags:
+
+// Required for commands that need an EigenPod's address
+var POD_ADDRESS_FLAG = &cli.StringFlag{
+	Name:        "podAddress",
+	Aliases:     []string{"p", "pod"},
+	Value:       "",
+	Usage:       "[required] The onchain `address` of your eigenpod contract (0x123123123123)",
+	Required:    true,
+	Destination: &eigenpodAddress,
+}
+
+// Required for commands that need a beacon chain RPC
+var BEACON_NODE_FLAG = &cli.StringFlag{
+	Name:        "beaconNode",
+	Aliases:     []string{"b"},
+	Value:       "",
+	Usage:       "[required] `URL` to a functioning beacon node RPC (https://)",
+	Required:    true,
+	Destination: &beacon,
+}
+
+// Required for commands that need an execution layer RPC
+var EXEC_NODE_FLAG = &cli.StringFlag{
+	Name:        "execNode",
+	Aliases:     []string{"e"},
+	Value:       "",
+	Usage:       "[required] `URL` to a functioning execution-layer RPC (https://)",
+	Required:    true,
+	Destination: &node,
+}
+
+// Optional commands:
+
+// Optional use for commands that want direct tx submission from a specific private key
+var SENDER_PK_FLAG = &cli.StringFlag{
+	Name:        "sender",
+	Aliases:     []string{"s"},
+	Value:       "",
+	Usage:       "`Private key` of the account that will send any transactions. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
+	Destination: &sender,
+}
+
+// Optional use for commands that support JSON output
+var PRINT_JSON_FLAG = &cli.BoolFlag{
+	Name:        "json",
+	Value:       false,
+	Usage:       "print only plain JSON",
+	Required:    false,
+	Destination: &useJson,
+}
+
 // maximum number of proofs per txn for each of the following proof types:
 const DEFAULT_BATCH_CREDENTIALS = 60
 const DEFAULT_BATCH_CHECKPOINT = 80
 
 func main() {
-	var eigenpodAddress, beacon, node, owner, output string
 	var batchSize uint64
 	var checkpointProofPath string
 	var forceCheckpoint, disableColor, verbose bool
 	var noPrompt bool
-	var useJson bool = false
 	ctx := context.Background()
 
 	app := &cli.App{
@@ -52,16 +121,76 @@ func main() {
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
+				Name:      "assign-submitter",
+				Args:      true,
+				Usage:     "Assign a different address to be able to submit your proofs. You'll always be able to submit from your EigenPod owner PK.",
+				UsageText: "./cli assign-submitter [FLAGS] <0xsubmitter>",
+				Flags: []cli.Flag{
+					POD_ADDRESS_FLAG,
+					EXEC_NODE_FLAG,
+					Require(SENDER_PK_FLAG),
+				},
+				Action: func(cctx *cli.Context) error {
+					targetAddress := cctx.Args().First()
+					if len(targetAddress) == 0 {
+						return fmt.Errorf("usage: `assign-submitter <0xsubmitter>`")
+					} else if !gethCommon.IsHexAddress(targetAddress) {
+						return fmt.Errorf("invalid address for 0xsubmitter: %s", targetAddress)
+					}
+
+					eth, err := ethclient.Dial(node)
+					if err != nil {
+						return fmt.Errorf("failed to reach eth --node: %w", err)
+					}
+
+					chainId, err := eth.ChainID(ctx)
+					if err != nil {
+						return fmt.Errorf("failed to reach eth node for chain id: %w", err)
+					}
+
+					ownerAccount, err := core.PrepareAccount(&sender, chainId)
+					if err != nil {
+						return fmt.Errorf("failed to parse --sender: %w", err)
+					}
+
+					pod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+					if err != nil {
+						return fmt.Errorf("error contacting eigenpod: %w", err)
+					}
+
+					// Check that the existing submitter is not the current submitter
+					newSubmitter := gethCommon.HexToAddress(targetAddress)
+					currentSubmitter, err := pod.ProofSubmitter(nil)
+					if err != nil {
+						return fmt.Errorf("error fetching current proof submitter: %w", err)
+					} else if currentSubmitter.Cmp(newSubmitter) == 0 {
+						return fmt.Errorf("error: new proof submitter is existing proof submitter (%s)", currentSubmitter)
+					}
+
+					if !noPrompt {
+						fmt.Printf("Your pod's current proof submitter is %s.\n", currentSubmitter)
+						core.PanicIfNoConsent(fmt.Sprintf("This will update your EigenPod to allow %s to submit proofs on its behalf. As the EigenPod's owner, you can always change this later.", newSubmitter))
+					}
+
+					txn, err := pod.SetProofSubmitter(ownerAccount.TransactionOptions, newSubmitter)
+					if err != nil {
+						return fmt.Errorf("error updating submitter role: %w", err)
+					}
+
+					color.Green("submitted txn: %s", txn.Hash())
+					color.Green("updated!")
+
+					return nil
+				},
+			},
+			{
 				Name:  "status",
 				Usage: "Checks the status of your eigenpod.",
 				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:        "json",
-						Value:       false,
-						Usage:       "print only plain JSON",
-						Required:    false,
-						Destination: &useJson,
-					},
+					POD_ADDRESS_FLAG,
+					BEACON_NODE_FLAG,
+					EXEC_NODE_FLAG,
+					PRINT_JSON_FLAG,
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
@@ -79,8 +208,20 @@ func main() {
 						statusStr := string(bytes)
 						fmt.Println(statusStr)
 					} else {
+						bold := color.New(color.Bold, color.FgBlue)
+						ital := color.New(color.Italic, color.FgBlue)
+						ylw := color.New(color.Italic, color.FgHiYellow)
+
+						bold.Printf("Eigenpod Status\n")
+						ital.Printf("- Pod owner address: ")
+						ylw.Printf("%s\n", status.PodOwner)
+						ital.Printf("- Proof submitter address: ")
+						ylw.Printf("%s\n", status.ProofSubmitter)
+						fmt.Println()
+
 						// pretty print everything
-						color.New(color.Bold, color.FgBlue).Printf("Eigenpod validators\n")
+						bold.Printf("Eigenpod validators\n")
+						numInactive := 0
 						for index, validator := range status.Validators {
 
 							var targetColor color.Attribute
@@ -92,6 +233,7 @@ func main() {
 							} else if validator.Status == core.ValidatorStatusInactive {
 								targetColor = color.FgHiYellow
 								description = "inactive"
+								numInactive++
 							} else if validator.Status == core.ValidatorStatusWithdrawn {
 								targetColor = color.FgHiRed
 								description = "withdrawn"
@@ -109,8 +251,10 @@ func main() {
 							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, publicKey, description)
 						}
 
-						bold := color.New(color.Bold, color.FgBlue)
-						ital := color.New(color.Italic, color.FgBlue)
+						if numInactive != 0 {
+							bold.Printf("Run the `credentials` command to verify the withdrawal credentials of %d validators\n", numInactive)
+						}
+
 						fmt.Println()
 
 						// Calculate the change in shares for completing a checkpoint
@@ -144,6 +288,10 @@ func main() {
 				Aliases: []string{"cp"},
 				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
 				Flags: []cli.Flag{
+					POD_ADDRESS_FLAG,
+					BEACON_NODE_FLAG,
+					EXEC_NODE_FLAG,
+					SENDER_PK_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
 					&cli.BoolFlag{
 						Name:        "force",
@@ -155,14 +303,14 @@ func main() {
 					&cli.StringFlag{
 						Name:        "proof",
 						Value:       "",
-						Usage:       "the path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--owner` flag.",
+						Usage:       "the path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--sender` flag.",
 						Destination: &checkpointProofPath,
 					},
 					&cli.StringFlag{
 						Name:        "out",
 						Aliases:     []string{"O", "output"},
 						Value:       "",
-						Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--owner`, `--out` takes precedence and the proof will not be broadcast.",
+						Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--sender`, `--out` takes precedence and the proof will not be broadcast.",
 						Destination: &output,
 					},
 				},
@@ -171,16 +319,10 @@ func main() {
 						color.NoColor = true
 					}
 
-					var out, owner *string = nil, nil
-
+					var out *string = nil
 					if len(cctx.String("out")) > 0 {
 						outProp := cctx.String("out")
 						out = &outProp
-					}
-
-					if len(cctx.String("owner")) > 0 {
-						ownerProp := cctx.String("owner")
-						owner = &ownerProp
 					}
 
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
@@ -188,15 +330,15 @@ func main() {
 
 					if len(checkpointProofPath) > 0 {
 						// user specified the proof
-						if owner == nil || len(*owner) == 0 {
-							core.Panic("If using --proof, --owner <privateKey> must also be supplied.")
+						if len(sender) == 0 {
+							core.Panic("If using --proof, --sender <privateKey> must also be supplied.")
 						}
 
 						// load `proof` from file.
 						proof, err := core.LoadCheckpointProofFromFile(checkpointProofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						txns, err := core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
 						for _, txn := range txns {
 							color.Green("submitted txn: %s", txn.Hash())
 						}
@@ -208,12 +350,12 @@ func main() {
 					core.PanicOnError("failed to load checkpoint", err)
 
 					if currentCheckpoint == 0 {
-						if owner != nil {
+						if len(sender) != 0 {
 							if !noPrompt {
 								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
 							}
 
-							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, *owner, chainId, eth, forceCheckpoint)
+							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, sender, chainId, eth, forceCheckpoint)
 							core.PanicOnError("failed to start checkpoint", err)
 							currentCheckpoint = newCheckpoint
 						} else {
@@ -230,8 +372,8 @@ func main() {
 
 					if out != nil {
 						core.WriteOutputToFileOrStdout(jsonString, out)
-					} else if owner != nil {
-						txns, err := core.SubmitCheckpointProof(ctx, *owner, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+					} else if len(sender) != 0 {
+						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
 						for _, txn := range txns {
 							color.Green("submitted txn: %s", txn.Hash())
 						}
@@ -246,17 +388,15 @@ func main() {
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Flags: []cli.Flag{
+					POD_ADDRESS_FLAG,
+					BEACON_NODE_FLAG,
+					EXEC_NODE_FLAG,
+					SENDER_PK_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
 						color.NoColor = true
-					}
-
-					var owner *string = nil
-					if len(cctx.String("owner")) > 0 {
-						ownerProp := cctx.String("owner")
-						owner = &ownerProp
 					}
 
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
@@ -268,8 +408,8 @@ func main() {
 						core.Panic("no inactive validators")
 					}
 
-					if owner != nil {
-						txns, err := core.SubmitValidatorProof(ctx, *owner, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt)
+					if len(sender) != 0 {
+						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt)
 						for i, txn := range txns {
 							color.Green("transaction(%d): %s", i, txn.Hash().Hex())
 						}
@@ -288,37 +428,6 @@ func main() {
 			},
 		},
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "podAddress",
-				Aliases:     []string{"p", "pod"},
-				Value:       "",
-				Usage:       "[required] The onchain `address` of your eigenpod contract (0x123123123123)",
-				Required:    true,
-				Destination: &eigenpodAddress,
-			},
-			&cli.StringFlag{
-				Name:        "beaconNode",
-				Aliases:     []string{"b"},
-				Value:       "",
-				Usage:       "[required] `URL` to a functioning beacon node RPC (https://)",
-				Required:    true,
-				Destination: &beacon,
-			},
-			&cli.StringFlag{
-				Name:        "execNode",
-				Aliases:     []string{"e"},
-				Value:       "",
-				Usage:       "[required] `URL` to a functioning execution-layer RPC (https://)",
-				Required:    true,
-				Destination: &node,
-			},
-			&cli.StringFlag{
-				Name:        "owner",
-				Aliases:     []string{"o"},
-				Value:       "",
-				Usage:       "`Private key` of the owner. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
-				Destination: &owner,
-			},
 			&cli.BoolFlag{
 				Name:        "no-color",
 				Value:       false,
