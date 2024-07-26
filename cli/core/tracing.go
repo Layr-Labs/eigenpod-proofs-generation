@@ -12,18 +12,17 @@ type TEigenKey string
 
 const EIGEN_KEY TEigenKey = "com.eigen.tracer"
 
-func ContextWithTracing(ctx context.Context, callbacks *TracerCallbacks) context.Context {
+func ContextWithTracing(ctx context.Context, callbacks TracerCallbacks) context.Context {
 	return context.WithValue(ctx, EIGEN_KEY, callbacks)
 }
 
-func GetContextTracingCallbacks(ctx context.Context) *TracerCallbacks {
-	tracing := ctx.Value(EIGEN_KEY).(*TracerCallbacks)
-	if tracing == nil {
-		return &TracerCallbacks{
-			OnStartSection: func(name string, meta map[string]string) {},
-			OnEndSection:   func() {},
-		}
+func GetContextTracingCallbacks(ctx context.Context) TracerCallbacks {
+	if tracing, ok := ctx.Value(EIGEN_KEY).(TracerCallbacks); ok {
+		return tracing
 	}
 
-	return tracing
+	return TracerCallbacks{
+		OnStartSection: func(name string, meta map[string]string) {},
+		OnEndSection:   func() {},
+	}
 }
