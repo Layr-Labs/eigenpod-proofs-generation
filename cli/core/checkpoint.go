@@ -19,22 +19,30 @@ import (
 )
 
 func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool) ([]*types.Transaction, error) {
+	tracing := GetContextTracingCallbacks(ctx)
+
 	allProofChunks := chunk(proof.BalanceProofs, batchSize)
-
 	transactions := []*types.Transaction{}
-
 	color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
 
 	for i := 0; i < len(allProofChunks); i++ {
 		balanceProofs := allProofChunks[i]
-		txn, err := SubmitCheckpointProofBatch(owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth)
+		tracing.OnStartSection("pepe::proof::checkpoint::batch::submit", map[string]string{
+			"chunk": fmt.Sprintf("%d", i),
+		})
+		txn, err := SubmitCheckpointProofBatch(ctx, owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth)
+		tracing.OnEndSection()
 		if err != nil {
 			// failed to submit batch.
 			return transactions, err
 		}
 		transactions = append(transactions, txn)
 		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, len(allProofChunks))
+		tracing.OnStartSection("pepe::proof::checkpoint::batch::wait", map[string]string{
+			"chunk": fmt.Sprintf("%d", i),
+		})
 		bind.WaitMined(ctx, eth, txn)
+		tracing.OnEndSection()
 		color.Green("OK")
 	}
 
@@ -42,7 +50,9 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 	return transactions, nil
 }
 
-func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client) (*types.Transaction, error) {
+func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client) (*types.Transaction, error) {
+	tracing := GetContextTracingCallbacks(ctx)
+
 	ownerAccount, err := PrepareAccount(&owner, chainId)
 	if err != nil {
 		return nil, err
@@ -55,6 +65,9 @@ func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int,
 		return nil, err
 	}
 
+	tracing.OnStartSection("pepe::proof::checkpoint::onchain::VerifyCheckpointProofs", map[string]string{
+		"eigenpod": eigenpodAddress,
+	})
 	txn, err := eigenPod.VerifyCheckpointProofs(
 		ownerAccount.TransactionOptions,
 		onchain.BeaconChainProofsBalanceContainerProof{
@@ -63,6 +76,7 @@ func SubmitCheckpointProofBatch(owner, eigenpodAddress string, chainId *big.Int,
 		},
 		CastBalanceProofs(balanceProofs),
 	)
+	tracing.OnEndSection()
 	if err != nil {
 		return nil, err
 	}
@@ -92,11 +106,16 @@ func asJSON(obj interface{}) string {
 }
 
 func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+	tracing := GetContextTracingCallbacks(ctx)
+
+	tracing.OnStartSection("GetCurrentCheckpoint", map[string]string{})
 	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
 	if err != nil {
 		return nil, err
 	}
+	tracing.OnEndSection()
 
+	tracing.OnStartSection("GetCurrentCheckpointBlockRoot", map[string]string{})
 	blockRoot, err := GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch last checkpoint: %w", err)
@@ -104,6 +123,7 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	if blockRoot == nil {
 		return nil, fmt.Errorf("failed to fetch last checkpoint - nil blockRoot")
 	}
+	tracing.OnEndSection()
 
 	if blockRoot != nil {
 		rootBytes := *blockRoot
@@ -113,28 +133,36 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	}
 
 	headerBlock := "0x" + hex.EncodeToString((*blockRoot)[:])
+	tracing.OnStartSection("GetBeaconHeader", map[string]string{})
 	header, err := beaconClient.GetBeaconHeader(ctx, headerBlock)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch beacon header (%s): %w", headerBlock, err)
 	}
+	tracing.OnEndSection()
 
+	tracing.OnStartSection("GetBeaconState", map[string]string{})
 	beaconState, err := beaconClient.GetBeaconState(ctx, strconv.FormatUint(uint64(header.Header.Message.Slot), 10))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch beacon state: %w", err)
 	}
+	tracing.OnEndSection()
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
+	tracing.OnStartSection("FindAllValidatorsForEigenpod", map[string]string{})
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, err
 	}
+	tracing.OnEndSection()
 
 	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
 
+	tracing.OnStartSection("SelectCheckpointableValidators", map[string]string{})
 	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpoint)
 	if err != nil {
 		return nil, err
 	}
+	tracing.OnEndSection()
 
 	validatorIndices := make([]uint64, len(checkpointValidators))
 	for i, v := range checkpointValidators {
@@ -148,10 +176,12 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 		return nil, fmt.Errorf("failed to initialize prover: %w", err)
 	}
 
+	tracing.OnStartSection("ProveCheckpointProofs", map[string]string{})
 	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prove checkpoint: %w", err)
 	}
+	tracing.OnEndSection()
 
 	return proof, nil
 }
