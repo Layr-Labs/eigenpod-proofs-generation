@@ -36,11 +36,10 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		PanicIfNoConsent(SubmitCredentialsProofConsent(len(validatorFieldsChunks)))
 	}
 
-	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn)", len(indices), batchSize)
-
 	transactions := []*types.Transaction{}
 	numChunks := len(validatorIndicesChunks)
 
+	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn)", numChunks, batchSize)
 	color.Green("Submitting proofs with %d transactions", numChunks)
 
 	for i := 0; i < numChunks; i++ {
