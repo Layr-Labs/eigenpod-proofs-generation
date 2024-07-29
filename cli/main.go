@@ -219,43 +219,85 @@ func main() {
 						ylw.Printf("%s\n", status.ProofSubmitter)
 						fmt.Println()
 
-						// pretty print everything
-						bold.Printf("Eigenpod validators\n")
-						numInactive := 0
-						for index, validator := range status.Validators {
+						// sort validators by status
+						inactiveValidators, activeValidators, withdrawnValidators := core.SortByStatus(status.Validators)
+						var targetColor *color.Color
+						var description string
 
-							var targetColor color.Attribute
-							var description string
+						bold.Printf("Eigenpod validators:\n============\n")
 
-							if validator.Status == core.ValidatorStatusActive {
-								targetColor = color.FgGreen
-								description = "active"
-							} else if validator.Status == core.ValidatorStatusInactive {
-								targetColor = color.FgHiYellow
-								description = "inactive"
-								numInactive++
-							} else if validator.Status == core.ValidatorStatusWithdrawn {
-								targetColor = color.FgHiRed
-								description = "withdrawn"
+						// print info on inactive validators
+						// these validators can be added to the pod's active validator set
+						// by running the `credentials` command
+						if len(inactiveValidators) != 0 {
+							targetColor = color.New(color.FgHiYellow)
+							description = "inactive"
+
+							color.New(color.Bold, color.FgHiYellow).Printf("- [INACTIVE] - Run `credentials` to verify these %d validators' withdrawal credentials:\n", len(inactiveValidators))
+
+							for _, validator := range inactiveValidators {
+								if validator.Slashed {
+									description = description + " (slashed on beacon chain)"
+								}
+
+								publicKey := validator.PublicKey
+								if !verbose {
+									publicKey = shortenHex(publicKey)
+								}
+
+								targetColor.Printf("\t- #%d (%s) [%s]\n", validator.Index, publicKey, description)
 							}
 
-							if validator.Slashed {
-								description = description + " (slashed)"
-							}
-
-							publicKey := validator.PublicKey
-							if !verbose {
-								publicKey = shortenHex(publicKey)
-							}
-
-							color.New(targetColor).Printf("\t- #%s (%s) [%s]\n", index, publicKey, description)
+							fmt.Println()
 						}
 
-						if numInactive != 0 {
-							bold.Printf("Run the `credentials` command to verify the withdrawal credentials of %d validators\n", numInactive)
+						// print info on active validators
+						// these validators can be checkpointed using the `checkpoint` command
+						if len(activeValidators) != 0 {
+							targetColor = color.New(color.FgGreen)
+							description = "active"
+
+							color.New(color.Bold, color.FgGreen).Printf("- [ACTIVE] - Run `checkpoint` to update these %d validators' balances:\n", len(activeValidators))
+
+							for _, validator := range activeValidators {
+								if validator.Slashed {
+									description = description + " (slashed on beacon chain)"
+								}
+
+								publicKey := validator.PublicKey
+								if !verbose {
+									publicKey = shortenHex(publicKey)
+								}
+
+								targetColor.Printf("\t- #%d (%s) [%s]\n", validator.Index, publicKey, description)
+							}
+
+							fmt.Println()
 						}
 
-						fmt.Println()
+						// print info on withdrawn validators
+						// no further action is required to manage these validators in the pod
+						if len(withdrawnValidators) != 0 {
+							targetColor = color.New(color.FgHiRed)
+							description = "withdrawn"
+
+							color.New(color.Bold, color.FgHiRed).Printf("- [WITHDRAWN] - %d validators:\n", len(withdrawnValidators))
+
+							for _, validator := range withdrawnValidators {
+								if validator.Slashed {
+									description = description + " (slashed on beacon chain)"
+								}
+
+								publicKey := validator.PublicKey
+								if !verbose {
+									publicKey = shortenHex(publicKey)
+								}
+
+								targetColor.Printf("\t- #%d (%s) [%s]\n", validator.Index, publicKey, description)
+							}
+
+							fmt.Println()
+						}
 
 						// Calculate the change in shares for completing a checkpoint
 						deltaETH := new(big.Float).Sub(

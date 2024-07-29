@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"sort"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
@@ -167,6 +168,35 @@ func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uin
 	}
 
 	return timestamp, nil
+}
+
+func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []Validator) {
+	var inactiveValidators, activeValidators, withdrawnValidators []Validator
+
+	// Iterate over all `validators` and sort them into inactive, active, or withdrawn.
+	for _, validator := range validators {
+		switch validator.Status {
+		case ValidatorStatusInactive:
+			inactiveValidators = append(inactiveValidators, validator)
+		case ValidatorStatusActive:
+			activeValidators = append(activeValidators, validator)
+		case ValidatorStatusWithdrawn:
+			withdrawnValidators = append(withdrawnValidators, validator)
+		}
+	}
+
+	// Sort each of these mappings in order of ascending Validator.Index
+	sort.Slice(inactiveValidators, func(i, j int) bool {
+		return inactiveValidators[i].Index < inactiveValidators[j].Index
+	})
+	sort.Slice(activeValidators, func(i, j int) bool {
+		return activeValidators[i].Index < activeValidators[j].Index
+	})
+	sort.Slice(withdrawnValidators, func(i, j int) bool {
+		return withdrawnValidators[i].Index < withdrawnValidators[j].Index
+	})
+
+	return inactiveValidators, activeValidators, withdrawnValidators
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
