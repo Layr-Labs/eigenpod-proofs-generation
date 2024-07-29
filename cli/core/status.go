@@ -24,6 +24,8 @@ type Validator struct {
 	Status                              int
 	PublicKey                           string
 	IsAwaitingWithdrawalCredentialProof bool
+	EffectiveBalance                    uint64
+	CurrentBalance                      uint64
 }
 
 type EigenpodStatus struct {
@@ -54,15 +56,19 @@ type EigenpodStatus struct {
 	MustForceCheckpoint bool
 }
 
-func sumBeaconChainRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.VersionedBeaconState) phase0.Gwei {
-	var sumGwei phase0.Gwei = 0
-
+func getRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.VersionedBeaconState) []phase0.Gwei {
 	validatorBalances, err := state.ValidatorBalances()
 	PanicOnError("failed to load validator balances", err)
 
+	return validatorBalances
+}
+
+func sumActiveValidatorBalancesGwei(allValidators []ValidatorWithIndex, allBalances []phase0.Gwei, state *spec.VersionedBeaconState) phase0.Gwei {
+	var sumGwei phase0.Gwei = 0
+
 	for i := 0; i < len(allValidators); i++ {
 		validator := allValidators[i]
-		sumGwei = sumGwei + validatorBalances[validator.Index]
+		sumGwei = sumGwei + allBalances[validator.Index]
 	}
 
 	return sumGwei
@@ -84,23 +90,30 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	PanicOnError("failed to find validators", err)
 
+	allBalances := getRegularBalancesGwei(allValidators, state)
+
 	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidators)
 	PanicOnError("failed to find active validators", err)
 
 	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, timestamp)
 	PanicOnError("failed to find checkpointable validators", err)
 
-	sumRegularBalancesGwei := sumBeaconChainRegularBalancesGwei(activeValidators, state)
+	sumRegularBalancesGwei := sumActiveValidatorBalancesGwei(activeValidators, allBalances, state)
 
 	for i := 0; i < len(allValidators); i++ {
 		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
 		PanicOnError("failed to fetch validator info", err)
-		validators[fmt.Sprintf("%d", allValidators[i].Index)] = Validator{
-			Index:                               allValidators[i].Index,
+
+		validatorIndex := allValidators[i].Index
+
+		validators[fmt.Sprintf("%d", validatorIndex)] = Validator{
+			Index:                               validatorIndex,
 			Status:                              int(validatorInfo.Status),
 			Slashed:                             allValidators[i].Validator.Slashed,
 			PublicKey:                           allValidators[i].Validator.PublicKey.String(),
 			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && allValidators[i].Validator.ExitEpoch == FAR_FUTURE_EPOCH,
+			EffectiveBalance:                    uint64(allValidators[i].Validator.EffectiveBalance),
+			CurrentBalance:                      uint64(allBalances[validatorIndex]),
 		}
 	}
 

@@ -222,30 +222,30 @@ func main() {
 						// sort validators by status
 						inactiveValidators, activeValidators, withdrawnValidators := core.SortByStatus(status.Validators)
 						var targetColor *color.Color
-						var description string
 
 						bold.Printf("Eigenpod validators:\n============\n")
+						ital.Printf("Format: #ValidatorIndex (pubkey) [effective balance] [current balance]\n")
 
 						// print info on inactive validators
 						// these validators can be added to the pod's active validator set
 						// by running the `credentials` command
 						if len(inactiveValidators) != 0 {
 							targetColor = color.New(color.FgHiYellow)
-							description = "inactive"
 
 							color.New(color.Bold, color.FgHiYellow).Printf("- [INACTIVE] - Run `credentials` to verify these %d validators' withdrawal credentials:\n", len(inactiveValidators))
 
 							for _, validator := range inactiveValidators {
-								if validator.Slashed {
-									description = description + " (slashed on beacon chain)"
-								}
-
 								publicKey := validator.PublicKey
 								if !verbose {
 									publicKey = shortenHex(publicKey)
 								}
 
-								targetColor.Printf("\t- #%d (%s) [%s]\n", validator.Index, publicKey, description)
+								if validator.Slashed {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								} else {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								}
+
 							}
 
 							fmt.Println()
@@ -255,21 +255,20 @@ func main() {
 						// these validators can be checkpointed using the `checkpoint` command
 						if len(activeValidators) != 0 {
 							targetColor = color.New(color.FgGreen)
-							description = "active"
 
 							color.New(color.Bold, color.FgGreen).Printf("- [ACTIVE] - Run `checkpoint` to update these %d validators' balances:\n", len(activeValidators))
 
 							for _, validator := range activeValidators {
-								if validator.Slashed {
-									description = description + " (slashed on beacon chain)"
-								}
-
 								publicKey := validator.PublicKey
 								if !verbose {
 									publicKey = shortenHex(publicKey)
 								}
 
-								targetColor.Printf("\t- #%d (%s) [%s]\n", validator.Index, publicKey, description)
+								if validator.Slashed {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								} else {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								}
 							}
 
 							fmt.Println()
@@ -279,21 +278,20 @@ func main() {
 						// no further action is required to manage these validators in the pod
 						if len(withdrawnValidators) != 0 {
 							targetColor = color.New(color.FgHiRed)
-							description = "withdrawn"
 
 							color.New(color.Bold, color.FgHiRed).Printf("- [WITHDRAWN] - %d validators:\n", len(withdrawnValidators))
 
 							for _, validator := range withdrawnValidators {
-								if validator.Slashed {
-									description = description + " (slashed on beacon chain)"
-								}
-
 								publicKey := validator.PublicKey
 								if !verbose {
 									publicKey = shortenHex(publicKey)
 								}
 
-								targetColor.Printf("\t- #%d (%s) [%s]\n", validator.Index, publicKey, description)
+								if validator.Slashed {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								} else {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								}
 							}
 
 							fmt.Println()
