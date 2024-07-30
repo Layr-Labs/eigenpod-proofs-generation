@@ -21,4 +21,7 @@ deps:
 	go install github.com/ethereum/go-ethereum/cmd/abigen@latest
 	brew install jq
 
+wasm:
+	GOOS=js GOARCH=wasm go build -o proofs.wasm
+
 
