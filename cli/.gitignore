@@ -3,3 +3,4 @@ cli.wasm
 cli.zip
 *.json
 *.pem
+*.wasm
