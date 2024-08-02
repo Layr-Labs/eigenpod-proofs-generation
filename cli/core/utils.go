@@ -262,12 +262,12 @@ func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
-		return nil, fmt.Errorf("failed to locate Eigenpod. Is your address correct?", err)
+		return nil, fmt.Errorf("failed to locate Eigenpod. Is your address correct?: %w", err)
 	}
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to reach eigenpod.", err)
+		return nil, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
 
 	return &checkpoint.BeaconBlockRoot, nil
