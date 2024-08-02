@@ -439,7 +439,7 @@ func main() {
 					SENDER_PK_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
-						Name:        "validator",
+						Name:        "validatorIndex",
 						Usage:       "The `index` of a specific validator to prove (e.g a slashed validator for `verifyStaleBalance()`).",
 						Destination: &specificValidator,
 					},
