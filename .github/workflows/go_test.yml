@@ -28,4 +28,7 @@ jobs:
         (cd data && unzip deneb_holesky_beacon_state_2227472.ssz.zip)
 
     - name: Run tests
-      run: go test ./...
+      run: |
+        ls -lar .
+        ls -lar data
+        go test ./...
