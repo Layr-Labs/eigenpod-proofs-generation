@@ -82,6 +82,10 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
 	return txn, err
 }
 
+/**
+ * Generates a .ProveValidatorContainers() proof for all eligible validators on the pod. If `validatorIndex` is set, it will only generate  a proof
+ * against that validator, regardless of the validator's state.
+ */
 func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, validatorIndex *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	if err != nil {
