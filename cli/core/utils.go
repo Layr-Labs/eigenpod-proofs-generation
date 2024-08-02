@@ -204,7 +204,7 @@ func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []
 func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) ([]ValidatorWithIndex, error) {
 	allValidators, err := beaconState.Validators()
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch beacon state", err)
+		return nil, fmt.Errorf("failed to fetch beacon state: %w", err)
 	}
 
 	eigenpodAddressBytes := common.FromHex(eigenpodAddress)
