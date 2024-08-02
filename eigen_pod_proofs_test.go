@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	beaconStateFileName := "data/deneb_holesky_beacon_state_1650726.ssz"
+	beaconStateFileName := "data/deneb_holesky_beacon_state_2227472.ssz"
 	beaconStateBytes, err := common.ReadFile(beaconStateFileName)
 	if err != nil {
 		panic(err)
