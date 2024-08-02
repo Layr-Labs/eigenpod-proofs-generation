@@ -28,7 +28,7 @@ func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
 	return &cli.Uint64Flag{
 		Name:        "batch",
 		Value:       defaultValue,
-		Usage:       "Submit proofs in groups of size `--batch <batchSize>`, to avoid gas limit.",
+		Usage:       "Submit proofs in groups of size `batchSize`, to avoid gas limit.",
 		Required:    false,
 		Destination: destination,
 	}
@@ -49,6 +49,7 @@ func Require(flag *cli.StringFlag) *cli.StringFlag {
 // Destinations for values set by various flags
 var eigenpodAddress, beacon, node, sender, output string
 var useJson bool = false
+var specificValidator uint64 = math.MaxUint64
 
 // Required flags:
 
@@ -437,6 +438,11 @@ func main() {
 					EXEC_NODE_FLAG,
 					SENDER_PK_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
+					&cli.Uint64Flag{
+						Name:        "validatorIndex",
+						Usage:       "The `index` of a specific validator to prove (e.g a slashed validator for `verifyStaleBalance()`).",
+						Destination: &specificValidator,
+					},
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
@@ -446,7 +452,12 @@ func main() {
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
-					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
+					var specificValidatorIndex *big.Int = nil
+					if specificValidator != math.MaxUint64 {
+						specificValidatorIndex = new(big.Int).SetUint64(specificValidator)
+					}
+
+					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex)
 					if err != nil || validatorProofs == nil {
 						core.PanicOnError("Failed to generate validator proof", err)
 						core.Panic("no inactive validators")
