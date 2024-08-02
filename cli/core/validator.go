@@ -38,8 +38,8 @@ func LoadValidatorProofFromFile(path string) (*SerializableCredentialProof, erro
 	return &res, nil
 }
 
-func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool) ([]*types.Transaction, error) {
-	ownerAccount, err := PrepareAccount(&owner, chainId)
+func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool, noSend bool) ([]*types.Transaction, error) {
+	ownerAccount, err := PrepareAccount(&owner, chainId, noSend)
 	if err != nil {
 		return nil, err
 	}
@@ -54,14 +54,20 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	validatorIndicesChunks := chunk(indices, batchSize)
 	validatorProofsChunks := chunk(proofs.ValidatorFieldsProofs, batchSize)
 	validatorFieldsChunks := chunk(proofs.ValidatorFields, batchSize)
-	if !noPrompt {
+	if !noPrompt && !noSend {
 		PanicIfNoConsent(SubmitCredentialsProofConsent(len(validatorFieldsChunks)))
 	}
 
 	transactions := []*types.Transaction{}
 	numChunks := len(validatorIndicesChunks)
 
-	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn)", numChunks, batchSize)
+	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn [%s])", numChunks, batchSize, func() string {
+		if ownerAccount.TransactionOptions.NoSend {
+			return "simulated"
+		} else {
+			return "live"
+		}
+	}())
 	color.Green("Submitting proofs with %d transactions", numChunks)
 
 	for i := 0; i < numChunks; i++ {

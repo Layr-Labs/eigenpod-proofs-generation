@@ -112,10 +112,11 @@ type Owner = struct {
 	FromAddress        gethCommon.Address
 	PublicKey          *ecdsa.PublicKey
 	TransactionOptions *bind.TransactOpts
+	IsDryRun           bool
 }
 
-func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool) (uint64, error) {
-	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId)
+func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool, noSend bool) (uint64, error) {
+	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId, noSend)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse private key: %w", err)
 	}
@@ -323,7 +324,7 @@ func PanicIfNoConsent(prompt string) {
 	}
 }
 
-func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
+func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error) {
 	if owner == nil {
 		return nil, fmt.Errorf("no owner")
 	}
@@ -344,10 +345,13 @@ func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
 		return nil, err
 	}
 
+	auth.NoSend = noSend
+
 	return &Owner{
 		FromAddress:        fromAddress,
 		PublicKey:          publicKeyECDSA,
 		TransactionOptions: auth,
+		IsDryRun:           noSend,
 	}, nil
 }
 
