@@ -28,7 +28,7 @@ func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
 	return &cli.Uint64Flag{
 		Name:        "batch",
 		Value:       defaultValue,
-		Usage:       "Submit proofs in groups of size `--batch <batchSize>`, to avoid gas limit.",
+		Usage:       "Submit proofs in groups of size `batchSize`, to avoid gas limit.",
 		Required:    false,
 		Destination: destination,
 	}
@@ -440,7 +440,7 @@ func main() {
 					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
 						Name:        "validator",
-						Usage:       "The index of a specific validator to prove (e.g a slashed validator for `verifyStaleBalance()`).",
+						Usage:       "The `index` of a specific validator to prove (e.g a slashed validator for `verifyStaleBalance()`).",
 						Destination: &specificValidator,
 					},
 				},
