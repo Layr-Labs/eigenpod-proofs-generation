@@ -82,7 +82,7 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
 	return txn, err
 }
 
-func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, specificallyValidator *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
+func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, validatorIndex *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to load latest block: %w", err)
@@ -113,11 +113,11 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time(), specificallyValidator)
+	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time(), validatorIndex)
 	return proofs, latestBlock.Time(), err
 }
 
-func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidator *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
+func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidatorIndex *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find validators: %w", err)
@@ -125,16 +125,16 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 
 	var awaitingCredentialValidators []ValidatorWithIndex
 
-	if forSpecificValidator != nil {
+	if forSpecificValidatorIndex != nil {
 		// prove a specific validator
 		for _, v := range allValidators {
-			if v.Index == forSpecificValidator.Uint64() {
+			if v.Index == forSpecificValidatorIndex.Uint64() {
 				awaitingCredentialValidators = []ValidatorWithIndex{v}
 				break
 			}
 		}
 		if len(awaitingCredentialValidators) == 0 {
-			return nil, fmt.Errorf("validator at index %d does not exist or does not have withdrawal credentials set to pod %s", forSpecificValidator.Uint64(), eigenpodAddress)
+			return nil, fmt.Errorf("validator at index %d does not exist or does not have withdrawal credentials set to pod %s", forSpecificValidatorIndex.Uint64(), eigenpodAddress)
 		}
 	} else {
 		// default behavior -- load any validators that are inactive / need a credential proof
