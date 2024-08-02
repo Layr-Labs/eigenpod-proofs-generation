@@ -50,6 +50,7 @@ func Require(flag *cli.StringFlag) *cli.StringFlag {
 var eigenpodAddress, beacon, node, sender, output string
 var useJson bool = false
 var specificValidator uint64 = math.MaxUint64
+var proofPath string
 
 // Required flags:
 
@@ -103,13 +104,19 @@ var PRINT_JSON_FLAG = &cli.BoolFlag{
 	Destination: &useJson,
 }
 
+var PROOF_PATH_FLAG = &cli.StringFlag{
+	Name:        "proof",
+	Value:       "",
+	Usage:       "the `path` to a previous proof generated from this step (via -o proof.json). If provided, this proof will submitted to network via the --sender flag.",
+	Destination: &proofPath,
+}
+
 // maximum number of proofs per txn for each of the following proof types:
 const DEFAULT_BATCH_CREDENTIALS = 60
 const DEFAULT_BATCH_CHECKPOINT = 80
 
 func main() {
 	var batchSize uint64
-	var checkpointProofPath string
 	var forceCheckpoint, disableColor, verbose bool
 	var noPrompt bool
 	ctx := context.Background()
@@ -338,18 +345,13 @@ func main() {
 					EXEC_NODE_FLAG,
 					SENDER_PK_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
+					PROOF_PATH_FLAG,
 					&cli.BoolFlag{
 						Name:        "force",
 						Aliases:     []string{"f"},
 						Value:       false,
 						Usage:       "If true, starts a checkpoint even if the pod has no native ETH to award shares",
 						Destination: &forceCheckpoint,
-					},
-					&cli.StringFlag{
-						Name:        "proof",
-						Value:       "",
-						Usage:       "the path to a previous proof generated from this step (via `-o proof.json`). If provided, this proof will submitted to network via the `--sender` flag.",
-						Destination: &checkpointProofPath,
 					},
 					&cli.StringFlag{
 						Name:        "out",
@@ -373,14 +375,14 @@ func main() {
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
-					if len(checkpointProofPath) > 0 {
+					if len(proofPath) > 0 {
 						// user specified the proof
 						if len(sender) == 0 {
 							core.Panic("If using --proof, --sender <privateKey> must also be supplied.")
 						}
 
 						// load `proof` from file.
-						proof, err := core.LoadCheckpointProofFromFile(checkpointProofPath)
+						proof, err := core.LoadCheckpointProofFromFile(proofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
 						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
@@ -443,6 +445,14 @@ func main() {
 						Usage:       "The `index` of a specific validator to prove (e.g a slashed validator for `verifyStaleBalance()`).",
 						Destination: &specificValidator,
 					},
+					PROOF_PATH_FLAG,
+					&cli.StringFlag{
+						Name:        "out",
+						Aliases:     []string{"O", "output"},
+						Value:       "",
+						Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--sender`, `--out` takes precedence and the proof will not be broadcast.",
+						Destination: &output,
+					},
 				},
 				Action: func(cctx *cli.Context) error {
 					if disableColor {
@@ -457,7 +467,24 @@ func main() {
 						specificValidatorIndex = new(big.Int).SetUint64(specificValidator)
 					}
 
+					if len(proofPath) > 0 {
+						if len(sender) == 0 {
+							core.Panic("If using --proof, --sender <privateKey> must also be supplied.")
+						}
+
+						proof, err := core.LoadValidatorProofFromFile(proofPath)
+						core.PanicOnError("failed to parse checkpoint proof from file", err)
+
+						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, proof.ValidatorProofs, proof.OracleBeaconTimestamp, noPrompt)
+						for _, txn := range txns {
+							color.Green("submitted txn: %s", txn.Hash())
+						}
+						core.PanicOnError("an error occurred while submitting your credential proofs", err)
+						return nil
+					}
+
 					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex)
+
 					if err != nil || validatorProofs == nil {
 						core.PanicOnError("Failed to generate validator proof", err)
 						core.Panic("no inactive validators")
@@ -470,13 +497,14 @@ func main() {
 						}
 						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 					} else {
-						data := map[string]any{
-							"validatorProofs": validatorProofs,
+						proof := core.SerializableCredentialProof{
+							ValidatorProofs:       validatorProofs,
+							OracleBeaconTimestamp: oracleBeaconTimestamp,
 						}
-						out, err := json.MarshalIndent(data, "", "   ")
+						out, err := json.MarshalIndent(proof, "", "   ")
 						core.PanicOnError("failed to process proof", err)
 
-						fmt.Printf("%s\n", out)
+						core.WriteOutputToFileOrStdout(out, &output)
 					}
 					return nil
 				},
