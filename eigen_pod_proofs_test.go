@@ -27,13 +27,13 @@ var epp *eigenpodproofs.EigenPodProofs
 func TestMain(m *testing.M) {
 	var err error
 
-	beaconHeaderFileName := "data/deneb_holesky_beacon_header_2227472.json"
+	beaconHeaderFileName := "data/deneb_holesky_beacon_headers_2227472.json"
 	beaconHeaderBytes, err := common.ReadFile(beaconHeaderFileName)
 	if err != nil {
 		panic(err)
 	}
 
-	beaconStateFileName := "data/deneb_holesky_beacon_state_2227472.ssz"
+	beaconStateFileName := "data/deneb_holesky_beacon_state_1650726.ssz"
 	beaconStateBytes, err := common.ReadFile(beaconStateFileName)
 	if err != nil {
 		panic(err)
