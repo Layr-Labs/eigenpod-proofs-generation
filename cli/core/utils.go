@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -325,7 +326,7 @@ func PanicIfNoConsent(prompt string) {
 
 func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
 	if owner == nil {
-		return nil, fmt.Errorf("no owner")
+		return nil, errors.New("no owner")
 	}
 
 	privateKey, err := crypto.HexToECDSA(*owner)
