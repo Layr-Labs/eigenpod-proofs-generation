@@ -27,17 +27,14 @@ var epp *eigenpodproofs.EigenPodProofs
 func TestMain(m *testing.M) {
 	var err error
 
-	beaconHeaderFileName := "data/deneb_holesky_beacon_header_1650726.json"
-	beaconHeaderBytes, err := common.ReadFile(beaconHeaderFileName)
+	beaconHeaderBytes, err := common.ReadFile("data/deneb_holesky_beacon_headers_2227472.json")
 	if err != nil {
 		panic(err)
 	}
 
-	beaconStateFileName := "data/deneb_holesky_beacon_state_1650726.ssz"
-	beaconStateBytes, err := common.ReadFile(beaconStateFileName)
+	beaconStateBytes, err := common.ReadFile("data/deneb_holesky_beacon_state_2227472.ssz")
 	if err != nil {
 		panic(err)
-
 	}
 
 	beaconHeader = &phase0.BeaconBlockHeader{}
@@ -66,12 +63,5 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	code := m.Run()
-
-	// // Teardown
-	// log.Println("Tearing down suite")
-	// teardownSuite()
-
-	// Exit with test result code
-	os.Exit(code)
+	os.Exit(m.Run())
 }

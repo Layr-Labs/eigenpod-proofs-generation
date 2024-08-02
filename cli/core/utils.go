@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -203,7 +204,7 @@ func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []
 func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.VersionedBeaconState) ([]ValidatorWithIndex, error) {
 	allValidators, err := beaconState.Validators()
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch beacon state", err)
+		return nil, fmt.Errorf("failed to fetch beacon state: %w", err)
 	}
 
 	eigenpodAddressBytes := common.FromHex(eigenpodAddress)
@@ -325,7 +326,7 @@ func PanicIfNoConsent(prompt string) {
 
 func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
 	if owner == nil {
-		return nil, fmt.Errorf("no owner")
+		return nil, errors.New("no owner")
 	}
 
 	privateKey, err := crypto.HexToECDSA(*owner)
