@@ -18,15 +18,22 @@ jobs:
 
     - name: Install Unzip
       run: sudo apt-get install unzip
+    - name: Download files
+      run: |
+        cd data && curl https://dviu8zszosyat.cloudfront.net/deneb_goerli_slot_7413760.json.zip \ 
+             https://dviu8zszosyat.cloudfront.net/goerli_slot_6397952.json.zip \ 
+             https://dviu8zszosyat.cloudfront.net/deneb_goerli_slot_7431952.json.zip \
+             https://dviu8zszosyat.cloudfront.net/deneb_goerli_slot_7421952.json.zip \
+             https://dviu8zszosyat.cloudfront.net/goerli_slot_6409723.json.zip 
     - name: Unzip the File 1
       run: unzip data/deneb_goerli_slot_7413760.json.zip -d ./data
     - name: Unzip the File 2
       run: unzip data/goerli_slot_6397952.json.zip -d ./data
     - name: Unzip the File 3
       run: unzip data/deneb_goerli_slot_7431952.json.zip -d ./data
-    - name: Unzip the File 3
-      run: unzip data/deneb_goerli_slot_7421952.json.zip -d ./data
     - name: Unzip the File 4
+      run: unzip data/deneb_goerli_slot_7421952.json.zip -d ./data
+    - name: Unzip the File 5
       run: unzip data/goerli_slot_6409723.json.zip -d ./data
 
     - name: Set up Go 1.x
