@@ -134,7 +134,7 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 			}
 		}
 		if len(awaitingCredentialValidators) == 0 {
-			return nil, fmt.Errorf("no such validator at index %d", forSpecificValidator.Uint64())
+			return nil, fmt.Errorf("validator at index %d does not exist or does not have withdrawal credentials set to pod %s", forSpecificValidator.Uint64(), eigenpodAddress)
 		}
 	} else {
 		// default behavior -- load any validators that are inactive / need a credential proof
