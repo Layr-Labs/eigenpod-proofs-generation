@@ -2,8 +2,10 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
@@ -15,6 +17,26 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 )
+
+type SerializableCredentialProof struct {
+	ValidatorProofs       *eigenpodproofs.VerifyValidatorFieldsCallParams
+	OracleBeaconTimestamp uint64
+}
+
+func LoadValidatorProofFromFile(path string) (*SerializableCredentialProof, error) {
+	res := SerializableCredentialProof{}
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(bytes, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
 
 func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool) ([]*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId)
