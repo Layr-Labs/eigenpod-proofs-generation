@@ -11,6 +11,8 @@ import (
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	v1 "github.com/attestantio/go-eth2-client/api/v1"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -147,6 +149,12 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	}
 	tracing.OnEndSection()
 
+	return GenerateCheckpointProofForState(ctx, eigenpodAddress, beaconState, header, eth, currentCheckpoint, chainId)
+}
+
+func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string, beaconState *spec.VersionedBeaconState, header *v1.BeaconBlockHeader, eth *ethclient.Client, currentCheckpointTimestamp uint64, chainId *big.Int) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+	tracing := GetContextTracingCallbacks(ctx)
+
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
 	tracing.OnStartSection("FindAllValidatorsForEigenpod", map[string]string{})
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
@@ -158,7 +166,7 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
 
 	tracing.OnStartSection("SelectCheckpointableValidators", map[string]string{})
-	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpoint)
+	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpointTimestamp)
 	if err != nil {
 		return nil, err
 	}
