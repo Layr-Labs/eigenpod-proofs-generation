@@ -17,8 +17,8 @@ func ContextWithTracing(ctx context.Context, callbacks *TracerCallbacks) context
 }
 
 func GetContextTracingCallbacks(ctx context.Context) *TracerCallbacks {
-	tracing := ctx.Value(EIGEN_KEY).(*TracerCallbacks)
-	if tracing == nil {
+	tracing, ok := ctx.Value(EIGEN_KEY).(*TracerCallbacks)
+	if !ok || tracing == nil {
 		return &TracerCallbacks{
 			OnStartSection: func(name string, meta map[string]string) {},
 			OnEndSection:   func() {},
