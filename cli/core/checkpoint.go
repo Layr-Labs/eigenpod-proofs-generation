@@ -127,11 +127,9 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	}
 	tracing.OnEndSection()
 
-	if blockRoot != nil {
-		rootBytes := *blockRoot
-		if AllZero(rootBytes[:]) {
-			return nil, fmt.Errorf("no checkpoint active. Are you sure you started a checkpoint?")
-		}
+	rootBytes := *blockRoot
+	if AllZero(rootBytes[:]) {
+		return nil, fmt.Errorf("no checkpoint active. Are you sure you started a checkpoint?")
 	}
 
 	headerBlock := "0x" + hex.EncodeToString((*blockRoot)[:])
@@ -149,10 +147,15 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	}
 	tracing.OnEndSection()
 
-	return GenerateCheckpointProofForState(ctx, eigenpodAddress, beaconState, header, eth, currentCheckpoint, chainId)
+	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize prover: %w", err)
+	}
+
+	return GenerateCheckpointProofForState(ctx, eigenpodAddress, beaconState, header, eth, currentCheckpoint, proofs)
 }
 
-func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string, beaconState *spec.VersionedBeaconState, header *v1.BeaconBlockHeader, eth *ethclient.Client, currentCheckpointTimestamp uint64, chainId *big.Int) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string, beaconState *spec.VersionedBeaconState, header *v1.BeaconBlockHeader, eth *ethclient.Client, currentCheckpointTimestamp uint64, proofs *eigenpodproofs.EigenPodProofs) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
@@ -178,11 +181,6 @@ func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string
 	}
 
 	color.Yellow("Proving validators at indices: %s", asJSON(validatorIndices))
-
-	proofs, err := eigenpodproofs.NewEigenPodProofs(chainId.Uint64(), 300 /* oracleStateCacheExpirySeconds - 5min */)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize prover: %w", err)
-	}
 
 	tracing.OnStartSection("ProveCheckpointProofs", map[string]string{})
 	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)
