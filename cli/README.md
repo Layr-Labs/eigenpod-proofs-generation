@@ -5,16 +5,12 @@
 ## Dependencies
 
 - Golang >= 1.21
-- `abigen` (`go install github.com/ethereum/go-ethereum/cmd/abigen@latest`)
-- `jq` 
-- `solc` (`npm install -g solc`)
-
 - URL of an execution ETH node
 - URL of a beacon ETH node
 
 ## Building from source
 
->> `make`
+>> `go build`
 >> `./cli`
 
 # Proof Generation
