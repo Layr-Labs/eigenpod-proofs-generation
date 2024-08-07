@@ -10,8 +10,11 @@ import (
 
 	"context"
 
+	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
@@ -50,7 +53,9 @@ func Require(flag *cli.StringFlag) *cli.StringFlag {
 var eigenpodAddress, beacon, node, sender, output string
 var useJson bool = false
 var specificValidator uint64 = math.MaxUint64
+var slashedValidatorIndex uint64 = math.MaxUint64
 var proofPath string
+var noPrompt bool
 
 // Required flags:
 
@@ -84,6 +89,23 @@ var EXEC_NODE_FLAG = &cli.StringFlag{
 	Destination: &node,
 }
 
+var NO_PROMPT_FLAG = &cli.BoolFlag{
+	Name:        "no-prompt",
+	Value:       false,
+	Usage:       "Disables prompts to approve any transactions occurring (e.g in CI).",
+	Destination: &noPrompt,
+}
+
+// Required for commands that need an execution layer RPC
+var SLASHED_VALIDATOR_INDEX_FLAG = &cli.Uint64Flag{
+	Name:        "slashedValidatorIndex",
+	Aliases:     []string{"s"},
+	Value:       0,
+	Usage:       "[required] The index of a validator belonging to this pod that was slashed.",
+	Required:    true,
+	Destination: &slashedValidatorIndex,
+}
+
 // Optional commands:
 
 // Optional use for commands that want direct tx submission from a specific private key
@@ -115,10 +137,17 @@ var PROOF_PATH_FLAG = &cli.StringFlag{
 const DEFAULT_BATCH_CREDENTIALS = 60
 const DEFAULT_BATCH_CHECKPOINT = 80
 
+func proofCast(proof []eigenpodproofs.Bytes32) [][32]byte {
+	result := make([][32]byte, len(proof))
+	for i, p := range proof {
+		result[i] = p
+	}
+	return result
+}
+
 func main() {
 	var batchSize uint64
 	var forceCheckpoint, disableColor, verbose bool
-	var noPrompt bool
 	ctx := context.Background()
 
 	app := &cli.App{
@@ -128,6 +157,76 @@ func main() {
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
+			{
+				Name:  "stale-balance",
+				Args:  true,
+				Usage: "If needed, calls `verifyStaleBalances` to correct the balance on a pod you don't own. This will attempt to (1) conclude any existing checkpoint on the pod, and then (2) invoke verifyStaleBalances() to start another, more up-to-date, checkpoint.",
+				Flags: []cli.Flag{
+					POD_ADDRESS_FLAG,
+					EXEC_NODE_FLAG,
+					BEACON_NODE_FLAG,
+					Require(SENDER_PK_FLAG),
+					SLASHED_VALIDATOR_INDEX_FLAG,
+					NO_PROMPT_FLAG,
+					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
+				},
+				Action: func(cctx *cli.Context) error {
+					ctx := context.Background()
+
+					eth, beacon, chainId, err := core.GetClients(ctx, node, beacon)
+					core.PanicOnError("failed to get clients", err)
+
+					ownerAccount, err := core.PrepareAccount(&sender, chainId)
+					core.PanicOnError("failed to parse sender PK", err)
+
+					eigenpod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+					core.PanicOnError("failed to reach eigenpod", err)
+
+					currentCheckpointTimestamp, err := eigenpod.CurrentCheckpointTimestamp(nil)
+					core.PanicOnError("failed to fetch any existing checkpoint info", err)
+
+					if currentCheckpointTimestamp > 0 {
+						// TODO: complete current checkpoint
+						fmt.Printf("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing.", currentCheckpointTimestamp)
+
+						proofs, err := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beacon)
+						core.PanicOnError("failed to generate checkpoint proofs", err)
+
+						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proofs, eth, batchSize, noPrompt)
+						core.PanicOnError("failed to submit checkpoint proofs", err)
+
+						for i, txn := range txns {
+							fmt.Printf("sending txn[%d/%d]: %s (waiting)...", i, len(txns), txn.Hash())
+							bind.WaitMined(ctx, eth, txn)
+						}
+					}
+
+					proof, oracleBeaconTimesetamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(slashedValidatorIndex))
+					core.PanicOnError("failed to generate credential proof for slashed validator", err)
+
+					if !noPrompt {
+						core.PanicIfNoConsent("This will invoke `EigenPod.verifyStaleBalance()` on the given eigenpod, which will start a checkpoint. Once started, this checkpoint must be completed.")
+					}
+
+					txn, err := eigenpod.VerifyStaleBalance(
+						ownerAccount.TransactionOptions,
+						oracleBeaconTimesetamp,
+						onchain.BeaconChainProofsStateRootProof{
+							Proof:           proof.StateRootProof.Proof.ToByteSlice(),
+							BeaconStateRoot: proof.StateRootProof.BeaconStateRoot,
+						},
+						onchain.BeaconChainProofsValidatorProof{
+							ValidatorFields: proofCast(proof.ValidatorFields[0]),
+							Proof:           proof.ValidatorFieldsProofs[0].ToByteSlice(),
+						},
+					)
+					core.PanicOnError("failed to call verifyStaleBalance()", err)
+
+					fmt.Printf("txn: %s\n", txn.Hash())
+
+					return nil
+				},
+			},
 			{
 				Name:      "assign-submitter",
 				Args:      true,
@@ -517,12 +616,7 @@ func main() {
 				Usage:       "Disables color output for terminals that do not support ANSI color codes.",
 				Destination: &disableColor,
 			},
-			&cli.BoolFlag{
-				Name:        "no-prompt",
-				Value:       false,
-				Usage:       "Disables prompts to approve any transactions occurring (e.g in CI).",
-				Destination: &noPrompt,
-			},
+			NO_PROMPT_FLAG,
 			&cli.BoolFlag{
 				Name:        "verbose",
 				Aliases:     []string{"v"},
