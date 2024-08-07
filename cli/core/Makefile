@@ -1,7 +1,5 @@
 TMP_DIR :=$(shell mktemp -d)
 
-.DEFAULT_GOAL := build
-
 all: codegen
 
 clone: 
