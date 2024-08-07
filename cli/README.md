@@ -13,6 +13,29 @@
 >> `go build`
 >> `./cli`
 
+## Help
+
+Any of the below commands has a built in help dialogue which further explains how to structure the command properly. Simply add `--help` to the end of any command below for more information. For example:
+```bash
+./cli credentials --help
+```
+
+
+## Key Management and EigenPod Proof Submitter
+
+EigenLayer Native Restaking requires submitting proofs to EigenLayer contracts to prove the amount of validator ETH is active and its withdrawal address is pointing to the EigenPod. Be sure to use the most secure key management solution available for your EigenPod generation key (aka the EigenPod "owner"), such as a hardware wallet or cold wallet solution.
+[todo ask @antojoseph to suggest wording here]
+
+For users who do not wish to include the EigenPod Owner Private Key in their proof generation commands, you may identify another wallet and delegate its privilege to submit proofs on its behalf using the assign_submitter command. This is a **one time process** to assign a submitter for proofs. At any point in the future the `sender` of the proof can be the assigned submitter.
+
+We recommend using a **different key** for the Proof Submitter vs the EigenPod owner. The Proof Submitter is any other address that is approved to submit proofs on behalf of the EigenPod owner. This allows the EigenPod owner key to remain used less frequently and remain more secure.
+
+Use the following command to assign a submitter for your EigenPod:
+```bash
+/cli assign-submitter --execNode $NODE_ETH --podAddress $EIGENPOD_ADDRESS --sender $EIGENPOD_OWNER_PK
+```
+
+
 # Proof Generation
 
 The CLI produces two kinds of proofs, each corresponding to a different action you can take with your eigenpod. The CLI takes an additional `--sender $EIGENPOD_OWNER_PK` argument; if supplied, the CLI will submit proofs and act onchain for you.
