@@ -24,7 +24,6 @@ Any of the below commands has a built in help dialogue which further explains ho
 ## Key Management and EigenPod Proof Submitter
 
 EigenLayer Native Restaking requires submitting proofs to EigenLayer contracts to prove the amount of validator ETH is active and its withdrawal address is pointing to the EigenPod. Be sure to use the most secure key management solution available for your EigenPod generation key (aka the EigenPod "owner"), such as a hardware wallet or cold wallet solution.
-[todo ask @antojoseph to suggest wording here]
 
 For users who do not wish to include the EigenPod Owner Private Key in their proof generation commands, you may identify another wallet and delegate its privilege to submit proofs on its behalf using the assign_submitter command. This is a **one time process** to assign a submitter for proofs. At any point in the future the `sender` of the proof can be the assigned submitter.
 
