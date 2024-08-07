@@ -8,14 +8,21 @@
 - `abigen` (`go install github.com/ethereum/go-ethereum/cmd/abigen@latest`)
 - `jq` 
 - `solc` (`npm install -g solc`)
+- [foundry](https://book.getfoundry.sh/getting-started/installation) (`curl -L https://foundry.paradigm.xyz | bash`)
+
 
 - URL of an execution ETH node
 - URL of a beacon ETH node
 
 ## Building from source
 
->> `make`
->> `./cli`
+```bash
+# Build CLI binary
+make
+
+# Test invoking the binary
+./cli
+```
 
 # Proof Generation
 
