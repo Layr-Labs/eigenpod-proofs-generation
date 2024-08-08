@@ -15,7 +15,6 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
@@ -99,7 +98,6 @@ var NO_PROMPT_FLAG = &cli.BoolFlag{
 // Required for commands that need an execution layer RPC
 var SLASHED_VALIDATOR_INDEX_FLAG = &cli.Uint64Flag{
 	Name:        "slashedValidatorIndex",
-	Aliases:     []string{"s"},
 	Value:       0,
 	Usage:       "[required] The index of a validator belonging to this pod that was slashed.",
 	Required:    true,
@@ -241,7 +239,7 @@ func main() {
 					targetAddress := cctx.Args().First()
 					if len(targetAddress) == 0 {
 						return fmt.Errorf("usage: `assign-submitter <0xsubmitter>`")
-					} else if !gethCommon.IsHexAddress(targetAddress) {
+					} else if !common.IsHexAddress(targetAddress) {
 						return fmt.Errorf("invalid address for 0xsubmitter: %s", targetAddress)
 					}
 
@@ -260,13 +258,13 @@ func main() {
 						return fmt.Errorf("failed to parse --sender: %w", err)
 					}
 
-					pod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+					pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 					if err != nil {
 						return fmt.Errorf("error contacting eigenpod: %w", err)
 					}
 
 					// Check that the existing submitter is not the current submitter
-					newSubmitter := gethCommon.HexToAddress(targetAddress)
+					newSubmitter := common.HexToAddress(targetAddress)
 					currentSubmitter, err := pod.ProofSubmitter(nil)
 					if err != nil {
 						return fmt.Errorf("error fetching current proof submitter: %w", err)
