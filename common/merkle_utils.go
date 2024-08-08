@@ -71,6 +71,14 @@ func (p Proof) ToByteSlice() []byte {
 	return byteSlice
 }
 
+func (p Proof) ToBytesSlice() [][]byte {
+	byteSlice := make([][]byte, 0)
+	for _, d := range p {
+		byteSlice = append(byteSlice, d[:])
+	}
+	return byteSlice
+}
+
 func init() {
 	tmp := [64]byte{}
 	for i := 0; i < 64; i++ {

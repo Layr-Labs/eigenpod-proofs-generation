@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package proof;
+
+import "google/api/annotations.proto";
+
+option go_package = "github.com/ExocoreNetwork/eigenpod-proofs-generation/server/main";
+
+message ValidatorProofRequest {
+    uint64 chain_id = 1;
+    uint64 slot = 2;
+    uint64 validator_index = 3;
+}
+
+message ValidatorProofResponse {
+    repeated bytes stateRootProof = 1;
+    repeated bytes validatorContainerProof = 2;
+}
+
+message WithdrawalProofRequest {
+    uint64 chain_id = 1;
+    uint64 slot = 2;
+    uint64 withdrawal_index = 3;
+}
+
+message WithdrawalProofResponse {
+    repeated bytes proof = 1;
+}
+
+service ProofService {
+  rpc GetValidatorProof(ValidatorProofRequest) returns (ValidatorProofResponse) {
+    option (google.api.http) = {
+      post: "/v1/validator-proof"
+      body: "*"
+    };
+  }
+  
+  rpc GetWithdrawalProof(WithdrawalProofRequest) returns (WithdrawalProofResponse) {
+    option (google.api.http) = {
+      post: "/v1/withdrawal-proof"
+      body: "*"
+    };
+  }
+}
+
+

@@ -1,0 +1,19 @@
+version: v1
+plugins:
+  # Generate Go structs for protocol buffers
+  - name: go
+    out: gen
+    opt: paths=source_relative
+
+  # Generate Go gRPC stubs
+  - name: go-grpc
+    out: gen
+    opt: paths=source_relative
+
+  # Generate gRPC-Gateway files
+  - name: grpc-gateway
+    out: gen
+    opt:
+      - paths=source_relative
+      - generate_unbound_methods=true
+
