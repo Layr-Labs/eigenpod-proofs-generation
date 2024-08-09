@@ -23,6 +23,7 @@ type Validator struct {
 	Index                               uint64
 	Status                              int
 	PublicKey                           string
+	IsAwaitingActivationQueue           bool
 	IsAwaitingWithdrawalCredentialProof bool
 	EffectiveBalance                    uint64
 	CurrentBalance                      uint64
@@ -101,18 +102,20 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	sumRegularBalancesGwei := sumActiveValidatorBalancesGwei(activeValidators, allBalances, state)
 
 	for i := 0; i < len(allValidators); i++ {
-		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, allValidators[i].Validator.PublicKey[:])
-		PanicOnError("failed to fetch validator info", err)
-
+		validator := allValidators[i].Validator
 		validatorIndex := allValidators[i].Index
+
+		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, validator.PublicKey[:])
+		PanicOnError("failed to fetch validator info", err)
 
 		validators[fmt.Sprintf("%d", validatorIndex)] = Validator{
 			Index:                               validatorIndex,
 			Status:                              int(validatorInfo.Status),
-			Slashed:                             allValidators[i].Validator.Slashed,
-			PublicKey:                           allValidators[i].Validator.PublicKey.String(),
-			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && allValidators[i].Validator.ExitEpoch == FAR_FUTURE_EPOCH,
-			EffectiveBalance:                    uint64(allValidators[i].Validator.EffectiveBalance),
+			Slashed:                             validator.Slashed,
+			PublicKey:                           validator.PublicKey.String(),
+			IsAwaitingActivationQueue:           validator.ActivationEpoch == FAR_FUTURE_EPOCH,
+			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && validator.ExitEpoch == FAR_FUTURE_EPOCH && validator.ActivationEpoch != FAR_FUTURE_EPOCH,
+			EffectiveBalance:                    uint64(validator.EffectiveBalance),
 			CurrentBalance:                      uint64(allBalances[validatorIndex]),
 		}
 	}

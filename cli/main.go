@@ -228,11 +228,40 @@ func main() {
 						fmt.Println()
 
 						// sort validators by status
-						inactiveValidators, activeValidators, withdrawnValidators := core.SortByStatus(status.Validators)
+						awaitingActivationQueueValidators, inactiveValidators, activeValidators, withdrawnValidators :=
+							core.SortByStatus(status.Validators)
 						var targetColor *color.Color
 
 						bold.Printf("Eigenpod validators:\n============\n")
 						ital.Printf("Format: #ValidatorIndex (pubkey) [effective balance] [current balance]\n")
+
+						// print info on validators who are not yet in the activation queue
+						//
+						// if these validators have 32 ETH effective balance, they will be
+						// activated soon and can then have their credentials verified
+						//
+						// if these validators do NOT have 32 ETH effective balance yet, the
+						// staker needs to deposit more ETH.
+						if len(awaitingActivationQueueValidators) != 0 {
+							targetColor = color.New(color.FgHiRed)
+
+							color.New(color.Bold, color.FgHiRed).Printf("- [AWAITING ACTIVATION QUEUE] - These validators have deposited, but either do not meet the minimum balance to be activated, or are awaiting activation:\n")
+
+							for _, validator := range awaitingActivationQueueValidators {
+								publicKey := validator.PublicKey
+								if !verbose {
+									publicKey = shortenHex(publicKey)
+								}
+
+								if validator.Slashed {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								} else {
+									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+								}
+							}
+
+							fmt.Println()
+						}
 
 						// print info on inactive validators
 						// these validators can be added to the pod's active validator set

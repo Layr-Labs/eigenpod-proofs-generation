@@ -171,14 +171,18 @@ func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uin
 	return timestamp, nil
 }
 
-func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []Validator) {
-	var inactiveValidators, activeValidators, withdrawnValidators []Validator
+func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []Validator, []Validator) {
+	var awaitingActivationQueueValidators, inactiveValidators, activeValidators, withdrawnValidators []Validator
 
 	// Iterate over all `validators` and sort them into inactive, active, or withdrawn.
 	for _, validator := range validators {
 		switch validator.Status {
 		case ValidatorStatusInactive:
-			inactiveValidators = append(inactiveValidators, validator)
+			if validator.IsAwaitingActivationQueue {
+				awaitingActivationQueueValidators = append(awaitingActivationQueueValidators, validator)
+			} else {
+				inactiveValidators = append(inactiveValidators, validator)
+			}
 		case ValidatorStatusActive:
 			activeValidators = append(activeValidators, validator)
 		case ValidatorStatusWithdrawn:
@@ -197,7 +201,7 @@ func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []
 		return withdrawnValidators[i].Index < withdrawnValidators[j].Index
 	})
 
-	return inactiveValidators, activeValidators, withdrawnValidators
+	return awaitingActivationQueueValidators, inactiveValidators, activeValidators, withdrawnValidators
 }
 
 // search through beacon state for validators whose withdrawal address is set to eigenpod.
@@ -428,6 +432,24 @@ func SelectCheckpointableValidators(
 // (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/libraries/BeaconChainProofs.sol#L64)
 const FAR_FUTURE_EPOCH = math.MaxUint64
 
+// Validators whose deposits have been processed but are awaiting activation on the beacon chain
+// If the validator has 32 ETH effective balance, they should
+func SelectAwaitingActivationValidators(
+	client *ethclient.Client,
+	eigenpodAddress string,
+	validators []ValidatorWithIndex,
+) ([]ValidatorWithIndex, error) {
+	var awaitingActivationValidators = []ValidatorWithIndex{}
+	for i := 0; i < len(validators); i++ {
+		validator := validators[i]
+
+		if validator.Validator.ActivationEpoch == FAR_FUTURE_EPOCH {
+			awaitingActivationValidators = append(awaitingActivationValidators, validator)
+		}
+	}
+	return awaitingActivationValidators, nil
+}
+
 func SelectAwaitingCredentialValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
@@ -444,7 +466,8 @@ func SelectAwaitingCredentialValidators(
 		validatorInfo := validatorInfos[i]
 
 		if (validatorInfo.Status == ValidatorStatusInactive) &&
-			(validator.Validator.ExitEpoch == FAR_FUTURE_EPOCH) {
+			(validator.Validator.ExitEpoch == FAR_FUTURE_EPOCH) &&
+			(validator.Validator.ActivationEpoch != FAR_FUTURE_EPOCH) {
 			awaitingCredentialValidators = append(awaitingCredentialValidators, validator)
 		}
 	}
