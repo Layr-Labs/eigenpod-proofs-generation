@@ -492,8 +492,9 @@ func main() {
 					core.PanicOnError("failed to reach ethereum clients", err)
 
 					var specificValidatorIndex *big.Int = nil
-					if specificValidator != math.MaxUint64 {
+					if specificValidator != math.MaxUint64 && specificValidator != 0 {
 						specificValidatorIndex = new(big.Int).SetUint64(specificValidator)
+						fmt.Printf("Using specific validator: %d", specificValidator)
 					}
 
 					if len(proofPath) > 0 {
