@@ -461,6 +461,7 @@ func main() {
 						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
 						if simulateTransaction {
 							for i, txn := range txns {
+								color.Green("transaction(%d).to: %s", i, txn.To().Hex())
 								color.Green("transaction(%d).calldata: %s", i, hex.EncodeToString(txn.Data()))
 							}
 						} else {
@@ -540,6 +541,7 @@ func main() {
 						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt, simulateTransaction)
 						if simulateTransaction {
 							for i, txn := range txns {
+								color.Green("transaction(%d).to: %s", i, txn.To().Hex())
 								color.Green("transaction(%d).calldata: %s", i, hex.EncodeToString(txn.Data()))
 							}
 						} else {
