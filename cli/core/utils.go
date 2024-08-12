@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
@@ -116,15 +117,15 @@ type Owner = struct {
 	IsDryRun           bool
 }
 
-func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool, noSend bool) (uint64, error) {
+func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool, noSend bool) (*types.Transaction, error) {
 	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId, noSend)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse private key: %w", err)
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
 	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
-		return 0, fmt.Errorf("failed to reach eigenpod: %w", err)
+		return nil, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
 
 	revertIfNoBalance := !forceCheckpoint
@@ -132,24 +133,15 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, revertIfNoBalance)
 	if err != nil {
 		if !forceCheckpoint {
-			return 0, fmt.Errorf("failed to start checkpoint (try running again with `--force`): %w", err)
+			return nil, fmt.Errorf("failed to start checkpoint (try running again with `--force`): %w", err)
 		}
 
-		return 0, fmt.Errorf("failed to start checkpoint: %w", err)
+		return nil, fmt.Errorf("failed to start checkpoint: %w", err)
 	}
 
-	color.Green("starting checkpoint: %s.. (waiting for txn to be mined)...", txn.Hash().Hex())
+	color.Green("starting checkpoint: %s..", txn.Hash().Hex())
 
-	bind.WaitMined(ctx, eth, txn)
-
-	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
-
-	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
-	if err != nil {
-		return 0, fmt.Errorf("failed to fetch current checkpoint: %w", err)
-	}
-
-	return currentCheckpoint, nil
+	return txn, nil
 }
 
 func GetBeaconClient(beaconUri string) (BeaconClient, error) {
@@ -351,6 +343,14 @@ func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error
 	}
 
 	auth.NoSend = noSend
+	if noSend {
+		// we don't want any estimation to happen by accident (since it implies simulation of the txn),
+		// so specify values for gas and all of that.
+		auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
+		auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasLimit = 21000
+	}
 
 	return &Owner{
 		FromAddress:        fromAddress,

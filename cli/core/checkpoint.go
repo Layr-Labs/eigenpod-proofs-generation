@@ -43,12 +43,19 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 		tracing.OnStartSection("pepe::proof::checkpoint::batch::wait", map[string]string{
 			"chunk": fmt.Sprintf("%d", i),
 		})
-		bind.WaitMined(ctx, eth, txn)
+
+		if !noSend {
+			bind.WaitMined(ctx, eth, txn)
+		}
 		tracing.OnEndSection()
 		color.Green("OK")
 	}
 
-	color.Green("Complete! re-run with `status` to see the updated Eigenpod state.")
+	if !noSend {
+		color.Green("Complete! re-run with `status` to see the updated Eigenpod state.")
+	} else {
+		color.Yellow("Submit these proofs to network and re-run with `status` to see the updated Eigenpod state.")
+	}
 	return transactions, nil
 }
 

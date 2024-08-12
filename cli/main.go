@@ -13,6 +13,8 @@ import (
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
@@ -410,6 +412,11 @@ func main() {
 						out = &outProp
 					}
 
+					if simulateTransaction && len(sender) == 0 {
+						core.Panic("if using --print-calldata, please specify a --sender. Note that the transaction will not be broadcast.")
+						return nil
+					}
+
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
@@ -434,14 +441,32 @@ func main() {
 					currentCheckpoint, err := core.GetCurrentCheckpoint(eigenpodAddress, eth)
 					core.PanicOnError("failed to load checkpoint", err)
 
+					eigenpod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+					core.PanicOnError("failed to connect to eigenpod", err)
+
 					if currentCheckpoint == 0 {
 						if len(sender) != 0 {
 							if !noPrompt && !simulateTransaction {
 								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
 							}
 
-							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, sender, chainId, eth, forceCheckpoint, simulateTransaction)
+							txn, err := core.StartCheckpoint(ctx, eigenpodAddress, sender, chainId, eth, forceCheckpoint, simulateTransaction)
 							core.PanicOnError("failed to start checkpoint", err)
+
+							if !simulateTransaction {
+								color.Green("(waiting for txn to be mined)...")
+								bind.WaitMined(ctx, eth, txn)
+								color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
+							} else {
+								fmt.Printf("This transaction will start a checkpoint. Please submit and re-run to generate your proofs. (NOTE: If you generated this with --force, this may revert on the network.)\n")
+								fmt.Printf("\ttransaction.to: %s\n", txn.To().Hex())
+								fmt.Printf("\ttransaction.calldata: %s\n", common.Bytes2Hex(txn.Data()))
+								return nil
+							}
+
+							newCheckpoint, err := eigenpod.CurrentCheckpointTimestamp(nil)
+							core.PanicOnError("failed to fetch current checkpoint", err)
+
 							currentCheckpoint = newCheckpoint
 						} else {
 							core.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
@@ -507,6 +532,11 @@ func main() {
 
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
 					core.PanicOnError("failed to reach ethereum clients", err)
+
+					if simulateTransaction && len(sender) == 0 {
+						core.Panic("if using --print-calldata, please specify a --sender. Note that the transaction will not be broadcast.")
+						return nil
+					}
 
 					var specificValidatorIndex *big.Int = nil
 					if specificValidator != math.MaxUint64 && specificValidator != 0 {
