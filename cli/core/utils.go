@@ -139,13 +139,11 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 		return nil, fmt.Errorf("failed to start checkpoint: %w", err)
 	}
 
-	color.Green("starting checkpoint: %s..", txn.Hash().Hex())
-
 	return txn, nil
 }
 
-func GetBeaconClient(beaconUri string) (BeaconClient, error) {
-	beaconClient, _, err := NewBeaconClient(beaconUri)
+func GetBeaconClient(beaconUri string, verbose bool) (BeaconClient, error) {
+	beaconClient, _, err := NewBeaconClient(beaconUri, verbose)
 	return beaconClient, err
 }
 
@@ -271,7 +269,7 @@ func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Client, BeaconClient, *big.Int, error) {
+func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool) (*ethclient.Client, BeaconClient, *big.Int, error) {
 	eth, err := ethclient.Dial(node)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to reach eth --node: %w", err)
@@ -283,10 +281,10 @@ func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Cli
 	}
 
 	if chainId == nil || chainId.Int64() != 17000 {
-		return nil, nil, nil, fmt.Errorf("This tool only supports the Holesky network.")
+		return nil, nil, nil, errors.New("this tool only supports the Holesky network")
 	}
 
-	beaconClient, err := GetBeaconClient(beaconNodeUri)
+	beaconClient, err := GetBeaconClient(beaconNodeUri, enableLogs)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to reach beacon client: %w", err)
 	}

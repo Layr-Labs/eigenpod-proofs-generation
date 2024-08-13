@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -16,11 +15,49 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
 )
+
+type Transaction struct {
+	Type     string `json:"type"`
+	To       string `json:"to"`
+	CallData string `json:"calldata"`
+}
+type TransactionList = []Transaction
+
+type CredentialProofTransaction struct {
+	Transaction
+	ValidatorIndices []uint64 `json:"validator_indices"`
+}
+
+func printProofs(txns any) {
+	out, err := json.Marshal(txns)
+	core.PanicOnError("failed to serialize proofs", err)
+	fmt.Println(string(out))
+}
+
+// imagine if golang had a standard library
+func aMap[A any, B any](coll []A, mapper func(i A) B) []B {
+	out := make([]B, len(coll))
+	for i, item := range coll {
+		out[i] = mapper(item)
+	}
+	return out
+}
+
+func aFlatten[A any](coll [][]A) []A {
+	out := []A{}
+	for _, arr := range coll {
+		for _, item := range arr {
+			out = append(out, item)
+		}
+	}
+	return out
+}
 
 func shortenHex(publicKey string) string {
 	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
@@ -215,7 +252,9 @@ func main() {
 						color.NoColor = true
 					}
 
-					eth, beaconClient, _, err := core.GetClients(ctx, node, beacon)
+					isVerbose := !useJson
+
+					eth, beaconClient, _, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to load ethereum clients", err)
 
 					status := core.GetStatus(ctx, eigenpodAddress, eth, beaconClient)
@@ -225,6 +264,7 @@ func main() {
 						core.PanicOnError("failed to get status", err)
 						statusStr := string(bytes)
 						fmt.Println(statusStr)
+						return nil
 					} else {
 						bold := color.New(color.Bold, color.FgBlue)
 						ital := color.New(color.Italic, color.FgBlue)
@@ -406,6 +446,8 @@ func main() {
 						color.NoColor = true
 					}
 
+					isVerbose := !useJson && !simulateTransaction
+
 					var out *string = nil
 					if len(cctx.String("out")) > 0 {
 						outProp := cctx.String("out")
@@ -417,7 +459,7 @@ func main() {
 						return nil
 					}
 
-					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
+					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
 					if len(proofPath) > 0 {
@@ -454,13 +496,18 @@ func main() {
 							core.PanicOnError("failed to start checkpoint", err)
 
 							if !simulateTransaction {
-								color.Green("(waiting for txn to be mined)...")
+								color.Green("starting checkpoint: %s.. (waiting for txn to be mined)", txn.Hash().Hex())
 								bind.WaitMined(ctx, eth, txn)
 								color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 							} else {
-								fmt.Printf("This transaction will start a checkpoint. Please submit and re-run to generate your proofs. (NOTE: If you generated this with --force, this may revert on the network.)\n")
-								fmt.Printf("\ttransaction.to: %s\n", txn.To().Hex())
-								fmt.Printf("\ttransaction.calldata: %s\n", common.Bytes2Hex(txn.Data()))
+								printProofs([]Transaction{
+									{
+										Type:     "checkpoint_start",
+										To:       txn.To().Hex(),
+										CallData: common.Bytes2Hex(txn.Data()),
+									},
+								})
+
 								return nil
 							}
 
@@ -472,7 +519,10 @@ func main() {
 							core.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
 						}
 					}
-					color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
+
+					if isVerbose {
+						color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
+					}
 
 					proof, err := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
 					core.PanicOnError("failed to generate checkpoint proof", err)
@@ -485,10 +535,14 @@ func main() {
 					} else if len(sender) != 0 {
 						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
 						if simulateTransaction {
-							for i, txn := range txns {
-								color.Green("transaction(%d).to: %s", i, txn.To().Hex())
-								color.Green("transaction(%d).calldata: %s", i, hex.EncodeToString(txn.Data()))
-							}
+							printableTxns := aMap(txns, func(txn *types.Transaction) Transaction {
+								return Transaction{
+									To:       txn.To().Hex(),
+									CallData: common.Bytes2Hex(txn.Data()),
+									Type:     "checkpoint_proof",
+								}
+							})
+							printProofs(printableTxns)
 						} else {
 							for i, txn := range txns {
 								color.Green("transaction(%d): %s", i, txn.Hash().Hex())
@@ -530,7 +584,9 @@ func main() {
 						color.NoColor = true
 					}
 
-					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
+					isVerbose := !useJson && !simulateTransaction
+
+					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
 					if simulateTransaction && len(sender) == 0 {
@@ -541,7 +597,9 @@ func main() {
 					var specificValidatorIndex *big.Int = nil
 					if specificValidator != math.MaxUint64 && specificValidator != 0 {
 						specificValidatorIndex = new(big.Int).SetUint64(specificValidator)
-						fmt.Printf("Using specific validator: %d", specificValidator)
+						if verbose {
+							fmt.Printf("Using specific validator: %d", specificValidator)
+						}
 					}
 
 					if len(proofPath) > 0 {
@@ -552,15 +610,17 @@ func main() {
 						proof, err := core.LoadValidatorProofFromFile(proofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, proof.ValidatorProofs, proof.OracleBeaconTimestamp, noPrompt, simulateTransaction)
-						for _, txn := range txns {
-							color.Green("submitted txn: %s", txn.Hash())
+						txns, _, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, proof.ValidatorProofs, proof.OracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
+						if verbose {
+							for _, txn := range txns {
+								color.Green("submitted txn: %s", txn.Hash())
+							}
 						}
 						core.PanicOnError("an error occurred while submitting your credential proofs", err)
 						return nil
 					}
 
-					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex)
+					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex, verbose)
 
 					if err != nil || validatorProofs == nil {
 						core.PanicOnError("Failed to generate validator proof", err)
@@ -568,12 +628,29 @@ func main() {
 					}
 
 					if len(sender) != 0 {
-						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt, simulateTransaction)
-						if simulateTransaction {
-							for i, txn := range txns {
-								color.Green("transaction(%d).to: %s", i, txn.To().Hex())
-								color.Green("transaction(%d).calldata: %s", i, hex.EncodeToString(txn.Data()))
+						txns, indices, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
+						core.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
+							if simulateTransaction {
+								return "simulate"
+							} else {
+								return "submit"
 							}
+						}()), err)
+
+						if simulateTransaction {
+							out := aMap(txns, func(txn *types.Transaction) CredentialProofTransaction {
+								return CredentialProofTransaction{
+									Transaction: Transaction{
+										Type:     "credential_proof",
+										To:       txn.To().Hex(),
+										CallData: common.Bytes2Hex(txn.Data()),
+									},
+									ValidatorIndices: aMap(aFlatten(indices), func(index *big.Int) uint64 {
+										return index.Uint64()
+									}),
+								}
+							})
+							printProofs(out)
 						} else {
 							for i, txn := range txns {
 								color.Green("transaction(%d): %s", i, txn.Hash().Hex())

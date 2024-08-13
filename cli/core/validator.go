@@ -38,16 +38,16 @@ func LoadValidatorProofFromFile(path string) (*SerializableCredentialProof, erro
 	return &res, nil
 }
 
-func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool, noSend bool) ([]*types.Transaction, error) {
+func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool, noSend bool, verbose bool) ([]*types.Transaction, [][]*big.Int, error) {
 	ownerAccount, err := PrepareAccount(&owner, chainId, noSend)
 	if err != nil {
-		return nil, err
+		return nil, [][]*big.Int{}, err
 	}
 	PanicOnError("failed to parse private key", err)
 
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
-		return nil, err
+		return nil, [][]*big.Int{}, err
 	}
 
 	indices := Uint64ArrayToBigIntArray(proofs.ValidatorIndices)
@@ -61,14 +61,16 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	transactions := []*types.Transaction{}
 	numChunks := len(validatorIndicesChunks)
 
-	color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn [%s])", numChunks, batchSize, func() string {
-		if ownerAccount.TransactionOptions.NoSend {
-			return "simulated"
-		} else {
-			return "live"
-		}
-	}())
-	color.Green("Submitting proofs with %d transactions", numChunks)
+	if verbose {
+		color.Green("calling EigenPod.VerifyWithdrawalCredentials() (using %d txn(s), max(%d) proofs per txn [%s])", numChunks, batchSize, func() string {
+			if ownerAccount.TransactionOptions.NoSend {
+				return "simulated"
+			} else {
+				return "live"
+			}
+		}())
+		color.Green("Submitting proofs with %d transactions", numChunks)
+	}
 
 	for i := 0; i < numChunks; i++ {
 		curValidatorIndices := validatorIndicesChunks[i]
@@ -81,20 +83,24 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 		}
 		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
 
-		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
-		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs.StateRootProof, validatorFieldsProofs, oracleBeaconTimesetamp)
+		if verbose {
+			fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
+		}
+		txn, err := SubmitValidatorProofChunk(ctx, ownerAccount, eigenPod, chainId, eth, curValidatorIndices, curValidatorFields, proofs.StateRootProof, validatorFieldsProofs, oracleBeaconTimesetamp, verbose)
 		if err != nil {
-			return transactions, err
+			return transactions, validatorIndicesChunks, err
 		}
 
 		transactions = append(transactions, txn)
 	}
 
-	return transactions, err
+	return transactions, validatorIndicesChunks, err
 }
 
-func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64) (*types.Transaction, error) {
-	color.Green("submitting onchain...")
+func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64, verbose bool) (*types.Transaction, error) {
+	if verbose {
+		color.Green("submitting onchain...")
+	}
 	txn, err := eigenPod.VerifyWithdrawalCredentials(
 		ownerAccount.TransactionOptions,
 		oracleBeaconTimesetamp,
@@ -114,7 +120,7 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
  * Generates a .ProveValidatorContainers() proof for all eligible validators on the pod. If `validatorIndex` is set, it will only generate  a proof
  * against that validator, regardless of the validator's state.
  */
-func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, validatorIndex *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
+func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, validatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to load latest block: %w", err)
@@ -145,11 +151,11 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time(), validatorIndex)
+	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time(), validatorIndex, verbose)
 	return proofs, latestBlock.Time(), err
 }
 
-func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidatorIndex *big.Int) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
+func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find validators: %w", err)
@@ -178,10 +184,14 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 	}
 
 	if len(awaitingCredentialValidators) == 0 {
-		color.Red("You have no inactive validators to verify. Everything up-to-date.")
+		if verbose {
+			color.Red("You have no inactive validators to verify. Everything up-to-date.")
+		}
 		return nil, nil
 	} else {
-		color.Blue("Verifying %d inactive validators", len(awaitingCredentialValidators))
+		if verbose {
+			color.Blue("Verifying %d inactive validators", len(awaitingCredentialValidators))
+		}
 	}
 
 	validatorIndices := make([]uint64, len(awaitingCredentialValidators))
