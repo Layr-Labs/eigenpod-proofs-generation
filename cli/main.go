@@ -14,7 +14,6 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
@@ -22,141 +21,11 @@ import (
 	cli "github.com/urfave/cli/v2"
 )
 
-type Transaction struct {
-	Type     string `json:"type"`
-	To       string `json:"to"`
-	CallData string `json:"calldata"`
-}
-type TransactionList = []Transaction
-
-type CredentialProofTransaction struct {
-	Transaction
-	ValidatorIndices []uint64 `json:"validator_indices"`
-}
-
-func printProofs(txns any) {
-	out, err := json.Marshal(txns)
-	core.PanicOnError("failed to serialize proofs", err)
-	fmt.Println(string(out))
-}
-
-// imagine if golang had a standard library
-func aMap[A any, B any](coll []A, mapper func(i A) B) []B {
-	out := make([]B, len(coll))
-	for i, item := range coll {
-		out[i] = mapper(item)
-	}
-	return out
-}
-
-func aFlatten[A any](coll [][]A) []A {
-	out := []A{}
-	for _, arr := range coll {
-		for _, item := range arr {
-			out = append(out, item)
-		}
-	}
-	return out
-}
-
-func shortenHex(publicKey string) string {
-	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
-}
-
-// shared flag --batch
-func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
-	return &cli.Uint64Flag{
-		Name:        "batch",
-		Value:       defaultValue,
-		Usage:       "Submit proofs in groups of size `batchSize`, to avoid gas limit.",
-		Required:    false,
-		Destination: destination,
-	}
-}
-
-// Hack to make a copy of a flag that sets `Required` to true
-func Require(flag *cli.StringFlag) *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:        flag.Name,
-		Aliases:     flag.Aliases,
-		Value:       flag.Value,
-		Usage:       flag.Usage,
-		Destination: flag.Destination,
-		Required:    true,
-	}
-}
-
 // Destinations for values set by various flags
 var eigenpodAddress, beacon, node, sender, output string
 var useJson, simulateTransaction bool = false, false
 var specificValidator uint64 = math.MaxUint64
 var proofPath string
-
-// Required flags:
-
-// Required for commands that need an EigenPod's address
-var POD_ADDRESS_FLAG = &cli.StringFlag{
-	Name:        "podAddress",
-	Aliases:     []string{"p", "pod"},
-	Value:       "",
-	Usage:       "[required] The onchain `address` of your eigenpod contract (0x123123123123)",
-	Required:    true,
-	Destination: &eigenpodAddress,
-}
-
-// Required for commands that need a beacon chain RPC
-var BEACON_NODE_FLAG = &cli.StringFlag{
-	Name:        "beaconNode",
-	Aliases:     []string{"b"},
-	Value:       "",
-	Usage:       "[required] `URL` to a functioning beacon node RPC (https://)",
-	Required:    true,
-	Destination: &beacon,
-}
-
-// Required for commands that need an execution layer RPC
-var EXEC_NODE_FLAG = &cli.StringFlag{
-	Name:        "execNode",
-	Aliases:     []string{"e"},
-	Value:       "",
-	Usage:       "[required] `URL` to a functioning execution-layer RPC (https://)",
-	Required:    true,
-	Destination: &node,
-}
-var PRINT_CALLDATA_BUT_DO_NOT_EXECUTE_FLAG = &cli.BoolFlag{
-	Name:        "print-calldata",
-	Value:       false,
-	Usage:       "Print the calldata for all associated transactions, but do not execute them. Note that some transactions have an order dependency (you cannot submit checkpoint proofs if you haven't started a checkpoint) so this may require you to get your pod into the correct state before usage.",
-	Required:    false,
-	Destination: &simulateTransaction,
-}
-
-// Optional commands:
-
-// Optional use for commands that want direct tx submission from a specific private key
-var SENDER_PK_FLAG = &cli.StringFlag{
-	Name:        "sender",
-	Aliases:     []string{"s"},
-	Value:       "",
-	Usage:       "`Private key` of the account that will send any transactions. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
-	Destination: &sender,
-}
-
-// Optional use for commands that support JSON output
-var PRINT_JSON_FLAG = &cli.BoolFlag{
-	Name:        "json",
-	Value:       false,
-	Usage:       "print only plain JSON",
-	Required:    false,
-	Destination: &useJson,
-}
-
-var PROOF_PATH_FLAG = &cli.StringFlag{
-	Name:        "proof",
-	Value:       "",
-	Usage:       "the `path` to a previous proof generated from this step (via -o proof.json). If provided, this proof will submitted to network via the --sender flag.",
-	Destination: &proofPath,
-}
 
 // maximum number of proofs per txn for each of the following proof types:
 const DEFAULT_BATCH_CREDENTIALS = 60
@@ -189,7 +58,7 @@ func main() {
 					targetAddress := cctx.Args().First()
 					if len(targetAddress) == 0 {
 						return fmt.Errorf("usage: `assign-submitter <0xsubmitter>`")
-					} else if !gethCommon.IsHexAddress(targetAddress) {
+					} else if !common.IsHexAddress(targetAddress) {
 						return fmt.Errorf("invalid address for 0xsubmitter: %s", targetAddress)
 					}
 
@@ -208,13 +77,13 @@ func main() {
 						return fmt.Errorf("failed to parse --sender: %w", err)
 					}
 
-					pod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+					pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 					if err != nil {
 						return fmt.Errorf("error contacting eigenpod: %w", err)
 					}
 
 					// Check that the existing submitter is not the current submitter
-					newSubmitter := gethCommon.HexToAddress(targetAddress)
+					newSubmitter := common.HexToAddress(targetAddress)
 					currentSubmitter, err := pod.ProofSubmitter(nil)
 					if err != nil {
 						return fmt.Errorf("error fetching current proof submitter: %w", err)
@@ -454,8 +323,8 @@ func main() {
 						out = &outProp
 					}
 
-					if simulateTransaction && len(sender) == 0 {
-						core.Panic("if using --print-calldata, please specify a --sender. Note that the transaction will not be broadcast.")
+					if simulateTransaction && len(sender) > 0 {
+						core.Panic("if using `--print-calldata`, please do not specify a sender.")
 						return nil
 					}
 
@@ -487,7 +356,7 @@ func main() {
 					core.PanicOnError("failed to connect to eigenpod", err)
 
 					if currentCheckpoint == 0 {
-						if len(sender) != 0 {
+						if len(sender) > 0 || simulateTransaction {
 							if !noPrompt && !simulateTransaction {
 								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
 							}
@@ -532,7 +401,7 @@ func main() {
 
 					if out != nil {
 						core.WriteOutputToFileOrStdout(jsonString, out)
-					} else if len(sender) != 0 {
+					} else if len(sender) != 0 || simulateTransaction {
 						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
 						if simulateTransaction {
 							printableTxns := aMap(txns, func(txn *types.Transaction) Transaction {
@@ -589,8 +458,8 @@ func main() {
 					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
-					if simulateTransaction && len(sender) == 0 {
-						core.Panic("if using --print-calldata, please specify a --sender. Note that the transaction will not be broadcast.")
+					if simulateTransaction && len(sender) > 0 {
+						core.Panic("if using --print-calldata, please do not specify a --sender.")
 						return nil
 					}
 
@@ -627,7 +496,7 @@ func main() {
 						core.Panic("no inactive validators")
 					}
 
-					if len(sender) != 0 {
+					if len(sender) != 0 || simulateTransaction {
 						txns, indices, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
 						core.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
 							if simulateTransaction {

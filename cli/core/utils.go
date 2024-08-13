@@ -320,6 +320,37 @@ func PanicIfNoConsent(prompt string) {
 }
 
 func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error) {
+	if noSend {
+		privateKey, err := crypto.HexToECDSA("372d94b8645091147a5dfc10a454d0d539773d2431293bf0a195b44fa5ddbb33") // this is a RANDOM private key. Do not use this for anything.
+		if err != nil {
+			return nil, err
+		}
+
+		publicKey := privateKey.Public()
+		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+		if !ok {
+			log.Fatal("error casting public key to ECDSA")
+		}
+		fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+		auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+		if err != nil {
+			return nil, err
+		}
+
+		auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
+		auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasLimit = 21000
+		auth.NoSend = true
+
+		return &Owner{
+			FromAddress:        fromAddress,
+			PublicKey:          nil,
+			TransactionOptions: auth,
+			IsDryRun:           true,
+		}, nil
+	}
+
 	if owner == nil {
 		return nil, errors.New("no owner")
 	}
@@ -338,16 +369,6 @@ func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	if err != nil {
 		return nil, err
-	}
-
-	auth.NoSend = noSend
-	if noSend {
-		// we don't want any estimation to happen by accident (since it implies simulation of the txn),
-		// so specify values for gas and all of that.
-		auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
-		auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
-		auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
-		auth.GasLimit = 21000
 	}
 
 	return &Owner{
