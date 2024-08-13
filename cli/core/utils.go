@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
@@ -113,17 +114,18 @@ type Owner = struct {
 	FromAddress        gethCommon.Address
 	PublicKey          *ecdsa.PublicKey
 	TransactionOptions *bind.TransactOpts
+	IsDryRun           bool
 }
 
-func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool) (uint64, error) {
-	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId)
+func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKey string, chainId *big.Int, eth *ethclient.Client, forceCheckpoint bool, noSend bool) (*types.Transaction, error) {
+	ownerAccount, err := PrepareAccount(&ownerPrivateKey, chainId, noSend)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse private key: %w", err)
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
 	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
-		return 0, fmt.Errorf("failed to reach eigenpod: %w", err)
+		return nil, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
 
 	revertIfNoBalance := !forceCheckpoint
@@ -131,28 +133,17 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 	txn, err := eigenPod.StartCheckpoint(ownerAccount.TransactionOptions, revertIfNoBalance)
 	if err != nil {
 		if !forceCheckpoint {
-			return 0, fmt.Errorf("failed to start checkpoint (try running again with `--force`): %w", err)
+			return nil, fmt.Errorf("failed to start checkpoint (try running again with `--force`): %w", err)
 		}
 
-		return 0, fmt.Errorf("failed to start checkpoint: %w", err)
+		return nil, fmt.Errorf("failed to start checkpoint: %w", err)
 	}
 
-	color.Green("starting checkpoint: %s.. (waiting for txn to be mined)...", txn.Hash().Hex())
-
-	bind.WaitMined(ctx, eth, txn)
-
-	color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
-
-	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
-	if err != nil {
-		return 0, fmt.Errorf("failed to fetch current checkpoint: %w", err)
-	}
-
-	return currentCheckpoint, nil
+	return txn, nil
 }
 
-func GetBeaconClient(beaconUri string) (BeaconClient, error) {
-	beaconClient, _, err := NewBeaconClient(beaconUri)
+func GetBeaconClient(beaconUri string, verbose bool) (BeaconClient, error) {
+	beaconClient, _, err := NewBeaconClient(beaconUri, verbose)
 	return beaconClient, err
 }
 
@@ -278,7 +269,7 @@ func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Client, BeaconClient, *big.Int, error) {
+func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool) (*ethclient.Client, BeaconClient, *big.Int, error) {
 	eth, err := ethclient.Dial(node)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to reach eth --node: %w", err)
@@ -290,10 +281,10 @@ func GetClients(ctx context.Context, node, beaconNodeUri string) (*ethclient.Cli
 	}
 
 	if chainId == nil || chainId.Int64() != 17000 {
-		return nil, nil, nil, fmt.Errorf("This tool only supports the Holesky network.")
+		return nil, nil, nil, errors.New("this tool only supports the Holesky network")
 	}
 
-	beaconClient, err := GetBeaconClient(beaconNodeUri)
+	beaconClient, err := GetBeaconClient(beaconNodeUri, enableLogs)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to reach beacon client: %w", err)
 	}
@@ -328,7 +319,38 @@ func PanicIfNoConsent(prompt string) {
 	}
 }
 
-func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
+func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error) {
+	if noSend {
+		privateKey, err := crypto.HexToECDSA("372d94b8645091147a5dfc10a454d0d539773d2431293bf0a195b44fa5ddbb33") // this is a RANDOM private key. Do not use this for anything.
+		if err != nil {
+			return nil, err
+		}
+
+		publicKey := privateKey.Public()
+		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+		if !ok {
+			log.Fatal("error casting public key to ECDSA")
+		}
+		fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+		auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+		if err != nil {
+			return nil, err
+		}
+
+		auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
+		auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasLimit = 21000
+		auth.NoSend = true
+
+		return &Owner{
+			FromAddress:        fromAddress,
+			PublicKey:          nil,
+			TransactionOptions: auth,
+			IsDryRun:           true,
+		}, nil
+	}
+
 	if owner == nil {
 		return nil, errors.New("no owner")
 	}
@@ -353,6 +375,7 @@ func PrepareAccount(owner *string, chainID *big.Int) (*Owner, error) {
 		FromAddress:        fromAddress,
 		PublicKey:          publicKeyECDSA,
 		TransactionOptions: auth,
+		IsDryRun:           noSend,
 	}, nil
 }
 

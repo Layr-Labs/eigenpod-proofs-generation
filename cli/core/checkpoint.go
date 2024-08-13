@@ -20,7 +20,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool) ([]*types.Transaction, error) {
+func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool, noSend bool) ([]*types.Transaction, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
 	allProofChunks := chunk(proof.BalanceProofs, batchSize)
@@ -32,7 +32,7 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 		tracing.OnStartSection("pepe::proof::checkpoint::batch::submit", map[string]string{
 			"chunk": fmt.Sprintf("%d", i),
 		})
-		txn, err := SubmitCheckpointProofBatch(ctx, owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth)
+		txn, err := SubmitCheckpointProofBatch(ctx, owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth, noSend)
 		tracing.OnEndSection()
 		if err != nil {
 			// failed to submit batch.
@@ -43,19 +43,26 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 		tracing.OnStartSection("pepe::proof::checkpoint::batch::wait", map[string]string{
 			"chunk": fmt.Sprintf("%d", i),
 		})
-		bind.WaitMined(ctx, eth, txn)
+
+		if !noSend {
+			bind.WaitMined(ctx, eth, txn)
+		}
 		tracing.OnEndSection()
 		color.Green("OK")
 	}
 
-	color.Green("Complete! re-run with `status` to see the updated Eigenpod state.")
+	if !noSend {
+		color.Green("Complete! re-run with `status` to see the updated Eigenpod state.")
+	} else {
+		color.Yellow("Submit these proofs to network and re-run with `status` to see the updated Eigenpod state.")
+	}
 	return transactions, nil
 }
 
-func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client) (*types.Transaction, error) {
+func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, noSend bool) (*types.Transaction, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
-	ownerAccount, err := PrepareAccount(&owner, chainId)
+	ownerAccount, err := PrepareAccount(&owner, chainId, noSend)
 	if err != nil {
 		return nil, err
 	}

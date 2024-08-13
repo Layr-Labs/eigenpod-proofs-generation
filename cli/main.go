@@ -12,104 +12,20 @@ import (
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
-	gethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
 )
 
-func shortenHex(publicKey string) string {
-	return publicKey[0:6] + ".." + publicKey[len(publicKey)-4:]
-}
-
-// shared flag --batch
-func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
-	return &cli.Uint64Flag{
-		Name:        "batch",
-		Value:       defaultValue,
-		Usage:       "Submit proofs in groups of size `batchSize`, to avoid gas limit.",
-		Required:    false,
-		Destination: destination,
-	}
-}
-
-// Hack to make a copy of a flag that sets `Required` to true
-func Require(flag *cli.StringFlag) *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:        flag.Name,
-		Aliases:     flag.Aliases,
-		Value:       flag.Value,
-		Usage:       flag.Usage,
-		Destination: flag.Destination,
-		Required:    true,
-	}
-}
-
 // Destinations for values set by various flags
 var eigenpodAddress, beacon, node, sender, output string
-var useJson bool = false
+var useJson, simulateTransaction bool = false, false
 var specificValidator uint64 = math.MaxUint64
 var proofPath string
-
-// Required flags:
-
-// Required for commands that need an EigenPod's address
-var POD_ADDRESS_FLAG = &cli.StringFlag{
-	Name:        "podAddress",
-	Aliases:     []string{"p", "pod"},
-	Value:       "",
-	Usage:       "[required] The onchain `address` of your eigenpod contract (0x123123123123)",
-	Required:    true,
-	Destination: &eigenpodAddress,
-}
-
-// Required for commands that need a beacon chain RPC
-var BEACON_NODE_FLAG = &cli.StringFlag{
-	Name:        "beaconNode",
-	Aliases:     []string{"b"},
-	Value:       "",
-	Usage:       "[required] `URL` to a functioning beacon node RPC (https://)",
-	Required:    true,
-	Destination: &beacon,
-}
-
-// Required for commands that need an execution layer RPC
-var EXEC_NODE_FLAG = &cli.StringFlag{
-	Name:        "execNode",
-	Aliases:     []string{"e"},
-	Value:       "",
-	Usage:       "[required] `URL` to a functioning execution-layer RPC (https://)",
-	Required:    true,
-	Destination: &node,
-}
-
-// Optional commands:
-
-// Optional use for commands that want direct tx submission from a specific private key
-var SENDER_PK_FLAG = &cli.StringFlag{
-	Name:        "sender",
-	Aliases:     []string{"s"},
-	Value:       "",
-	Usage:       "`Private key` of the account that will send any transactions. If set, this will automatically submit the proofs to their corresponding onchain functions after generation. If using checkpoint mode, it will also begin a checkpoint if one hasn't been started already.",
-	Destination: &sender,
-}
-
-// Optional use for commands that support JSON output
-var PRINT_JSON_FLAG = &cli.BoolFlag{
-	Name:        "json",
-	Value:       false,
-	Usage:       "print only plain JSON",
-	Required:    false,
-	Destination: &useJson,
-}
-
-var PROOF_PATH_FLAG = &cli.StringFlag{
-	Name:        "proof",
-	Value:       "",
-	Usage:       "the `path` to a previous proof generated from this step (via -o proof.json). If provided, this proof will submitted to network via the --sender flag.",
-	Destination: &proofPath,
-}
 
 // maximum number of proofs per txn for each of the following proof types:
 const DEFAULT_BATCH_CREDENTIALS = 60
@@ -142,7 +58,7 @@ func main() {
 					targetAddress := cctx.Args().First()
 					if len(targetAddress) == 0 {
 						return fmt.Errorf("usage: `assign-submitter <0xsubmitter>`")
-					} else if !gethCommon.IsHexAddress(targetAddress) {
+					} else if !common.IsHexAddress(targetAddress) {
 						return fmt.Errorf("invalid address for 0xsubmitter: %s", targetAddress)
 					}
 
@@ -156,18 +72,18 @@ func main() {
 						return fmt.Errorf("failed to reach eth node for chain id: %w", err)
 					}
 
-					ownerAccount, err := core.PrepareAccount(&sender, chainId)
+					ownerAccount, err := core.PrepareAccount(&sender, chainId, false /* noSend */)
 					if err != nil {
 						return fmt.Errorf("failed to parse --sender: %w", err)
 					}
 
-					pod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+					pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 					if err != nil {
 						return fmt.Errorf("error contacting eigenpod: %w", err)
 					}
 
 					// Check that the existing submitter is not the current submitter
-					newSubmitter := gethCommon.HexToAddress(targetAddress)
+					newSubmitter := common.HexToAddress(targetAddress)
 					currentSubmitter, err := pod.ProofSubmitter(nil)
 					if err != nil {
 						return fmt.Errorf("error fetching current proof submitter: %w", err)
@@ -175,7 +91,7 @@ func main() {
 						return fmt.Errorf("error: new proof submitter is existing proof submitter (%s)", currentSubmitter)
 					}
 
-					if !noPrompt {
+					if !noPrompt && !simulateTransaction {
 						fmt.Printf("Your pod's current proof submitter is %s.\n", currentSubmitter)
 						core.PanicIfNoConsent(fmt.Sprintf("This will update your EigenPod to allow %s to submit proofs on its behalf. As the EigenPod's owner, you can always change this later.", newSubmitter))
 					}
@@ -205,7 +121,9 @@ func main() {
 						color.NoColor = true
 					}
 
-					eth, beaconClient, _, err := core.GetClients(ctx, node, beacon)
+					isVerbose := !useJson
+
+					eth, beaconClient, _, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to load ethereum clients", err)
 
 					status := core.GetStatus(ctx, eigenpodAddress, eth, beaconClient)
@@ -215,6 +133,7 @@ func main() {
 						core.PanicOnError("failed to get status", err)
 						statusStr := string(bytes)
 						fmt.Println(statusStr)
+						return nil
 					} else {
 						bold := color.New(color.Bold, color.FgBlue)
 						ital := color.New(color.Italic, color.FgBlue)
@@ -373,6 +292,7 @@ func main() {
 					BEACON_NODE_FLAG,
 					EXEC_NODE_FLAG,
 					SENDER_PK_FLAG,
+					PRINT_CALLDATA_BUT_DO_NOT_EXECUTE_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
 					PROOF_PATH_FLAG,
 					&cli.BoolFlag{
@@ -395,13 +315,20 @@ func main() {
 						color.NoColor = true
 					}
 
+					isVerbose := !useJson && !simulateTransaction
+
 					var out *string = nil
 					if len(cctx.String("out")) > 0 {
 						outProp := cctx.String("out")
 						out = &outProp
 					}
 
-					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
+					if simulateTransaction && len(sender) > 0 {
+						core.Panic("if using `--print-calldata`, please do not specify a sender.")
+						return nil
+					}
+
+					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to reach ethereum clients", err)
 
 					if len(proofPath) > 0 {
@@ -414,7 +341,7 @@ func main() {
 						proof, err := core.LoadCheckpointProofFromFile(proofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
+						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
 						for _, txn := range txns {
 							color.Green("submitted txn: %s", txn.Hash())
 						}
@@ -425,20 +352,46 @@ func main() {
 					currentCheckpoint, err := core.GetCurrentCheckpoint(eigenpodAddress, eth)
 					core.PanicOnError("failed to load checkpoint", err)
 
+					eigenpod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+					core.PanicOnError("failed to connect to eigenpod", err)
+
 					if currentCheckpoint == 0 {
-						if len(sender) != 0 {
-							if !noPrompt {
+						if len(sender) > 0 || simulateTransaction {
+							if !noPrompt && !simulateTransaction {
 								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
 							}
 
-							newCheckpoint, err := core.StartCheckpoint(ctx, eigenpodAddress, sender, chainId, eth, forceCheckpoint)
+							txn, err := core.StartCheckpoint(ctx, eigenpodAddress, sender, chainId, eth, forceCheckpoint, simulateTransaction)
 							core.PanicOnError("failed to start checkpoint", err)
+
+							if !simulateTransaction {
+								color.Green("starting checkpoint: %s.. (waiting for txn to be mined)", txn.Hash().Hex())
+								bind.WaitMined(ctx, eth, txn)
+								color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
+							} else {
+								printProofs([]Transaction{
+									{
+										Type:     "checkpoint_start",
+										To:       txn.To().Hex(),
+										CallData: common.Bytes2Hex(txn.Data()),
+									},
+								})
+
+								return nil
+							}
+
+							newCheckpoint, err := eigenpod.CurrentCheckpointTimestamp(nil)
+							core.PanicOnError("failed to fetch current checkpoint", err)
+
 							currentCheckpoint = newCheckpoint
 						} else {
 							core.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
 						}
 					}
-					color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
+
+					if isVerbose {
+						color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
+					}
 
 					proof, err := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
 					core.PanicOnError("failed to generate checkpoint proof", err)
@@ -448,10 +401,21 @@ func main() {
 
 					if out != nil {
 						core.WriteOutputToFileOrStdout(jsonString, out)
-					} else if len(sender) != 0 {
-						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt)
-						for _, txn := range txns {
-							color.Green("submitted txn: %s", txn.Hash())
+					} else if len(sender) != 0 || simulateTransaction {
+						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
+						if simulateTransaction {
+							printableTxns := aMap(txns, func(txn *types.Transaction) Transaction {
+								return Transaction{
+									To:       txn.To().Hex(),
+									CallData: common.Bytes2Hex(txn.Data()),
+									Type:     "checkpoint_proof",
+								}
+							})
+							printProofs(printableTxns)
+						} else {
+							for i, txn := range txns {
+								color.Green("transaction(%d): %s", i, txn.Hash().Hex())
+							}
 						}
 						core.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
 					}
@@ -468,6 +432,7 @@ func main() {
 					BEACON_NODE_FLAG,
 					EXEC_NODE_FLAG,
 					SENDER_PK_FLAG,
+					PRINT_CALLDATA_BUT_DO_NOT_EXECUTE_FLAG,
 					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
 						Name:        "validatorIndex",
@@ -488,13 +453,22 @@ func main() {
 						color.NoColor = true
 					}
 
-					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon)
+					isVerbose := !useJson && !simulateTransaction
+
+					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
 					core.PanicOnError("failed to reach ethereum clients", err)
+
+					if simulateTransaction && len(sender) > 0 {
+						core.Panic("if using --print-calldata, please do not specify a --sender.")
+						return nil
+					}
 
 					var specificValidatorIndex *big.Int = nil
 					if specificValidator != math.MaxUint64 && specificValidator != 0 {
 						specificValidatorIndex = new(big.Int).SetUint64(specificValidator)
-						fmt.Printf("Using specific validator: %d", specificValidator)
+						if verbose {
+							fmt.Printf("Using specific validator: %d", specificValidator)
+						}
 					}
 
 					if len(proofPath) > 0 {
@@ -505,26 +479,53 @@ func main() {
 						proof, err := core.LoadValidatorProofFromFile(proofPath)
 						core.PanicOnError("failed to parse checkpoint proof from file", err)
 
-						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, proof.ValidatorProofs, proof.OracleBeaconTimestamp, noPrompt)
-						for _, txn := range txns {
-							color.Green("submitted txn: %s", txn.Hash())
+						txns, _, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, proof.ValidatorProofs, proof.OracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
+						if verbose {
+							for _, txn := range txns {
+								color.Green("submitted txn: %s", txn.Hash())
+							}
 						}
 						core.PanicOnError("an error occurred while submitting your credential proofs", err)
 						return nil
 					}
 
-					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex)
+					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex, verbose)
 
 					if err != nil || validatorProofs == nil {
 						core.PanicOnError("Failed to generate validator proof", err)
 						core.Panic("no inactive validators")
 					}
 
-					if len(sender) != 0 {
-						txns, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt)
-						for i, txn := range txns {
-							color.Green("transaction(%d): %s", i, txn.Hash().Hex())
+					if len(sender) != 0 || simulateTransaction {
+						txns, indices, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
+						core.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
+							if simulateTransaction {
+								return "simulate"
+							} else {
+								return "submit"
+							}
+						}()), err)
+
+						if simulateTransaction {
+							out := aMap(txns, func(txn *types.Transaction) CredentialProofTransaction {
+								return CredentialProofTransaction{
+									Transaction: Transaction{
+										Type:     "credential_proof",
+										To:       txn.To().Hex(),
+										CallData: common.Bytes2Hex(txn.Data()),
+									},
+									ValidatorIndices: aMap(aFlatten(indices), func(index *big.Int) uint64 {
+										return index.Uint64()
+									}),
+								}
+							})
+							printProofs(out)
+						} else {
+							for i, txn := range txns {
+								color.Green("transaction(%d): %s", i, txn.Hash().Hex())
+							}
 						}
+
 						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 					} else {
 						proof := core.SerializableCredentialProof{
