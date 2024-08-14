@@ -23,20 +23,23 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: stable
-      - name: Determine Release Args
-        id: determine_args
-        run: |
-          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
-            echo "RELEASE_ARGS=release --clean" >> $GITHUB_ENV
-          else
-            echo "RELEASE_ARGS=release --snapshot" >> $GITHUB_ENV
-          fi
-      - name: Run GoReleaser
+      - name: Run GoReleaser (master)
         uses: goreleaser/goreleaser-action@v6
+        if: ${{ github.ref == 'refs/heads/main' }}
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: ${{ env.RELEASE_ARGS }}
+          args: release --clean
+          workdir: cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run GoReleaser (branch)
+        uses: goreleaser/goreleaser-action@v6
+        if: ${{ github.ref != 'refs/heads/main' }}
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot
           workdir: cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
