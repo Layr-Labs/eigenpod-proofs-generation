@@ -87,8 +87,6 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 				color.Green("transaction(%d): %s", i, txn.Hash().Hex())
 			}
 		}
-
-		core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
 	}
 	return nil
 }
