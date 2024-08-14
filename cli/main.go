@@ -96,6 +96,7 @@ func main() {
 						BeaconNode:          beacon,
 						EigenpodAddress:     eigenpodAddress,
 						Verbose:             verbose,
+						Sender:              sender,
 					})
 				},
 			},
