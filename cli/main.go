@@ -1,46 +1,28 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"math"
-	"math/big"
 	"os"
-	"time"
 
-	"context"
-
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/fatih/color"
-	"github.com/pkg/errors"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	cli "github.com/urfave/cli/v2"
 )
 
 // Destinations for values set by various flags
-var eigenpodAddress, beacon, node, sender, output string
-var useJson, simulateTransaction bool = false, false
+var eigenpodAddress, beacon, node, sender string
+var useJson bool = false
 var specificValidator uint64 = math.MaxUint64
-var proofPath string
-
-// maximum number of proofs per txn for each of the following proof types:
-const DEFAULT_BATCH_CREDENTIALS = 60
-const DEFAULT_BATCH_CHECKPOINT = 80
 
 func main() {
 	var batchSize uint64
 	var forceCheckpoint, disableColor, verbose bool
 	var noPrompt bool
-	ctx := context.Background()
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
 		HelpName:               "eigenproofs",
-		Usage:                  "Generates proofs to (1) checkpoint your validators, or (2) verify the withdrawal credentials of an inactive validator.",
+		Usage:                  "Generates proofs to (1) checkpoint your validators, or (2) verify the withdrawal credentials of an inactive validator. By default, the unsigned transactions will be printed to stdout as JSON. If you want to sign and broadcast these automatically, pass `--sender <pk>`.",
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
@@ -55,56 +37,14 @@ func main() {
 					Require(SENDER_PK_FLAG),
 				},
 				Action: func(cctx *cli.Context) error {
-					targetAddress := cctx.Args().First()
-					if len(targetAddress) == 0 {
-						return fmt.Errorf("usage: `assign-submitter <0xsubmitter>`")
-					} else if !common.IsHexAddress(targetAddress) {
-						return fmt.Errorf("invalid address for 0xsubmitter: %s", targetAddress)
-					}
-
-					eth, err := ethclient.Dial(node)
-					if err != nil {
-						return fmt.Errorf("failed to reach eth --node: %w", err)
-					}
-
-					chainId, err := eth.ChainID(ctx)
-					if err != nil {
-						return fmt.Errorf("failed to reach eth node for chain id: %w", err)
-					}
-
-					ownerAccount, err := core.PrepareAccount(&sender, chainId, false /* noSend */)
-					if err != nil {
-						return fmt.Errorf("failed to parse --sender: %w", err)
-					}
-
-					pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-					if err != nil {
-						return fmt.Errorf("error contacting eigenpod: %w", err)
-					}
-
-					// Check that the existing submitter is not the current submitter
-					newSubmitter := common.HexToAddress(targetAddress)
-					currentSubmitter, err := pod.ProofSubmitter(nil)
-					if err != nil {
-						return fmt.Errorf("error fetching current proof submitter: %w", err)
-					} else if currentSubmitter.Cmp(newSubmitter) == 0 {
-						return fmt.Errorf("error: new proof submitter is existing proof submitter (%s)", currentSubmitter)
-					}
-
-					if !noPrompt && !simulateTransaction {
-						fmt.Printf("Your pod's current proof submitter is %s.\n", currentSubmitter)
-						core.PanicIfNoConsent(fmt.Sprintf("This will update your EigenPod to allow %s to submit proofs on its behalf. As the EigenPod's owner, you can always change this later.", newSubmitter))
-					}
-
-					txn, err := pod.SetProofSubmitter(ownerAccount.TransactionOptions, newSubmitter)
-					if err != nil {
-						return fmt.Errorf("error updating submitter role: %w", err)
-					}
-
-					color.Green("submitted txn: %s", txn.Hash())
-					color.Green("updated!")
-
-					return nil
+					return commands.AssignSubmitterCommand(commands.TAssignSubmitterArgs{
+						Node:            node,
+						TargetAddress:   cctx.Args().First(),
+						Sender:          sender,
+						EigenpodAddress: eigenpodAddress,
+						NoPrompt:        noPrompt,
+						Verbose:         verbose,
+					})
 				},
 			},
 			{
@@ -117,170 +57,14 @@ func main() {
 					PRINT_JSON_FLAG,
 				},
 				Action: func(cctx *cli.Context) error {
-					if disableColor {
-						color.NoColor = true
-					}
-
-					isVerbose := !useJson
-
-					eth, beaconClient, _, err := core.GetClients(ctx, node, beacon, isVerbose)
-					core.PanicOnError("failed to load ethereum clients", err)
-
-					status := core.GetStatus(ctx, eigenpodAddress, eth, beaconClient)
-
-					if useJson {
-						bytes, err := json.MarshalIndent(status, "", "      ")
-						core.PanicOnError("failed to get status", err)
-						statusStr := string(bytes)
-						fmt.Println(statusStr)
-						return nil
-					} else {
-						bold := color.New(color.Bold, color.FgBlue)
-						ital := color.New(color.Italic, color.FgBlue)
-						ylw := color.New(color.Italic, color.FgHiYellow)
-
-						bold.Printf("Eigenpod Status\n")
-						ital.Printf("- Pod owner address: ")
-						ylw.Printf("%s\n", status.PodOwner)
-						ital.Printf("- Proof submitter address: ")
-						ylw.Printf("%s\n", status.ProofSubmitter)
-						fmt.Println()
-
-						// sort validators by status
-						awaitingActivationQueueValidators, inactiveValidators, activeValidators, withdrawnValidators :=
-							core.SortByStatus(status.Validators)
-						var targetColor *color.Color
-
-						bold.Printf("Eigenpod validators:\n============\n")
-						ital.Printf("Format: #ValidatorIndex (pubkey) [effective balance] [current balance]\n")
-
-						// print info on validators who are not yet in the activation queue
-						//
-						// if these validators have 32 ETH effective balance, they will be
-						// activated soon and can then have their credentials verified
-						//
-						// if these validators do NOT have 32 ETH effective balance yet, the
-						// staker needs to deposit more ETH.
-						if len(awaitingActivationQueueValidators) != 0 {
-							targetColor = color.New(color.FgHiRed)
-
-							color.New(color.Bold, color.FgHiRed).Printf("- [AWAITING ACTIVATION QUEUE] - These validators have deposited, but either do not meet the minimum balance to be activated, or are awaiting activation:\n")
-
-							for _, validator := range awaitingActivationQueueValidators {
-								publicKey := validator.PublicKey
-								if !verbose {
-									publicKey = shortenHex(publicKey)
-								}
-
-								if validator.Slashed {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								} else {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								}
-							}
-
-							fmt.Println()
-						}
-
-						// print info on inactive validators
-						// these validators can be added to the pod's active validator set
-						// by running the `credentials` command
-						if len(inactiveValidators) != 0 {
-							targetColor = color.New(color.FgHiYellow)
-
-							color.New(color.Bold, color.FgHiYellow).Printf("- [INACTIVE] - Run `credentials` to verify these %d validators' withdrawal credentials:\n", len(inactiveValidators))
-
-							for _, validator := range inactiveValidators {
-								publicKey := validator.PublicKey
-								if !verbose {
-									publicKey = shortenHex(publicKey)
-								}
-
-								if validator.Slashed {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								} else {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								}
-
-							}
-
-							fmt.Println()
-						}
-
-						// print info on active validators
-						// these validators can be checkpointed using the `checkpoint` command
-						if len(activeValidators) != 0 {
-							targetColor = color.New(color.FgGreen)
-
-							color.New(color.Bold, color.FgGreen).Printf("- [ACTIVE] - Run `checkpoint` to update these %d validators' balances:\n", len(activeValidators))
-
-							for _, validator := range activeValidators {
-								publicKey := validator.PublicKey
-								if !verbose {
-									publicKey = shortenHex(publicKey)
-								}
-
-								if validator.Slashed {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								} else {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								}
-							}
-
-							fmt.Println()
-						}
-
-						// print info on withdrawn validators
-						// no further action is required to manage these validators in the pod
-						if len(withdrawnValidators) != 0 {
-							targetColor = color.New(color.FgHiRed)
-
-							color.New(color.Bold, color.FgHiRed).Printf("- [WITHDRAWN] - %d validators:\n", len(withdrawnValidators))
-
-							for _, validator := range withdrawnValidators {
-								publicKey := validator.PublicKey
-								if !verbose {
-									publicKey = shortenHex(publicKey)
-								}
-
-								if validator.Slashed {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								} else {
-									targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-								}
-							}
-
-							fmt.Println()
-						}
-
-						// Calculate the change in shares for completing a checkpoint
-						deltaETH := new(big.Float).Sub(
-							status.TotalSharesAfterCheckpointETH,
-							status.CurrentTotalSharesETH,
-						)
-
-						if status.ActiveCheckpoint != nil {
-							startTime := time.Unix(int64(status.ActiveCheckpoint.StartedAt), 0)
-
-							bold.Printf("!NOTE: There is a checkpoint active! (started at: %s)\n", startTime.String())
-
-							ital.Printf("\t- If you finish it, you may receive up to %f shares. (%f -> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
-
-							ital.Printf("\t- %d proof(s) remaining until completion.\n", status.ActiveCheckpoint.ProofsRemaining)
-						} else {
-							bold.Printf("Running a `checkpoint` right now will result in: \n")
-
-							ital.Printf("\t%f new shares issued (%f ==> %f)\n", deltaETH, status.CurrentTotalSharesETH, status.TotalSharesAfterCheckpointETH)
-
-							if status.MustForceCheckpoint {
-								ylw.Printf("\tNote: pod does not have checkpointable native ETH. To checkpoint anyway, run `checkpoint` with the `--force` flag.\n")
-							}
-
-							bold.Printf("Batching %d proofs per txn, this will require:\n\t", DEFAULT_BATCH_CHECKPOINT)
-							ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(DEFAULT_BATCH_CHECKPOINT))))
-						}
-					}
-					return nil
+					return commands.StatusCommand(commands.TStatusArgs{
+						EigenpodAddress: eigenpodAddress,
+						DisableColor:    disableColor,
+						UseJSON:         useJson,
+						Node:            node,
+						BeaconNode:      beacon,
+						Verbose:         verbose,
+					})
 				},
 			},
 			{
@@ -292,9 +76,7 @@ func main() {
 					BEACON_NODE_FLAG,
 					EXEC_NODE_FLAG,
 					SENDER_PK_FLAG,
-					PRINT_CALLDATA_BUT_DO_NOT_EXECUTE_FLAG,
-					BatchBySize(&batchSize, DEFAULT_BATCH_CHECKPOINT),
-					PROOF_PATH_FLAG,
+					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CHECKPOINT),
 					&cli.BoolFlag{
 						Name:        "force",
 						Aliases:     []string{"f"},
@@ -302,125 +84,20 @@ func main() {
 						Usage:       "If true, starts a checkpoint even if the pod has no native ETH to award shares",
 						Destination: &forceCheckpoint,
 					},
-					&cli.StringFlag{
-						Name:        "out",
-						Aliases:     []string{"O", "output"},
-						Value:       "",
-						Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--sender`, `--out` takes precedence and the proof will not be broadcast.",
-						Destination: &output,
-					},
 				},
 				Action: func(cctx *cli.Context) error {
-					if disableColor {
-						color.NoColor = true
-					}
-
-					isVerbose := !useJson && !simulateTransaction
-
-					var out *string = nil
-					if len(cctx.String("out")) > 0 {
-						outProp := cctx.String("out")
-						out = &outProp
-					}
-
-					if simulateTransaction && len(sender) > 0 {
-						core.Panic("if using `--print-calldata`, please do not specify a sender.")
-						return nil
-					}
-
-					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
-					core.PanicOnError("failed to reach ethereum clients", err)
-
-					if len(proofPath) > 0 {
-						// user specified the proof
-						if len(sender) == 0 {
-							core.Panic("If using --proof, --sender <privateKey> must also be supplied.")
-						}
-
-						// load `proof` from file.
-						proof, err := core.LoadCheckpointProofFromFile(proofPath)
-						core.PanicOnError("failed to parse checkpoint proof from file", err)
-
-						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
-						for _, txn := range txns {
-							color.Green("submitted txn: %s", txn.Hash())
-						}
-						core.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
-						return nil
-					}
-
-					currentCheckpoint, err := core.GetCurrentCheckpoint(eigenpodAddress, eth)
-					core.PanicOnError("failed to load checkpoint", err)
-
-					eigenpod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-					core.PanicOnError("failed to connect to eigenpod", err)
-
-					if currentCheckpoint == 0 {
-						if len(sender) > 0 || simulateTransaction {
-							if !noPrompt && !simulateTransaction {
-								core.PanicIfNoConsent(core.StartCheckpointProofConsent())
-							}
-
-							txn, err := core.StartCheckpoint(ctx, eigenpodAddress, sender, chainId, eth, forceCheckpoint, simulateTransaction)
-							core.PanicOnError("failed to start checkpoint", err)
-
-							if !simulateTransaction {
-								color.Green("starting checkpoint: %s.. (waiting for txn to be mined)", txn.Hash().Hex())
-								bind.WaitMined(ctx, eth, txn)
-								color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
-							} else {
-								printProofs([]Transaction{
-									{
-										Type:     "checkpoint_start",
-										To:       txn.To().Hex(),
-										CallData: common.Bytes2Hex(txn.Data()),
-									},
-								})
-
-								return nil
-							}
-
-							newCheckpoint, err := eigenpod.CurrentCheckpointTimestamp(nil)
-							core.PanicOnError("failed to fetch current checkpoint", err)
-
-							currentCheckpoint = newCheckpoint
-						} else {
-							core.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
-						}
-					}
-
-					if isVerbose {
-						color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
-					}
-
-					proof, err := core.GenerateCheckpointProof(ctx, eigenpodAddress, eth, chainId, beaconClient)
-					core.PanicOnError("failed to generate checkpoint proof", err)
-
-					jsonString, err := json.Marshal(proof)
-					core.PanicOnError("failed to generate JSON proof data.", err)
-
-					if out != nil {
-						core.WriteOutputToFileOrStdout(jsonString, out)
-					} else if len(sender) != 0 || simulateTransaction {
-						txns, err := core.SubmitCheckpointProof(ctx, sender, eigenpodAddress, chainId, proof, eth, batchSize, noPrompt, simulateTransaction)
-						if simulateTransaction {
-							printableTxns := aMap(txns, func(txn *types.Transaction) Transaction {
-								return Transaction{
-									To:       txn.To().Hex(),
-									CallData: common.Bytes2Hex(txn.Data()),
-									Type:     "checkpoint_proof",
-								}
-							})
-							printProofs(printableTxns)
-						} else {
-							for i, txn := range txns {
-								color.Green("transaction(%d): %s", i, txn.Hash().Hex())
-							}
-						}
-						core.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
-					}
-
-					return nil
+					return commands.CheckpointCommand(commands.TCheckpointCommandArgs{
+						DisableColor:        disableColor,
+						NoPrompt:            noPrompt,
+						SimulateTransaction: len(sender) == 0,
+						BatchSize:           batchSize,
+						ForceCheckpoint:     forceCheckpoint,
+						Node:                node,
+						BeaconNode:          beacon,
+						EigenpodAddress:     eigenpodAddress,
+						Verbose:             verbose,
+						Sender:              sender,
+					})
 				},
 			},
 			{
@@ -432,112 +109,27 @@ func main() {
 					BEACON_NODE_FLAG,
 					EXEC_NODE_FLAG,
 					SENDER_PK_FLAG,
-					PRINT_CALLDATA_BUT_DO_NOT_EXECUTE_FLAG,
-					BatchBySize(&batchSize, DEFAULT_BATCH_CREDENTIALS),
+					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
 						Name:        "validatorIndex",
 						Usage:       "The `index` of a specific validator to prove (e.g a slashed validator for `verifyStaleBalance()`).",
 						Destination: &specificValidator,
 					},
-					PROOF_PATH_FLAG,
-					&cli.StringFlag{
-						Name:        "out",
-						Aliases:     []string{"O", "output"},
-						Value:       "",
-						Usage:       "Output `path` for the proof. (defaults to stdout). NOTE: If `--out` is supplied along with `--sender`, `--out` takes precedence and the proof will not be broadcast.",
-						Destination: &output,
-					},
 				},
 				Action: func(cctx *cli.Context) error {
-					if disableColor {
-						color.NoColor = true
-					}
-
-					isVerbose := !useJson && !simulateTransaction
-
-					eth, beaconClient, chainId, err := core.GetClients(ctx, node, beacon, isVerbose)
-					core.PanicOnError("failed to reach ethereum clients", err)
-
-					if simulateTransaction && len(sender) > 0 {
-						core.Panic("if using --print-calldata, please do not specify a --sender.")
-						return nil
-					}
-
-					var specificValidatorIndex *big.Int = nil
-					if specificValidator != math.MaxUint64 && specificValidator != 0 {
-						specificValidatorIndex = new(big.Int).SetUint64(specificValidator)
-						if verbose {
-							fmt.Printf("Using specific validator: %d", specificValidator)
-						}
-					}
-
-					if len(proofPath) > 0 {
-						if len(sender) == 0 {
-							core.Panic("If using --proof, --sender <privateKey> must also be supplied.")
-						}
-
-						proof, err := core.LoadValidatorProofFromFile(proofPath)
-						core.PanicOnError("failed to parse checkpoint proof from file", err)
-
-						txns, _, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, proof.ValidatorProofs, proof.OracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
-						if verbose {
-							for _, txn := range txns {
-								color.Green("submitted txn: %s", txn.Hash())
-							}
-						}
-						core.PanicOnError("an error occurred while submitting your credential proofs", err)
-						return nil
-					}
-
-					validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, eigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex, verbose)
-
-					if err != nil || validatorProofs == nil {
-						core.PanicOnError("Failed to generate validator proof", err)
-						core.Panic("no inactive validators")
-					}
-
-					if len(sender) != 0 || simulateTransaction {
-						txns, indices, err := core.SubmitValidatorProof(ctx, sender, eigenpodAddress, chainId, eth, batchSize, validatorProofs, oracleBeaconTimestamp, noPrompt, simulateTransaction, verbose)
-						core.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
-							if simulateTransaction {
-								return "simulate"
-							} else {
-								return "submit"
-							}
-						}()), err)
-
-						if simulateTransaction {
-							out := aMap(txns, func(txn *types.Transaction) CredentialProofTransaction {
-								return CredentialProofTransaction{
-									Transaction: Transaction{
-										Type:     "credential_proof",
-										To:       txn.To().Hex(),
-										CallData: common.Bytes2Hex(txn.Data()),
-									},
-									ValidatorIndices: aMap(aFlatten(indices), func(index *big.Int) uint64 {
-										return index.Uint64()
-									}),
-								}
-							})
-							printProofs(out)
-						} else {
-							for i, txn := range txns {
-								color.Green("transaction(%d): %s", i, txn.Hash().Hex())
-							}
-						}
-
-						core.PanicOnError("failed to invoke verifyWithdrawalCredentials", err)
-					} else {
-						proof := core.SerializableCredentialProof{
-							ValidatorProofs:       validatorProofs,
-							OracleBeaconTimestamp: oracleBeaconTimestamp,
-						}
-						out, err := json.MarshalIndent(proof, "", "   ")
-						core.PanicOnError("failed to process proof", err)
-
-						core.WriteOutputToFileOrStdout(out, &output)
-					}
-					return nil
+					return commands.CredentialsCommand(commands.TCredentialCommandArgs{
+						EigenpodAddress:     eigenpodAddress,
+						DisableColor:        disableColor,
+						UseJSON:             useJson,
+						SimulateTransaction: len(sender) == 0,
+						Node:                node,
+						BeaconNode:          beacon,
+						Sender:              sender,
+						SpecificValidator:   specificValidator,
+						BatchSize:           batchSize,
+						NoPrompt:            noPrompt,
+						Verbose:             verbose,
+					})
 				},
 			},
 		},

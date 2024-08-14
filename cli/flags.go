@@ -31,13 +31,6 @@ var EXEC_NODE_FLAG = &cli.StringFlag{
 	Required:    true,
 	Destination: &node,
 }
-var PRINT_CALLDATA_BUT_DO_NOT_EXECUTE_FLAG = &cli.BoolFlag{
-	Name:        "print-calldata",
-	Value:       false,
-	Usage:       "Print the calldata for all associated transactions, but do not execute them. Note that some transactions have an order dependency (you cannot submit checkpoint proofs if you haven't started a checkpoint) so this may require you to get your pod into the correct state before usage.",
-	Required:    false,
-	Destination: &simulateTransaction,
-}
 
 // Optional commands:
 
@@ -59,9 +52,25 @@ var PRINT_JSON_FLAG = &cli.BoolFlag{
 	Destination: &useJson,
 }
 
-var PROOF_PATH_FLAG = &cli.StringFlag{
-	Name:        "proof",
-	Value:       "",
-	Usage:       "the `path` to a previous proof generated from this step (via -o proof.json). If provided, this proof will submitted to network via the --sender flag.",
-	Destination: &proofPath,
+// shared flag --batch
+func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
+	return &cli.Uint64Flag{
+		Name:        "batch",
+		Value:       defaultValue,
+		Usage:       "Submit proofs in groups of size `batchSize`, to avoid gas limit.",
+		Required:    false,
+		Destination: destination,
+	}
+}
+
+// Hack to make a copy of a flag that sets `Required` to true
+func Require(flag *cli.StringFlag) *cli.StringFlag {
+	return &cli.StringFlag{
+		Name:        flag.Name,
+		Aliases:     flag.Aliases,
+		Value:       flag.Value,
+		Usage:       flag.Usage,
+		Destination: flag.Destination,
+		Required:    true,
+	}
 }
