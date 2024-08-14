@@ -10,8 +10,6 @@ on:
 
 permissions:
   contents: write
-  # packages: write
-  # issues: write
 
 jobs:
   goreleaser:
@@ -25,14 +23,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: stable
-      # More assembly might be required: Docker logins, GPG, etc.
-      # It all depends on your needs.
+      - name: Determine Release Args
+        id: determine_args
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            echo "RELEASE_ARGS=release --clean" >> $GITHUB_ENV
+          else
+            echo "RELEASE_ARGS=release --snapshot" >> $GITHUB_ENV
+          fi
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --snapshot
+          args: ${{ env.RELEASE_ARGS }}
           workdir: cli
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
