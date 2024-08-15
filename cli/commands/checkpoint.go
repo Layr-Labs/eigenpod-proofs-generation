@@ -23,6 +23,7 @@ type TCheckpointCommandArgs struct {
 	BatchSize           uint64
 	ForceCheckpoint     bool
 	Verbose             bool
+	StartCheckpointOnly bool
 }
 
 func CheckpointCommand(args TCheckpointCommandArgs) error {
@@ -80,6 +81,10 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 		} else {
 			core.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
 		}
+	} else if args.StartCheckpointOnly {
+		// there is already an ongoing checkpoint.
+		core.Panic("--start-only provided, but a checkpoint was already in progress")
+		return nil
 	}
 
 	if isVerbose {

@@ -17,7 +17,7 @@ var specificValidator uint64 = math.MaxUint64
 func main() {
 	var batchSize uint64
 	var forceCheckpoint, disableColor, verbose bool
-	var noPrompt bool
+	var noPrompt, startCheckpointOnly bool
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
@@ -84,6 +84,12 @@ func main() {
 						Usage:       "If true, starts a checkpoint even if the pod has no native ETH to award shares",
 						Destination: &forceCheckpoint,
 					},
+					&cli.BoolFlag{
+						Name:        "start-only",
+						Value:       false,
+						Usage:       "If true, will only ever attempt to start a checkpoint. (will not attempt to generate/subit proofs in any capacity)",
+						Destination: &startCheckpointOnly,
+					},
 				},
 				Action: func(cctx *cli.Context) error {
 					return commands.CheckpointCommand(commands.TCheckpointCommandArgs{
@@ -97,6 +103,7 @@ func main() {
 						EigenpodAddress:     eigenpodAddress,
 						Verbose:             verbose,
 						Sender:              sender,
+						StartCheckpointOnly: startCheckpointOnly,
 					})
 				},
 			},
