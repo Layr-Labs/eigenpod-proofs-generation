@@ -53,4 +53,4 @@ linters:
     - whitespace
 
 run:
-  issues-exit-code: 1
+  issues-exit-code: 2

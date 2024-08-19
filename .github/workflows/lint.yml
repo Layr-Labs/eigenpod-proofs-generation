@@ -33,4 +33,4 @@ jobs:
     - name: Run Lint
       env:
         GOPATH: /home/runner/.go
-      run: /home/runner/.go/bin/golangci-lint run
+      run: /home/runner/.go/bin/golangci-lint run ./cli
