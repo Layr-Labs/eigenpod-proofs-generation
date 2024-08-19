@@ -1,8 +1,10 @@
 package eigenpodproofs_test
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	contractBeaconChainProofsWrapper "github.com/Layr-Labs/eigenpod-proofs-generation/bindings/BeaconChainProofsWrapper"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -88,6 +90,8 @@ func TestValidatorBalancesProofOnChain(t *testing.T) {
 	)
 	assert.Nil(t, err)
 
+	fmt.Printf("validating %d proofs\n", len(verifyCheckpointProofsCallParams.BalanceProofs))
+
 	for i := 0; i < len(verifyCheckpointProofsCallParams.BalanceProofs); i++ {
 		err = beaconChainProofsWrapper.VerifyValidatorBalance(
 			&bind.CallOpts{},
@@ -100,5 +104,6 @@ func TestValidatorBalancesProofOnChain(t *testing.T) {
 			},
 		)
 		assert.Nil(t, err)
+		time.Sleep(1 * time.Second)
 	}
 }
