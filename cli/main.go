@@ -13,7 +13,7 @@ import (
 var eigenpodAddress, beacon, node, sender string
 var useJSON = false
 var specificValidator uint64 = math.MaxUint64
-var estimateGas bool = false
+var estimateGas = false
 
 func main() {
 	var batchSize uint64
