@@ -14,11 +14,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - name: Set up Go 1.22
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.22.4
+
     - name: Install dependencies
+      env:
+        GOPATH: ~/.go
       run: |
+        mkdir ~/.go
         make setup
         go env
         ls -lar $GOPATH
 
     - name: Run Lint
+      env:
+        GOPATH: ~/.go
       run: ./.github/lint.sh
