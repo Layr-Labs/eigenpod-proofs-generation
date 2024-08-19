@@ -32,12 +32,8 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 		color.NoColor = true
 	}
 
+	isGasEstimate := args.SimulateTransaction && args.Sender != ""
 	isVerbose := !args.SimulateTransaction || args.Verbose
-
-	if args.SimulateTransaction && len(args.Sender) > 0 {
-		core.Panic("if using `--print-calldata`, please do not specify a sender.")
-		return nil
-	}
 
 	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
 	core.PanicOnError("failed to reach ethereum clients", err)
@@ -62,11 +58,18 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 				bind.WaitMined(ctx, eth, txn)
 				color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 			} else {
+				gas := txn.Gas()
 				printProofs([]Transaction{
 					{
 						Type:     "checkpoint_start",
 						To:       txn.To().Hex(),
 						CallData: common.Bytes2Hex(txn.Data()),
+						GasEstimateGwei: func() *uint64 {
+							if isGasEstimate {
+								return &gas
+							}
+							return nil
+						}(),
 					},
 				})
 

@@ -320,7 +320,15 @@ func PanicIfNoConsent(prompt string) {
 
 func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error) {
 	if noSend {
-		privateKey, err := crypto.HexToECDSA("372d94b8645091147a5dfc10a454d0d539773d2431293bf0a195b44fa5ddbb33") // this is a RANDOM private key. Do not use this for anything.
+		isSimulatingGas := owner != nil && *owner != ""
+		var senderPk = func() string {
+			if owner == nil || *owner == "" {
+				return "372d94b8645091147a5dfc10a454d0d539773d2431293bf0a195b44fa5ddbb33" // this is a RANDOM private key. Do not use this for anything.
+			}
+			return *owner
+		}()
+
+		privateKey, err := crypto.HexToECDSA(senderPk)
 		if err != nil {
 			return nil, err
 		}
@@ -336,10 +344,12 @@ func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error
 			return nil, err
 		}
 
-		auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
-		auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
-		auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
-		auth.GasLimit = 21000
+		if !isSimulatingGas {
+			auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
+			auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+			auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+			auth.GasLimit = 21000
+		}
 		auth.NoSend = true
 
 		return &Owner{

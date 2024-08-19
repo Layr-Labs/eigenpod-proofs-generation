@@ -8,9 +8,10 @@ import (
 )
 
 type Transaction struct {
-	Type     string `json:"type"`
-	To       string `json:"to"`
-	CallData string `json:"calldata"`
+	Type            string  `json:"type"`
+	To              string  `json:"to"`
+	CallData        string  `json:"calldata"`
+	GasEstimateGwei *uint64 `json:"gas_estimate_gwei,omitempty"`
 }
 type TransactionList = []Transaction
 
