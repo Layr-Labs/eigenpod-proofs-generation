@@ -13,6 +13,7 @@ import (
 var eigenpodAddress, beacon, node, sender string
 var useJSON = false
 var specificValidator uint64 = math.MaxUint64
+var estimateGas bool = false
 
 func main() {
 	var batchSize uint64
@@ -78,6 +79,7 @@ func main() {
 					BeaconNodeFlag,
 					ExecNodeFlag,
 					SenderPkFlag,
+					EstimateGasFlag,
 					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CHECKPOINT),
 					&cli.BoolFlag{
 						Name:        "force",
@@ -91,7 +93,7 @@ func main() {
 					return commands.CheckpointCommand(commands.TCheckpointCommandArgs{
 						DisableColor:        disableColor,
 						NoPrompt:            noPrompt,
-						SimulateTransaction: sender == "",
+						SimulateTransaction: sender == "" || estimateGas,
 						BatchSize:           batchSize,
 						ForceCheckpoint:     forceCheckpoint,
 						Node:                node,
@@ -111,6 +113,7 @@ func main() {
 					BeaconNodeFlag,
 					ExecNodeFlag,
 					SenderPkFlag,
+					EstimateGasFlag,
 					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
 						Name:        "validatorIndex",
@@ -123,7 +126,7 @@ func main() {
 						EigenpodAddress:     eigenpodAddress,
 						DisableColor:        disableColor,
 						UseJSON:             useJSON,
-						SimulateTransaction: sender == "",
+						SimulateTransaction: sender == "" || estimateGas,
 						Node:                node,
 						BeaconNode:          beacon,
 						Sender:              sender,

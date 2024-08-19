@@ -33,15 +33,11 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 		color.NoColor = true
 	}
 
+	isGasEstimate := args.SimulateTransaction && args.Sender != ""
 	isVerbose := (!args.UseJSON && !args.SimulateTransaction) || args.Verbose
 
 	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
 	core.PanicOnError("failed to reach ethereum clients", err)
-
-	if args.SimulateTransaction && len(args.Sender) > 0 {
-		core.Panic("if using --print-calldata, please do not specify a --sender.")
-		return nil
-	}
 
 	var specificValidatorIndex *big.Int = nil
 	if args.SpecificValidator != math.MaxUint64 && args.SpecificValidator != 0 {
@@ -70,11 +66,18 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 
 		if args.SimulateTransaction {
 			out := aMap(txns, func(txn *types.Transaction) CredentialProofTransaction {
+				gas := txn.Gas()
 				return CredentialProofTransaction{
 					Transaction: Transaction{
 						Type:     "credential_proof",
 						To:       txn.To().Hex(),
 						CallData: common.Bytes2Hex(txn.Data()),
+						GasEstimateGwei: func() *uint64 {
+							if isGasEstimate {
+								return &gas
+							}
+							return nil
+						}(),
 					},
 					ValidatorIndices: aMap(aFlatten(indices), func(index *big.Int) uint64 {
 						return index.Uint64()

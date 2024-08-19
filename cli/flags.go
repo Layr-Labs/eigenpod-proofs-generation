@@ -43,6 +43,14 @@ var SenderPkFlag = &cli.StringFlag{
 	Destination: &sender,
 }
 
+var EstimateGasFlag = &cli.BoolFlag{
+	Name:        "gas",
+	Aliases:     []string{"g"},
+	Value:       false,
+	Usage:       "Estimate gas on the transaction (using `--sender` as the sender for simulation). This will NOT send the transaction.",
+	Destination: &estimateGas,
+}
+
 // Optional use for commands that support JSON output
 var PrintJSONFlag = &cli.BoolFlag{
 	Name:        "json",
