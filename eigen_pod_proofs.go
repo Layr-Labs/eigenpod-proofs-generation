@@ -91,7 +91,7 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState
 }
 
 func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.BeaconStateTopLevelRoots, error) {
-	//get the versioned beacon state's slot
+	// get the versioned beacon state's slot
 	slot, err := beaconState.Slot()
 	if err != nil {
 		return nil, err

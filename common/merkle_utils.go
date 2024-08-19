@@ -1,6 +1,6 @@
 package common
 
-//Adapted from https://github.com/ferranbt/fastssz/blob/main/tree.go
+// Adapted from https://github.com/ferranbt/fastssz/blob/main/tree.go
 import (
 	"encoding/hex"
 	"encoding/json"
@@ -90,27 +90,22 @@ func ComputeMerkleTreeFromLeaves(values []phase0.Root, numLayers uint64) ([][]ph
 
 	for l := 0; l < int(numLayers); l++ {
 		if len(tree[l])%2 == 1 {
-
 			zeroHash := phase0.Root(zeroHashes[l])
 			tree[l] = append(tree[l], zeroHash)
 		}
 		nextLevelSize := len(tree[l]) / 2
 		values := make([]phase0.Root, nextLevelSize)
 		for i := 0; i < len(tree[l]); i += 2 {
-
 			values[i/2] = hashNodes(tree[l][i], tree[l][i+1])
-
 		}
 		tree[l+1] = values
 	}
 
 	return tree, nil
-
 }
 
 // This proof is from the bottom to the top
 func ComputeMerkleProofFromTree(tree [][]phase0.Root, index, numLayers uint64) (Proof, error) {
-
 	var proof [][32]byte
 	for l := 0; l < int(numLayers); l++ {
 		if len(tree[l]) == 0 {
@@ -137,7 +132,6 @@ func hashFn(data []byte) [32]byte {
 }
 
 func GetProof(leaves []phase0.Root, index uint64, numLayers uint64) (Proof, error) {
-
 	tree, err := ComputeMerkleTreeFromLeaves(leaves, numLayers)
 	if err != nil {
 		fmt.Println("error in get proof tree", err)
@@ -145,7 +139,7 @@ func GetProof(leaves []phase0.Root, index uint64, numLayers uint64) (Proof, erro
 		return nil, err
 	}
 
-	//LogTreeByLevel(tree)
+	// LogTreeByLevel(tree)
 
 	proof, err := ComputeMerkleProofFromTree(tree, index, numLayers)
 

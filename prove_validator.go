@@ -187,8 +187,8 @@ func (epp *EigenPodProofs) proveValidatorAgainstValidatorList(slot phase0.Slot, 
 	if err != nil {
 		return nil, err
 	}
-	//append the length of the validator array to the proof
-	//convert big endian to little endian
+	// append the length of the validator array to the proof
+	// convert big endian to little endian
 	validatorListLenLE := BigToLittleEndian(big.NewInt(int64(len(validators))))
 
 	proof = append(proof, validatorListLenLE)

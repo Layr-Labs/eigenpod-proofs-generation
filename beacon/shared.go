@@ -29,7 +29,7 @@ func ComputeValidatorBalancesTreeLeaves(balances []phase0.Gwei) []phase0.Root {
 	for i := 0; i < len(balances); i++ {
 		buf = ssz.MarshalUint64(buf, uint64(balances[i]))
 	}
-	//pad the buffer with 0s to make it a multiple of 32 bytes
+	// pad the buffer with 0s to make it a multiple of 32 bytes
 	if rest := len(buf) % 32; rest != 0 {
 		buf = append(buf, zeroBytes[:32-rest]...)
 	}
@@ -51,7 +51,7 @@ func GetValidatorBalancesProofDepth(numBalances int) uint64 {
 func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, validatorIndex uint64) (phase0.Root, common.Proof, error) {
 	balanceRootList := ComputeValidatorBalancesTreeLeaves(balances)
 
-	//refer to beaconstate_ssz.go in go-eth2-client
+	// refer to beaconstate_ssz.go in go-eth2-client
 	numLayers := uint64(common.GetDepth(ssz.CalculateLimit(1099511627776, uint64(len(balances)), 8)))
 	validatorBalanceIndex := uint64(validatorIndex / 4)
 	proof, err := common.GetProof(balanceRootList, validatorBalanceIndex, numLayers)
@@ -60,8 +60,8 @@ func ProveValidatorBalanceAgainstValidatorBalanceList(balances []phase0.Gwei, va
 		return phase0.Root{}, nil, err
 	}
 
-	//append the length of the balance array to the proof
-	//convert big endian to little endian
+	// append the length of the balance array to the proof
+	// convert big endian to little endian
 	balanceListLenLE := common.BigToLittleEndian(big.NewInt(int64(len(balances))))
 
 	proof = append(proof, balanceListLenLE)
