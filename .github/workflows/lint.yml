@@ -17,6 +17,8 @@ jobs:
     - name: Install dependencies
       run: |
         make setup
+        go env
+        ls -lar $GOPATH
 
     - name: Run Lint
       run: ./.github/lint.sh
