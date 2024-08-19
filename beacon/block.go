@@ -8,7 +8,6 @@ import (
 
 // refer to this: https://github.com/attestantio/go-eth2-client/blob/654ac05b4c534d96562329f988655e49e5743ff5/spec/phase0/beaconblockheader_encoding.go
 func ProveStateRootAgainstBlockHeader(b *phase0.BeaconBlockHeader) (common.Proof, error) {
-
 	beaconBlockHeaderContainerRoots, err := GetBlockHeaderFieldRoots(b)
 	if err != nil {
 		return nil, err

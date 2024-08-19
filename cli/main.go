@@ -11,13 +11,15 @@ import (
 
 // Destinations for values set by various flags
 var eigenpodAddress, beacon, node, sender string
-var useJson bool = false
+var useJSON = false
 var specificValidator uint64 = math.MaxUint64
 
 func main() {
 	var batchSize uint64
-	var forceCheckpoint, disableColor, verbose bool
-	var noPrompt bool
+	var forceCheckpoint = false
+	var disableColor = false
+	var verbose = false
+	var noPrompt = false
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
@@ -32,9 +34,9 @@ func main() {
 				Usage:     "Assign a different address to be able to submit your proofs. You'll always be able to submit from your EigenPod owner PK.",
 				UsageText: "./cli assign-submitter [FLAGS] <0xsubmitter>",
 				Flags: []cli.Flag{
-					POD_ADDRESS_FLAG,
-					EXEC_NODE_FLAG,
-					Require(SENDER_PK_FLAG),
+					PodAddressFlag,
+					ExecNodeFlag,
+					Require(SenderPkFlag),
 				},
 				Action: func(cctx *cli.Context) error {
 					return commands.AssignSubmitterCommand(commands.TAssignSubmitterArgs{
@@ -51,16 +53,16 @@ func main() {
 				Name:  "status",
 				Usage: "Checks the status of your eigenpod.",
 				Flags: []cli.Flag{
-					POD_ADDRESS_FLAG,
-					BEACON_NODE_FLAG,
-					EXEC_NODE_FLAG,
-					PRINT_JSON_FLAG,
+					PodAddressFlag,
+					BeaconNodeFlag,
+					ExecNodeFlag,
+					PrintJSONFlag,
 				},
-				Action: func(cctx *cli.Context) error {
+				Action: func(_ *cli.Context) error {
 					return commands.StatusCommand(commands.TStatusArgs{
 						EigenpodAddress: eigenpodAddress,
 						DisableColor:    disableColor,
-						UseJSON:         useJson,
+						UseJSON:         useJSON,
 						Node:            node,
 						BeaconNode:      beacon,
 						Verbose:         verbose,
@@ -72,10 +74,10 @@ func main() {
 				Aliases: []string{"cp"},
 				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
 				Flags: []cli.Flag{
-					POD_ADDRESS_FLAG,
-					BEACON_NODE_FLAG,
-					EXEC_NODE_FLAG,
-					SENDER_PK_FLAG,
+					PodAddressFlag,
+					BeaconNodeFlag,
+					ExecNodeFlag,
+					SenderPkFlag,
 					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CHECKPOINT),
 					&cli.BoolFlag{
 						Name:        "force",
@@ -85,11 +87,11 @@ func main() {
 						Destination: &forceCheckpoint,
 					},
 				},
-				Action: func(cctx *cli.Context) error {
+				Action: func(_ *cli.Context) error {
 					return commands.CheckpointCommand(commands.TCheckpointCommandArgs{
 						DisableColor:        disableColor,
 						NoPrompt:            noPrompt,
-						SimulateTransaction: len(sender) == 0,
+						SimulateTransaction: sender == "",
 						BatchSize:           batchSize,
 						ForceCheckpoint:     forceCheckpoint,
 						Node:                node,
@@ -105,10 +107,10 @@ func main() {
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Flags: []cli.Flag{
-					POD_ADDRESS_FLAG,
-					BEACON_NODE_FLAG,
-					EXEC_NODE_FLAG,
-					SENDER_PK_FLAG,
+					PodAddressFlag,
+					BeaconNodeFlag,
+					ExecNodeFlag,
+					SenderPkFlag,
 					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
 						Name:        "validatorIndex",
@@ -116,12 +118,12 @@ func main() {
 						Destination: &specificValidator,
 					},
 				},
-				Action: func(cctx *cli.Context) error {
+				Action: func(_ *cli.Context) error {
 					return commands.CredentialsCommand(commands.TCredentialCommandArgs{
 						EigenpodAddress:     eigenpodAddress,
 						DisableColor:        disableColor,
-						UseJSON:             useJson,
-						SimulateTransaction: len(sender) == 0,
+						UseJSON:             useJSON,
+						SimulateTransaction: sender == "",
 						Node:                node,
 						BeaconNode:          beacon,
 						Sender:              sender,

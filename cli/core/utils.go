@@ -156,7 +156,6 @@ func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uin
 	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to locate eigenpod. Is your address correct?: %w", err)
-
 	}
 
 	return timestamp, nil
@@ -214,7 +213,7 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 		}
 		// we check that the last 20 bytes of expectedCredentials matches validatorCredentials.
 		if bytes.Equal(
-			eigenpodAddressBytes[:],
+			eigenpodAddressBytes,
 			validator.WithdrawalCredentials[12:], // first 12 bytes are not the pubKeyHash, see (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/pods/EigenPod.sol#L663)
 		) {
 			outputValidators = append(outputValidators, ValidatorWithIndex{

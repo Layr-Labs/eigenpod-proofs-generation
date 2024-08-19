@@ -10,7 +10,6 @@ import (
 
 // taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
 func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*BeaconStateTopLevelRoots, error) {
-
 	var err error
 	beaconStateTopLevelRoots := &BeaconStateTopLevelRoots{}
 

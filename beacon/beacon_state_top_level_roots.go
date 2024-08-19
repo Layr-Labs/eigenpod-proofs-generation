@@ -45,7 +45,6 @@ func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *BeaconStateT
 		r := v.Field(i).Interface()
 		typedR := r.(*phase0.Root)
 		beaconTopLevelRootsList[i] = *typedR
-
 	}
 	roots := make([]phase0.Root, len(beaconTopLevelRootsList))
 	for i, v := range beaconTopLevelRootsList {

@@ -1,0 +1,36 @@
+name: Lint
+
+on: 
+  push:
+    branches: 
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go 1.22
+      uses: actions/setup-go@v1
+      env:
+        GOPATH: /home/runner/.go
+      with:
+        go-version: 1.22.4
+
+    - name: Install dependencies
+      env:
+        GOPATH: /home/runner/.go
+      run: |
+        mkdir /home/runner/.go
+        make setup
+        go env
+        ls -lar $GOPATH
+
+    - name: Run Lint
+      env:
+        GOPATH: /home/runner/.go
+      run: /home/runner/.go/bin/golangci-lint run ./cli

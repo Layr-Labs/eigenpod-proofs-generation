@@ -37,7 +37,6 @@ func BenchmarkComputeBeaconStateTopLevelRoots(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-
 	}
 	assert.Equal(b, computed, cached)
 }

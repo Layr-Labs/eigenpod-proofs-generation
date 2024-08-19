@@ -96,7 +96,6 @@ func verifyValidatorBalancesRootAgainstBlockHeader(t *testing.T, epp *eigenpodpr
 }
 
 func verifyValidatorBalanceAgainstValidatorBalancesRoot(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, validatorBalancesRoot phase0.Root, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {
-
 	index := beacon.BALANCES_INDEX<<(beacon.GetValidatorBalancesProofDepth(len(oracleState.Balances))+1) | (validatorIndex / 4)
 
 	return common.ValidateProof(validatorBalancesRoot, proof.Proof, proof.BalanceRoot, index)

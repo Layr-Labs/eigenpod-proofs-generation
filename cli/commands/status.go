@@ -105,7 +105,6 @@ func StatusCommand(args TStatusArgs) error {
 				} else {
 					targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
 				}
-
 			}
 
 			fmt.Println()
