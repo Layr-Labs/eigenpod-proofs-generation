@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
 )
 
@@ -21,6 +22,10 @@ func PodManagerContracts() map[uint64]string {
 		0:     "0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338",
 		17000: "0x30770d7E3e71112d7A6b7259542D1f680a70e315", //testnet holesky
 	}
+}
+
+func weiToGwei(val uint64) phase0.Gwei {
+	return phase0.Gwei(new(big.Int).Div(new(big.Int).SetUint64(val), big.NewInt(params.GWei)).Uint64())
 }
 
 type Cache struct {
@@ -109,7 +114,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
 		Shares:     podOwnerShares.Uint64(),
-		NativeETH:  phase0.Gwei(balance.Uint64()),
+		NativeETH:  weiToGwei(balance.Uint64()),
 		IsEigenpod: true,
 	}
 
