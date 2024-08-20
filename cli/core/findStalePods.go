@@ -234,8 +234,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 			return accum + allValidatorBalances[validator.Index]
 		}, phase0.Gwei(0))
 
-		balance := phase0.Gwei(cache.PodOwnerShares[eigenpod].ExecutionLayerBalance) + allValidatorBalancesSummed
-		allBalances[eigenpod] = phase0.Gwei(balance)
+		allBalances[eigenpod] = phase0.Gwei(cache.PodOwnerShares[eigenpod].ExecutionLayerBalance) + allValidatorBalancesSummed
 		return allBalances
 	}, map[string]phase0.Gwei{})
 
