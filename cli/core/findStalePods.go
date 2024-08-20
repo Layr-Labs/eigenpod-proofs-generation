@@ -140,14 +140,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		}
 	})
 
-	allWithdrawalAddresses := make(map[string]struct{})
-	for _, v := range allValidatorsWithIndices {
-		address := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
-		if address != nil {
-			allWithdrawalAddresses[*address] = struct{}{}
-		}
-	}
-
+	// TODO(pectra): this logic changes after the pectra upgrade.
 	allSlashedValidators := aFilter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
 		if !v.Validator.Slashed {
 			return false // we only care about slashed validators.

@@ -33,7 +33,7 @@ func main() {
 			{
 				Name:      "find-stale-pods",
 				Args:      true,
-				Usage:     "Locate stale pods, whose balances have deviated by more than 5%% due to beacon slashing.",
+				Usage:     "Locate stale pods, whose balances have deviated by more than 5% due to beacon slashing.",
 				UsageText: "./cli find-stale-pods <args>",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
