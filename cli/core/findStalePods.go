@@ -200,14 +200,17 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		log.Printf("%d EigenValidators were slashed\n", len(allActiveSlashedValidatorsBelongingToEigenpods))
 	}
 
-	slashedEigenpods := make(map[string][]ValidatorWithIndex)
-	for _, validator := range allActiveSlashedValidatorsBelongingToEigenpods {
+	slashedEigenpods := utils.Reduce(allActiveSlashedValidatorsBelongingToEigenpods, func(pods map[string][]ValidatorWithIndex, validator ValidatorWithIndex) map[string][]ValidatorWithIndex {
 		podAddress := executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
 		if podAddress != nil {
-			slashedEigenpods[*podAddress] = append(slashedEigenpods[*podAddress], validator)
+			if pods[*podAddress] == nil {
+				pods[*podAddress] = []ValidatorWithIndex{}
+			}
+			pods[*podAddress] = append(pods[*podAddress], validator)
 			validatorToPod[validator.Index] = *podAddress
 		}
-	}
+		return pods
+	}, map[string][]ValidatorWithIndex{})
 
 	allValidatorBalances, err := beaconState.ValidatorBalances()
 	if err != nil {
