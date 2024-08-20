@@ -39,13 +39,12 @@ func main() {
 					ExecNodeFlag,
 					BeaconNodeFlag,
 				},
-				Action: func(cctx *cli.Context) error {
-					commands.FindStalePodsCommand(commands.TFindStalePodsCommandArgs{
+				Action: func(_ *cli.Context) error {
+					return commands.FindStalePodsCommand(commands.TFindStalePodsCommandArgs{
 						EthNode:    node,
 						BeaconNode: beacon,
 						Verbose:    verbose,
 					})
-					return nil
 				},
 			},
 			{
@@ -66,7 +65,7 @@ func main() {
 						Destination: &slashedValidatorIndex,
 					},
 				},
-				Action: func(cctx *cli.Context) error {
+				Action: func(_ *cli.Context) error {
 					return commands.FixStaleBalance(commands.TFixStaleBalanceArgs{
 						EthNode:               node,
 						BeaconNode:            beacon,
