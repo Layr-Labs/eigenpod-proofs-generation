@@ -44,14 +44,14 @@ func keys[A comparable, B any](coll map[A]B) []A {
 }
 
 type PodOwnerShare struct {
-	Shares     uint64
-	NativeETH  phase0.Gwei
-	IsEigenpod bool
+	Shares                uint64
+	ExecutionLayerBalance phase0.Gwei
+	IsEigenpod            bool
 }
 
 const ACCEPTABLE_BALANCE_DEVIATION = float64(0.95)
 
-var cache Cache
+var cache Cache // valid for the duration of a command.
 
 func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (bool, error) {
 	if cache.PodOwnerShares == nil {
@@ -64,9 +64,9 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 
 	// default to false
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		Shares:     0,
-		NativeETH:  phase0.Gwei(0),
-		IsEigenpod: false,
+		Shares:                0,
+		ExecutionLayerBalance: phase0.Gwei(0),
+		IsEigenpod:            false,
 	}
 
 	podManAddress, ok := PodManagerContracts()[chainId]
@@ -113,9 +113,9 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		Shares:     podOwnerShares.Uint64(),
-		NativeETH:  weiToGwei(balance.Uint64()),
-		IsEigenpod: true,
+		Shares:                podOwnerShares.Uint64(),
+		ExecutionLayerBalance: weiToGwei(balance.Uint64()),
+		IsEigenpod:            true,
 	}
 
 	return true, nil
@@ -169,8 +169,6 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		return map[string][]ValidatorWithIndex{}, nil
 	}
 
-	validatorToPod := map[uint64]string{}
-
 	allSlashedValidatorsBelongingToEigenpods := utils.Filter(allSlashedValidators, func(validator ValidatorWithIndex) bool {
 		isPod, err := isEigenpod(eth, chainId.Uint64(), *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials))
 		if err != nil {
@@ -212,7 +210,6 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 				pods[*podAddress] = []ValidatorWithIndex{}
 			}
 			pods[*podAddress] = append(pods[*podAddress], validator)
-			validatorToPod[validator.Index] = *podAddress
 		}
 		return pods
 	}, map[string][]ValidatorWithIndex{})
@@ -228,16 +225,16 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		//		- native ETH in the pod
 		//		- any active validators and their associated balances
 		// 	)
-		allEigenpodsForValidator := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+		allValidatorsForEigenpod := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
 			withdrawal := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
 			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
 		})
 
-		allValidatorBalancesSummed := utils.Reduce(allEigenpodsForValidator, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
+		allValidatorBalancesSummed := utils.Reduce(allValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
 			return accum + allValidatorBalances[validator.Index]
 		}, phase0.Gwei(0))
 
-		balance := phase0.Gwei(cache.PodOwnerShares[eigenpod].NativeETH) + allValidatorBalancesSummed
+		balance := phase0.Gwei(cache.PodOwnerShares[eigenpod].ExecutionLayerBalance) + allValidatorBalancesSummed
 		allBalances[eigenpod] = phase0.Gwei(balance)
 		return allBalances
 	}, map[string]phase0.Gwei{})
