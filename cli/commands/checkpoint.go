@@ -5,6 +5,7 @@ import (
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -94,7 +95,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 
 	txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction)
 	if args.SimulateTransaction {
-		printableTxns := aMap(txns, func(txn *types.Transaction) Transaction {
+		printableTxns := utils.Map(txns, func(txn *types.Transaction, _ uint64) Transaction {
 			return Transaction{
 				To:       txn.To().Hex(),
 				CallData: common.Bytes2Hex(txn.Data()),

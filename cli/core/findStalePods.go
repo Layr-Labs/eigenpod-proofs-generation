@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strings"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,8 +27,20 @@ type Cache struct {
 	PodOwnerShares map[string]PodOwnerShare
 }
 
+func keys[A comparable, B any](coll map[A]B) []A {
+	if len(coll) == 0 {
+		return []A{}
+	}
+	out := make([]A, len(coll))
+	for key, _ := range coll {
+		out[len(out)] = key
+	}
+	return out
+}
+
 type PodOwnerShare struct {
 	Shares     uint64
+	NativeETH  phase0.Gwei
 	IsEigenpod bool
 }
 
@@ -46,6 +60,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// default to false
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
 		Shares:     0,
+		NativeETH:  phase0.Gwei(0),
 		IsEigenpod: false,
 	}
 
@@ -85,10 +100,16 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 		return false, fmt.Errorf("PodOwnerShares() failed: %s", err.Error())
 	}
 
+	balance, err := eth.BalanceAt(context.Background(), common.HexToAddress(eigenpodAddress), nil)
+	if err != nil {
+		return false, fmt.Errorf("balance check failed: %s", err.Error())
+	}
+
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
 		Shares:     podOwnerShares.Uint64(),
+		NativeETH:  phase0.Gwei(balance.Uint64()),
 		IsEigenpod: true,
 	}
 
@@ -103,24 +124,6 @@ func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
 	return &addr
 }
 
-func aFilter[T any](coll []T, criteria func(T) bool) []T {
-	var result []T
-	for _, item := range coll {
-		if criteria(item) {
-			result = append(result, item)
-		}
-	}
-	return result
-}
-
-func aMap[T any, A any](coll []T, mapper func(T, uint64) A) []A {
-	var result []A
-	for idx, item := range coll {
-		result = append(result, mapper(item, uint64(idx)))
-	}
-	return result
-}
-
 func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl string, beacon BeaconClient, chainId *big.Int, verbose bool) (map[string][]ValidatorWithIndex, error) {
 	beaconState, err := beacon.GetBeaconState(ctx, "head")
 	if err != nil {
@@ -133,7 +136,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		return nil, err
 	}
 
-	allValidatorsWithIndices := aMap(_allValidators, func(validator *phase0.Validator, index uint64) ValidatorWithIndex {
+	allValidatorsWithIndices := utils.Map(_allValidators, func(validator *phase0.Validator, index uint64) ValidatorWithIndex {
 		return ValidatorWithIndex{
 			Validator: validator,
 			Index:     index,
@@ -141,7 +144,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 	})
 
 	// TODO(pectra): this logic changes after the pectra upgrade.
-	allSlashedValidators := aFilter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+	allSlashedValidators := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
 		if !v.Validator.Slashed {
 			return false // we only care about slashed validators.
 		}
@@ -163,7 +166,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 
 	validatorToPod := map[uint64]string{}
 
-	allSlashedValidatorsBelongingToEigenpods := aFilter(allSlashedValidators, func(validator ValidatorWithIndex) bool {
+	allSlashedValidatorsBelongingToEigenpods := utils.Filter(allSlashedValidators, func(validator ValidatorWithIndex) bool {
 		isPod, err := isEigenpod(eth, chainId.Uint64(), *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials))
 		if err != nil {
 			return false
@@ -172,11 +175,13 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 	})
 
 	allValidatorInfo := make(map[uint64]onchain.IEigenPodValidatorInfo)
-
 	for _, validator := range allSlashedValidatorsBelongingToEigenpods {
 		eigenpodAddress := *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
 		pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-		PanicOnError("failed to dial eigenpod", err)
+		if err != nil {
+			// failed to load validator info.
+			return map[string][]ValidatorWithIndex{}, fmt.Errorf("failed to dial eigenpod: %s", err.Error())
+		}
 
 		info, err := pod.ValidatorPubkeyToInfo(nil, validator.Validator.PublicKey[:])
 		if err != nil {
@@ -186,9 +191,9 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		allValidatorInfo[validator.Index] = info
 	}
 
-	allActiveSlashedValidatorsBelongingToEigenpods := aFilter(allSlashedValidatorsBelongingToEigenpods, func(validator ValidatorWithIndex) bool {
+	allActiveSlashedValidatorsBelongingToEigenpods := utils.Filter(allSlashedValidatorsBelongingToEigenpods, func(validator ValidatorWithIndex) bool {
 		validatorInfo := allValidatorInfo[validator.Index]
-		return validatorInfo.Status == 1
+		return validatorInfo.Status == 1 // "ACTIVE"
 	})
 
 	if verbose {
@@ -204,30 +209,50 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		}
 	}
 
-	if verbose {
-		log.Printf("%d EigenPods were slashed\n", len(slashedEigenpods))
-	}
-
 	allValidatorBalances, err := beaconState.ValidatorBalances()
 	if err != nil {
 		return nil, err
 	}
 
-	var unhealthyEigenpods map[string]bool = make(map[string]bool)
-	for _, validator := range allActiveSlashedValidatorsBelongingToEigenpods {
-		balance := allValidatorBalances[validator.Index]
-		pod := validatorToPod[validator.Index]
-		executionBalance := cache.PodOwnerShares[pod].Shares
-		if executionBalance == 0 {
-			continue
-		}
-		if balance <= phase0.Gwei(float64(executionBalance)*ACCEPTABLE_BALANCE_DEVIATION) {
-			unhealthyEigenpods[pod] = true
-			if verbose {
-				log.Printf("[%s] %.2f%% deviation (beacon: %d -> execution: %d)\n", pod, 100*(float64(executionBalance)-float64(balance))/float64(executionBalance), balance, executionBalance)
-			}
-		}
+	totalAssetsGweiByEigenpod := utils.Reduce(keys(slashedEigenpods), func(allBalances map[string]phase0.Gwei, eigenpod string) map[string]phase0.Gwei {
+		// total assets of an eigenpod are determined as;
+		//	SUM(
+		//		- native ETH in the pod
+		//		- any active validators and their associated balances
+		// 	)
+		allEigenpodsForValidator := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+			withdrawal := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
+			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
+		})
+
+		allValidatorBalancesSummed := utils.Reduce(allEigenpodsForValidator, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
+			return accum + allValidatorBalances[validator.Index]
+		}, phase0.Gwei(0))
+
+		balance := phase0.Gwei(cache.PodOwnerShares[eigenpod].NativeETH) + allValidatorBalancesSummed
+		allBalances[eigenpod] = phase0.Gwei(balance)
+		return allBalances
+	}, map[string]phase0.Gwei{})
+
+	if verbose {
+		log.Printf("%d EigenPods were slashed\n", len(slashedEigenpods))
 	}
+
+	unhealthyEigenpods := utils.Filter(keys(slashedEigenpods), func(eigenpod string) bool {
+		balance, ok := totalAssetsGweiByEigenpod[eigenpod]
+		if !ok {
+			return false
+		}
+		executionBalance := cache.PodOwnerShares[eigenpod].Shares
+		if balance <= phase0.Gwei(float64(executionBalance)*ACCEPTABLE_BALANCE_DEVIATION) {
+			if verbose {
+				log.Printf("[%s] %.2f%% deviation (beacon: %d -> execution: %d)\n", eigenpod, 100*(float64(executionBalance)-float64(balance))/float64(executionBalance), balance, executionBalance)
+			}
+			return true
+		}
+
+		return false
+	})
 
 	if len(unhealthyEigenpods) == 0 {
 		if verbose {
@@ -241,7 +266,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 	}
 
 	var entries map[string][]ValidatorWithIndex = make(map[string][]ValidatorWithIndex)
-	for val := range unhealthyEigenpods {
+	for _, val := range unhealthyEigenpods {
 		entries[val] = slashedEigenpods[val]
 	}
 
