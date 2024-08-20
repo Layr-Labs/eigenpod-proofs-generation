@@ -44,9 +44,9 @@ func keys[A comparable, B any](coll map[A]B) []A {
 }
 
 type PodOwnerShare struct {
-	Shares                uint64
-	ExecutionLayerBalance phase0.Gwei
-	IsEigenpod            bool
+	SharesWei                uint64
+	ExecutionLayerBalanceWei uint64
+	IsEigenpod               bool
 }
 
 const ACCEPTABLE_BALANCE_DEVIATION = float64(0.95)
@@ -64,9 +64,9 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 
 	// default to false
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		Shares:                0,
-		ExecutionLayerBalance: phase0.Gwei(0),
-		IsEigenpod:            false,
+		SharesWei:                0,
+		ExecutionLayerBalanceWei: 0,
+		IsEigenpod:               false,
 	}
 
 	podManAddress, ok := PodManagerContracts()[chainId]
@@ -113,9 +113,9 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		Shares:                podOwnerShares.Uint64(),
-		ExecutionLayerBalance: weiToGwei(balance.Uint64()),
-		IsEigenpod:            true,
+		SharesWei:                podOwnerShares.Uint64(),
+		ExecutionLayerBalanceWei: balance.Uint64(),
+		IsEigenpod:               true,
 	}
 
 	return true, nil
@@ -219,7 +219,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		return nil, err
 	}
 
-	totalAssetsGweiByEigenpod := utils.Reduce(keys(slashedEigenpods), func(allBalances map[string]phase0.Gwei, eigenpod string) map[string]phase0.Gwei {
+	totalAssetsWeiByEigenpod := utils.Reduce(keys(slashedEigenpods), func(allBalances map[string]uint64, eigenpod string) map[string]uint64 {
 		// total assets of an eigenpod are determined as;
 		//	SUM(
 		//		- native ETH in the pod
@@ -230,25 +230,25 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
 		})
 
-		allValidatorBalancesSummed := utils.Reduce(allValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
+		allValidatorBalancesSummedGwei := utils.Reduce(allValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
 			return accum + allValidatorBalances[validator.Index]
 		}, phase0.Gwei(0))
-
-		allBalances[eigenpod] = phase0.Gwei(cache.PodOwnerShares[eigenpod].ExecutionLayerBalance) + allValidatorBalancesSummed
+		//																				   converting gwei to wei
+		allBalances[eigenpod] = cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei + (uint64(allValidatorBalancesSummedGwei) * params.GWei)
 		return allBalances
-	}, map[string]phase0.Gwei{})
+	}, map[string]uint64{})
 
 	if verbose {
 		log.Printf("%d EigenPods were slashed\n", len(slashedEigenpods))
 	}
 
 	unhealthyEigenpods := utils.Filter(keys(slashedEigenpods), func(eigenpod string) bool {
-		balance, ok := totalAssetsGweiByEigenpod[eigenpod]
+		balance, ok := totalAssetsWeiByEigenpod[eigenpod]
 		if !ok {
 			return false
 		}
-		executionBalance := cache.PodOwnerShares[eigenpod].Shares
-		if balance <= phase0.Gwei(float64(executionBalance)*ACCEPTABLE_BALANCE_DEVIATION) {
+		executionBalance := cache.PodOwnerShares[eigenpod].SharesWei
+		if balance <= uint64(float64(executionBalance)*ACCEPTABLE_BALANCE_DEVIATION) {
 			if verbose {
 				log.Printf("[%s] %.2f%% deviation (beacon: %d -> execution: %d)\n", eigenpod, 100*(float64(executionBalance)-float64(balance))/float64(executionBalance), balance, executionBalance)
 			}
