@@ -71,7 +71,7 @@ func main() {
 						BeaconNode:            beacon,
 						Sender:                sender,
 						EigenpodAddress:       eigenpodAddress,
-						SlashedValidatorIndex: int64(slashedValidatorIndex),
+						SlashedValidatorIndex: slashedValidatorIndex,
 						Verbose:               verbose,
 						CheckpointBatchSize:   batchSize,
 						NoPrompt:              noPrompt,

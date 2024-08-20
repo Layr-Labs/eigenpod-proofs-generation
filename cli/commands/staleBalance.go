@@ -18,7 +18,7 @@ type TFixStaleBalanceArgs struct {
 	BeaconNode            string
 	Sender                string
 	EigenpodAddress       string
-	SlashedValidatorIndex int64
+	SlashedValidatorIndex uint64
 	Verbose               bool
 	CheckpointBatchSize   uint64
 	NoPrompt              bool
@@ -39,7 +39,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	eth, beacon, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, args.Verbose)
 	core.PanicOnError("failed to get clients", err)
 
-	validator, err := beacon.GetValidator(ctx, uint64(args.SlashedValidatorIndex))
+	validator, err := beacon.GetValidator(ctx, args.SlashedValidatorIndex)
 	core.PanicOnError("failed to fetch validator state", err)
 
 	if !validator.Validator.Slashed {
@@ -75,7 +75,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 		}
 	}
 
-	proof, oracleBeaconTimesetamp, err := core.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(uint64(args.SlashedValidatorIndex)), args.Verbose)
+	proof, oracleBeaconTimesetamp, err := core.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(args.SlashedValidatorIndex), args.Verbose)
 	core.PanicOnError("failed to generate credential proof for slashed validator", err)
 
 	if !args.NoPrompt {
