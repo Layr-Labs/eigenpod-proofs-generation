@@ -114,7 +114,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			Slashed:                             validator.Slashed,
 			PublicKey:                           validator.PublicKey.String(),
 			IsAwaitingActivationQueue:           validator.ActivationEpoch == FAR_FUTURE_EPOCH,
-			IsAwaitingWithdrawalCredentialProof: (validatorInfo.Status == ValidatorStatusInactive) && validator.ExitEpoch == FAR_FUTURE_EPOCH && validator.ActivationEpoch != FAR_FUTURE_EPOCH,
+			IsAwaitingWithdrawalCredentialProof: IsAwaitingWithdrawalCredentialProof(validatorInfo, validator),
 			EffectiveBalance:                    uint64(validator.EffectiveBalance),
 			CurrentBalance:                      uint64(allBalances[validatorIndex]),
 		}

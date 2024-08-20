@@ -268,6 +268,10 @@ func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
+func IsAwaitingWithdrawalCredentialProof(validatorInfo onchain.IEigenPodValidatorInfo, validator *phase0.Validator) bool {
+	return (validatorInfo.Status == ValidatorStatusInactive) && validator.ExitEpoch == FAR_FUTURE_EPOCH && validator.ActivationEpoch != FAR_FUTURE_EPOCH
+}
+
 func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool) (*ethclient.Client, BeaconClient, *big.Int, error) {
 	eth, err := ethclient.Dial(node)
 	if err != nil {
