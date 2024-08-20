@@ -13,7 +13,8 @@ import (
 var eigenpodAddress, beacon, node, sender string
 var useJSON = false
 var specificValidator uint64 = math.MaxUint64
-var estimateGas bool = false
+var estimateGas = false
+var slashedValidatorIndex uint64
 
 func main() {
 	var batchSize uint64
@@ -29,6 +30,54 @@ func main() {
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
+			{
+				Name:      "find-stale-pods",
+				Args:      true,
+				Usage:     "Locate stale pods, whose balances have deviated by more than 5% due to beacon slashing.",
+				UsageText: "./cli find-stale-pods <args>",
+				Flags: []cli.Flag{
+					ExecNodeFlag,
+					BeaconNodeFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.FindStalePodsCommand(commands.TFindStalePodsCommandArgs{
+						EthNode:    node,
+						BeaconNode: beacon,
+						Verbose:    verbose,
+					})
+				},
+			},
+			{
+				Name:      "correct-stale-pod",
+				Args:      true,
+				Usage:     "Correct a stale balance on an eigenpod, which has been slashed on the beacon chain.",
+				UsageText: "./cli correct-stale-pod [FLAGS] <validatorIndex>",
+				Flags: []cli.Flag{
+					PodAddressFlag,
+					ExecNodeFlag,
+					BeaconNodeFlag,
+					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CHECKPOINT),
+					Require(SenderPkFlag),
+					&cli.Uint64Flag{
+						Name:        "validatorIndex",
+						Usage:       "The index of a validator slashed that belongs to the pod.",
+						Required:    true,
+						Destination: &slashedValidatorIndex,
+					},
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.FixStaleBalance(commands.TFixStaleBalanceArgs{
+						EthNode:               node,
+						BeaconNode:            beacon,
+						Sender:                sender,
+						EigenpodAddress:       eigenpodAddress,
+						SlashedValidatorIndex: int64(slashedValidatorIndex),
+						Verbose:               verbose,
+						CheckpointBatchSize:   batchSize,
+						NoPrompt:              noPrompt,
+					})
+				},
+			},
 			{
 				Name:      "assign-submitter",
 				Args:      true,

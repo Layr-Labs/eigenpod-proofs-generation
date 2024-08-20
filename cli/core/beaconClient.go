@@ -9,6 +9,7 @@ import (
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/http"
 	"github.com/attestantio/go-eth2-client/spec"
+	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,6 +24,7 @@ var (
 type BeaconClient interface {
 	GetBeaconHeader(ctx context.Context, blockId string) (*v1.BeaconBlockHeader, error)
 	GetBeaconState(ctx context.Context, stateId string) (*spec.VersionedBeaconState, error)
+	GetValidator(ctx context.Context, index uint64) (*v1.Validator, error)
 }
 
 type beaconClient struct {
@@ -60,6 +62,30 @@ func (b *beaconClient) GetBeaconHeader(ctx context.Context, blockId string) (*v1
 			return nil, err
 		}
 		return response.Data, nil
+	}
+
+	return nil, ErrBeaconClientNotSupported
+}
+
+func (b *beaconClient) GetValidator(ctx context.Context, index uint64) (*v1.Validator, error) {
+	if provider, ok := b.eth2client.(eth2client.ValidatorsProvider); ok {
+		opts := api.ValidatorsOpts{
+			State:   "head",
+			Indices: []phase0.ValidatorIndex{phase0.ValidatorIndex(index)},
+		}
+		singleValidorInfoResponse, err := provider.Validators(ctx, &opts)
+		if err != nil {
+			return nil, err
+		}
+
+		if singleValidorInfoResponse == nil {
+			return nil, errors.New("beacon state is nil")
+		}
+
+		if b.verbose {
+			log.Info().Msg("finished download")
+		}
+		return singleValidorInfoResponse.Data[phase0.ValidatorIndex(index)], nil
 	}
 
 	return nil, ErrBeaconClientNotSupported
