@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
@@ -65,7 +66,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 		}()), err)
 
 		if args.SimulateTransaction {
-			out := aMap(txns, func(txn *types.Transaction) CredentialProofTransaction {
+			out := utils.Map(txns, func(txn *types.Transaction, _ uint64) CredentialProofTransaction {
 				gas := txn.Gas()
 				return CredentialProofTransaction{
 					Transaction: Transaction{
@@ -79,7 +80,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 							return nil
 						}(),
 					},
-					ValidatorIndices: aMap(aFlatten(indices), func(index *big.Int) uint64 {
+					ValidatorIndices: utils.Map(utils.Flatten(indices), func(index *big.Int, _ uint64) uint64 {
 						return index.Uint64()
 					}),
 				}
