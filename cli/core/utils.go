@@ -283,8 +283,8 @@ func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool
 		return nil, nil, nil, fmt.Errorf("failed to fetch chain id: %w", err)
 	}
 
-	if chainId == nil || chainId.Int64() != 17000 {
-		return nil, nil, nil, errors.New("this tool only supports the Holesky network")
+	if chainId == nil || (chainId.Int64() != 17000 && chainId.Int64() != 1) {
+		return nil, nil, nil, errors.New("this tool only supports the Holesky and Mainnet Ethereum Networks")
 	}
 
 	beaconClient, err := GetBeaconClient(beaconNodeUri, enableLogs)
