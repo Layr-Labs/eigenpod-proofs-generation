@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
@@ -24,22 +23,22 @@ func FindStalePodsCommand(args TFindStalePodsCommandArgs) error {
 	core.PanicOnError("failed to find stale eigenpods", err)
 
 	if !args.Verbose {
-		// just print json and be done
-		jsonStr, _ := json.MarshalIndent(results, "", "   ")
-		fmt.Println(string(jsonStr))
+		printAsJSON(results)
 		return nil
 	}
 
-	for pod, res := range results {
-		color.Red("pod %s\n", pod)
-		for _, validator := range res {
-			fmt.Printf("\t[#%d] (%s) - %d\n", validator.Index, func() string {
-				if validator.Validator.Slashed {
-					return "slashed"
-				} else {
-					return "not slashed"
-				}
-			}(), validator.Validator.EffectiveBalance)
+	if args.Verbose {
+		for pod, res := range results {
+			color.Red("pod %s\n", pod)
+			for _, validator := range res {
+				fmt.Printf("\t[#%d] (%s) - %d\n", validator.Index, func() string {
+					if validator.Validator.Slashed {
+						return "slashed"
+					} else {
+						return "not slashed"
+					}
+				}(), validator.Validator.EffectiveBalance)
+			}
 		}
 	}
 	return nil

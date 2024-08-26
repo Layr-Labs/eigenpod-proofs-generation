@@ -20,8 +20,8 @@ type CredentialProofTransaction struct {
 	ValidatorIndices []uint64 `json:"validator_indices"`
 }
 
-func printProofs(txns any) {
+func printAsJSON(txns any) {
 	out, err := json.Marshal(txns)
-	core.PanicOnError("failed to serialize proofs", err)
+	core.PanicOnError("failed to serialize", err)
 	fmt.Println(string(out))
 }
