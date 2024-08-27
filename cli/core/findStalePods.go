@@ -24,10 +24,6 @@ func PodManagerContracts() map[uint64]string {
 	}
 }
 
-func weiToGwei(val uint64) phase0.Gwei {
-	return phase0.Gwei(new(big.Int).Div(new(big.Int).SetUint64(val), big.NewInt(params.GWei)).Uint64())
-}
-
 type Cache struct {
 	PodOwnerShares map[string]PodOwnerShare
 }
@@ -37,8 +33,10 @@ func keys[A comparable, B any](coll map[A]B) []A {
 		return []A{}
 	}
 	out := make([]A, len(coll))
-	for key, _ := range coll {
-		out[len(out)] = key
+	i := 0
+	for key := range coll {
+		out[i] = key
+		i++
 	}
 	return out
 }
