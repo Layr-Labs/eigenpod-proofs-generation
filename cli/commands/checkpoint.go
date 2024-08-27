@@ -60,7 +60,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 				color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 			} else {
 				gas := txn.Gas()
-				printProofs([]Transaction{
+				printAsJSON([]Transaction{
 					{
 						Type:     "checkpoint_start",
 						To:       txn.To().Hex(),
@@ -102,7 +102,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 				Type:     "checkpoint_proof",
 			}
 		})
-		printProofs(printableTxns)
+		printAsJSON(printableTxns)
 	} else {
 		for i, txn := range txns {
 			color.Green("transaction(%d): %s", i, txn.Hash().Hex())

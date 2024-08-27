@@ -36,6 +36,8 @@ func proofCast(proof []eigenpodproofs.Bytes32) [][32]byte {
 func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	ctx := context.Background()
 
+	sentTxns := []string{}
+
 	eth, beacon, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, args.Verbose)
 	core.PanicOnError("failed to get clients", err)
 
@@ -72,6 +74,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 				fmt.Printf("sending txn[%d/%d]: %s (waiting)...", i, len(txns), txn.Hash())
 			}
 			bind.WaitMined(ctx, eth, txn)
+			sentTxns = append(sentTxns, txn.Hash().Hex())
 		}
 	}
 
@@ -99,8 +102,9 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 		},
 	)
 	core.PanicOnError("failed to call verifyStaleBalance()", err)
+	sentTxns = append(sentTxns, txn.Hash().Hex())
 
-	fmt.Printf("txn: %s\n", txn.Hash())
+	printAsJSON(sentTxns)
 
 	return nil
 }

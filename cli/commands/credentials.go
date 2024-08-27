@@ -85,7 +85,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 					}),
 				}
 			})
-			printProofs(out)
+			printAsJSON(out)
 		} else {
 			for i, txn := range txns {
 				color.Green("transaction(%d): %s", i, txn.Hash().Hex())
