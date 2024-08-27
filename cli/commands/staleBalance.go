@@ -59,8 +59,8 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	core.PanicOnError("failed to fetch any existing checkpoint info", err)
 
 	if currentCheckpointTimestamp > 0 {
-		if args.Verbose {
-			color.Red("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing.", currentCheckpointTimestamp)
+		if !args.NoPrompt {
+			core.PanicIfNoConsent(fmt.Sprintf("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing. This will invoke `EigenPod.verifyCheckpointProofs()`, which will end the checkpoint. This may be expensive.", currentCheckpointTimestamp))
 		}
 
 		proofs, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon)
@@ -86,7 +86,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	}
 
 	if args.Verbose {
-		color.Black("Calling verifyStaleBalance() to update pod.")
+		color.Black("Calling EigenPod.verifyStaleBalance() to force checkpoint this pod.")
 	}
 
 	txn, err := eigenpod.VerifyStaleBalance(
@@ -105,6 +105,5 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	sentTxns = append(sentTxns, txn.Hash().Hex())
 
 	printAsJSON(sentTxns)
-
 	return nil
 }
