@@ -198,10 +198,10 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	// Next, we need the change in the pod's beacon chain balances since the last
 	// checkpoint:
 	//
-	// beaconETHDeltaGwei = sumRestakedBalancesGwei - sumBeaconBalancesGwei
+	// beaconETHDeltaGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei
 	beaconETHDeltaGwei := new(big.Float).Sub(
-		new(big.Float).SetUint64(uint64(sumRestakedBalancesGwei)),
 		new(big.Float).SetUint64(uint64(sumBeaconBalancesGwei)),
+		new(big.Float).SetUint64(uint64(sumRestakedBalancesGwei)),
 	)
 
 	// Sum of these two deltas represents the change in shares after this checkpoint
