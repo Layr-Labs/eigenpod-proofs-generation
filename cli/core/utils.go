@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"math/big"
 	"os"
 	"sort"
+	"strconv"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
@@ -159,6 +161,68 @@ func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uin
 	}
 
 	return timestamp, nil
+}
+
+// Fetch and return the current checkpoint timestamp for the pod
+// If the checkpoint exists (timestamp != 0), also return the beacon state for the checkpoint
+// If the checkpoint does not exist (timestamp == 0), return the head beacon state (i.e. the state we would use "if we start a checkpoint now")
+func GetCheckpointTimestampAndBeaconState(
+	ctx context.Context,
+	eigenpodAddress string,
+	eth *ethclient.Client,
+	beaconClient BeaconClient,
+) (uint64, *spec.VersionedBeaconState, error) {
+	tracing := GetContextTracingCallbacks(ctx)
+
+	tracing.OnStartSection("GetCurrentCheckpoint", map[string]string{})
+	checkpointTimestamp, err := GetCurrentCheckpoint(eigenpodAddress, eth)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to fetch current checkpoint: %w", err)
+	}
+	tracing.OnEndSection()
+
+	// stateId to look up beacon state. "head" by default (if we do not have a checkpoint)
+	beaconStateId := "head"
+
+	// If we have a checkpoint, get the state id for the checkpoint's block root
+	if checkpointTimestamp != 0 {
+		// Fetch the checkpoint's block root
+		tracing.OnStartSection("GetCurrentCheckpointBlockRoot", map[string]string{})
+		blockRoot, err := GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
+		if err != nil {
+			return 0, nil, fmt.Errorf("failed to fetch last checkpoint: %w", err)
+		}
+		if blockRoot == nil {
+			return 0, nil, fmt.Errorf("failed to fetch last checkpoint - nil blockRoot")
+		}
+		// Block root should be nonzero because we have an active checkpoint
+		rootBytes := *blockRoot
+		if AllZero(rootBytes[:]) {
+			return 0, nil, fmt.Errorf("failed to fetch last checkpoint - empty blockRoot")
+		}
+		tracing.OnEndSection()
+
+		headerBlock := "0x" + hex.EncodeToString((*blockRoot)[:])
+		tracing.OnStartSection("GetBeaconHeader", map[string]string{})
+		header, err := beaconClient.GetBeaconHeader(ctx, headerBlock)
+		if err != nil {
+			return 0, nil, fmt.Errorf("failed to fetch beacon header (%s): %w", headerBlock, err)
+		}
+		tracing.OnEndSection()
+
+		beaconStateId = strconv.FormatUint(uint64(header.Header.Message.Slot), 10)
+	} else {
+		beaconStateId = "head"
+	}
+
+	tracing.OnStartSection("GetBeaconState", map[string]string{})
+	beaconState, err := beaconClient.GetBeaconState(ctx, beaconStateId)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to fetch beacon state: %w", err)
+	}
+	tracing.OnEndSection()
+
+	return checkpointTimestamp, beaconState, nil
 }
 
 func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []Validator, []Validator) {
