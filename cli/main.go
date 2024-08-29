@@ -16,12 +16,15 @@ var specificValidator uint64 = math.MaxUint64
 var estimateGas = false
 var slashedValidatorIndex uint64
 
+const DEFAULT_HEALTHCHECK_TOLERANCE = float64(5.0)
+
 func main() {
 	var batchSize uint64
 	var forceCheckpoint = false
 	var disableColor = false
 	var verbose = false
 	var noPrompt = false
+	var tolerance = DEFAULT_HEALTHCHECK_TOLERANCE
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
@@ -38,12 +41,19 @@ func main() {
 				Flags: []cli.Flag{
 					ExecNodeFlag,
 					BeaconNodeFlag,
+					&cli.Float64Flag{
+						Name:        "tolerance",
+						Value:       DEFAULT_HEALTHCHECK_TOLERANCE, // default: 5
+						Usage:       "The percentage balance deviation to tolerate when deciding whether an eigenpod should be corrected. Default is 5% (e.g --tolerance 5).",
+						Destination: &tolerance,
+					},
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.FindStalePodsCommand(commands.TFindStalePodsCommandArgs{
 						EthNode:    node,
 						BeaconNode: beacon,
 						Verbose:    verbose,
+						Tolerance:  tolerance,
 					})
 				},
 			},

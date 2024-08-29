@@ -47,8 +47,6 @@ type PodOwnerShare struct {
 	IsEigenpod               bool
 }
 
-const ACCEPTABLE_BALANCE_DEVIATION = float64(0.95)
-
 var cache Cache // valid for the duration of a command.
 
 func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (bool, error) {
@@ -127,7 +125,7 @@ func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
 	return &addr
 }
 
-func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl string, beacon BeaconClient, chainId *big.Int, verbose bool) (map[string][]ValidatorWithIndex, error) {
+func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl string, beacon BeaconClient, chainId *big.Int, verbose bool, tolerance float64) (map[string][]ValidatorWithIndex, error) {
 	beaconState, err := beacon.GetBeaconState(ctx, "head")
 	if err != nil {
 		return nil, fmt.Errorf("error downloading beacon state: %s", err.Error())
@@ -246,7 +244,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 			return false
 		}
 		executionBalance := cache.PodOwnerShares[eigenpod].SharesWei
-		if balance <= uint64(float64(executionBalance)*ACCEPTABLE_BALANCE_DEVIATION) {
+		if balance <= uint64(float64(executionBalance)*(1-(tolerance/100))) {
 			if verbose {
 				log.Printf("[%s] %.2f%% deviation (beacon: %d -> execution: %d)\n", eigenpod, 100*(float64(executionBalance)-float64(balance))/float64(executionBalance), balance, executionBalance)
 			}
@@ -258,7 +256,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 
 	if len(unhealthyEigenpods) == 0 {
 		if verbose {
-			log.Println("All slashed eigenpods are within 5% of their expected balance.")
+			log.Printf("All slashed eigenpods are within %f%% of their expected balance.\n", tolerance)
 		}
 		return map[string][]ValidatorWithIndex{}, nil
 	}
