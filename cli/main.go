@@ -42,7 +42,7 @@ func main() {
 					&cli.Float64Flag{
 						Name:        "tolerance",
 						Value:       5,
-						Usage:       "The percentage balance deviation to tolerate when deciding whether an eigenpod should be corrected. Default is 5%.",
+						Usage:       "The percentage balance deviation to tolerate when deciding whether an eigenpod should be corrected. Default is 5% (e.g --tolerance 5).",
 						Destination: &tolerance,
 					},
 				},
