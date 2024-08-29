@@ -244,7 +244,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 			return false
 		}
 		executionBalance := cache.PodOwnerShares[eigenpod].SharesWei
-		if balance <= uint64(float64(executionBalance)*(1-tolerance)) {
+		if balance <= uint64(float64(executionBalance)*(1-(tolerance/100))) {
 			if verbose {
 				log.Printf("[%s] %.2f%% deviation (beacon: %d -> execution: %d)\n", eigenpod, 100*(float64(executionBalance)-float64(balance))/float64(executionBalance), balance, executionBalance)
 			}
