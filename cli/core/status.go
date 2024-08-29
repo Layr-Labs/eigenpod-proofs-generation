@@ -64,7 +64,7 @@ func getRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.Vers
 	return validatorBalances
 }
 
-func sumActiveValidatorBalancesGwei(allValidators []ValidatorWithIndex, allBalances []phase0.Gwei, state *spec.VersionedBeaconState) phase0.Gwei {
+func sumActiveValidatorBeaconBalancesGwei(allValidators []ValidatorWithIndex, allBalances []phase0.Gwei, state *spec.VersionedBeaconState) phase0.Gwei {
 	var sumGwei phase0.Gwei = 0
 
 	for i := 0; i < len(allValidators); i++ {
@@ -75,6 +75,23 @@ func sumActiveValidatorBalancesGwei(allValidators []ValidatorWithIndex, allBalan
 	return sumGwei
 }
 
+func sumRestakedBalancesGwei(eth *ethclient.Client, eigenpodAddress string, activeValidators []ValidatorWithIndex) (phase0.Gwei, error) {
+	var sumGwei phase0.Gwei = 0
+
+	validatorInfos, err := GetOnchainValidatorInfo(eth, eigenpodAddress, activeValidators)
+	if err != nil {
+		return 0, err
+	}
+
+	for i := 0; i < len(activeValidators); i++ {
+		validatorInfo := validatorInfos[i]
+
+		sumGwei += phase0.Gwei(validatorInfo.RestakedBalanceGwei)
+	}
+
+	return sumGwei, nil
+}
+
 func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, beaconClient BeaconClient) EigenpodStatus {
 	validators := map[string]Validator{}
 	var activeCheckpoint *Checkpoint = nil
@@ -82,24 +99,28 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	PanicOnError("failed to reach eigenpod", err)
 
-	timestamp, err := eigenPod.CurrentCheckpointTimestamp(nil)
-	PanicOnError("failed to fetch current checkpoint timestamp", err)
+	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
+	PanicOnError("failed to fetch checkpoint information", err)
 
-	state, err := beaconClient.GetBeaconState(ctx, "head")
-	PanicOnError("failed to fetch state", err)
+	// Fetch the beacon state associated with the checkpoint (or "head" if there is no checkpoint)
+	checkpointTimestamp, state, err := GetCheckpointTimestampAndBeaconState(ctx, eigenpodAddress, eth, beaconClient)
+	PanicOnError("failed to fetch checkpoint and beacon state", err)
 
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	PanicOnError("failed to find validators", err)
 
-	allBalances := getRegularBalancesGwei(allValidators, state)
+	allBeaconBalances := getRegularBalancesGwei(allValidators, state)
 
 	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidators)
 	PanicOnError("failed to find active validators", err)
 
-	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, timestamp)
+	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, checkpointTimestamp)
 	PanicOnError("failed to find checkpointable validators", err)
 
-	sumRegularBalancesGwei := sumActiveValidatorBalancesGwei(activeValidators, allBalances, state)
+	sumBeaconBalancesGwei := sumActiveValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances, state)
+
+	sumRestakedBalancesGwei, err := sumRestakedBalancesGwei(eth, eigenpodAddress, activeValidators)
+	PanicOnError("failed to calculate sum of onchain validator balances", err)
 
 	for i := 0; i < len(allValidators); i++ {
 		validator := allValidators[i].Validator
@@ -116,12 +137,9 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			IsAwaitingActivationQueue:           validator.ActivationEpoch == FAR_FUTURE_EPOCH,
 			IsAwaitingWithdrawalCredentialProof: IsAwaitingWithdrawalCredentialProof(validatorInfo, validator),
 			EffectiveBalance:                    uint64(validator.EffectiveBalance),
-			CurrentBalance:                      uint64(allBalances[validatorIndex]),
+			CurrentBalance:                      uint64(allBeaconBalances[validatorIndex]),
 		}
 	}
-
-	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
-	PanicOnError("failed to fetch checkpoint information", err)
 
 	eigenpodManagerContractAddress, err := eigenPod.EigenPodManager(nil)
 	PanicOnError("failed to get manager address", err)
@@ -136,55 +154,67 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to get eigenpod proof submitter", err)
 
 	currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
+	// currentOwnerShares = big.NewInt(0)
 	PanicOnError("failed to load pod owner shares", err)
 	currentOwnerSharesETH := IweiToEther(currentOwnerShares)
+	currentOwnerSharesGwei := WeiToGwei(currentOwnerShares)
 
 	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
 	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
 
-	var pendingSharesGwei *big.Float
-	mustForceCheckpoint := false
-	// If we currently have an active checkpoint, estimate the total shares
-	// we'll have when we complete it:
+	// Estimate the total shares we'll have if we complete an existing checkpoint
+	// (or start a new one and complete that).
 	//
-	// pendingSharesGwei = withdrawableRestakedExecutionLayerGwei + checkpoint.PodBalanceGwei + sumRegularBalancesGwei
-	if timestamp != 0 {
-		pendingSharesGwei = new(big.Float).Add(
-			new(big.Float).Add(
-				new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
-				new(big.Float).SetUint64(checkpoint.PodBalanceGwei),
-			),
-			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-		)
+	// First, we need the change in the pod's native ETH balance since the last checkpoint:
+	var nativeETHDeltaGwei *big.Float
+	mustForceCheckpoint := false
+
+	if checkpointTimestamp != 0 {
+		// Change in the pod's native ETH balance (already calculated for us when the checkpoint was started)
+		nativeETHDeltaGwei = new(big.Float).SetUint64(checkpoint.PodBalanceGwei)
 
 		activeCheckpoint = &Checkpoint{
 			ProofsRemaining: checkpoint.ProofsRemaining.Uint64(),
-			StartedAt:       timestamp,
+			StartedAt:       checkpointTimestamp,
 		}
 	} else {
-		// If we don't have an active checkpoint, estimate the shares we'd have if
-		// we created one and then completed it:
-		//
-		// pendingSharesGwei = sumRegularBalancesGwei + latestPodBalanceGwei
 		latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
 		PanicOnError("failed to fetch pod balance", err)
 		latestPodBalanceGwei := WeiToGwei(latestPodBalanceWei)
 
-		pendingSharesGwei = new(big.Float).Add(
-			new(big.Float).SetUint64(uint64(sumRegularBalancesGwei)),
-			latestPodBalanceGwei,
-		)
-
-		// Determine whether the checkpoint needs to be run with `--force`
-		checkpointableBalance := new(big.Float).Sub(
+		// We don't have a checkpoint currently, so we need to calculate what
+		// checkpoint.PodBalanceGwei would be if we started one now:
+		nativeETHDeltaGwei = new(big.Float).Sub(
 			latestPodBalanceGwei,
 			new(big.Float).SetUint64(withdrawableRestakedExecutionLayerGwei),
 		)
 
-		if checkpointableBalance.Sign() == 0 {
+		// Determine whether the checkpoint needs to be started with `--force`
+		if nativeETHDeltaGwei.Sign() == 0 {
 			mustForceCheckpoint = true
 		}
 	}
+
+	// Next, we need the change in the pod's beacon chain balances since the last
+	// checkpoint:
+	//
+	// beaconETHDeltaGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei
+	beaconETHDeltaGwei := new(big.Float).Sub(
+		new(big.Float).SetUint64(uint64(sumBeaconBalancesGwei)),
+		new(big.Float).SetUint64(uint64(sumRestakedBalancesGwei)),
+	)
+
+	// Sum of these two deltas represents the change in shares after this checkpoint
+	totalShareDeltaGwei := new(big.Float).Add(
+		nativeETHDeltaGwei,
+		beaconETHDeltaGwei,
+	)
+
+	// Calculate new total shares by applying delta to current shares
+	pendingSharesGwei := new(big.Float).Add(
+		currentOwnerSharesGwei,
+		totalShareDeltaGwei,
+	)
 
 	pendingEth := GweiToEther(pendingSharesGwei)
 
