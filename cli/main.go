@@ -22,7 +22,7 @@ func main() {
 	var disableColor = false
 	var verbose = false
 	var noPrompt = false
-	var tolerance float64 = 5.0
+	var tolerance = float64(5.0)
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
@@ -41,7 +41,7 @@ func main() {
 					BeaconNodeFlag,
 					&cli.Float64Flag{
 						Name:        "tolerance",
-						Value:       5,
+						Value:       tolerance, // default: 5
 						Usage:       "The percentage balance deviation to tolerate when deciding whether an eigenpod should be corrected. Default is 5% (e.g --tolerance 5).",
 						Destination: &tolerance,
 					},
