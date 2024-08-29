@@ -22,6 +22,7 @@ func main() {
 	var disableColor = false
 	var verbose = false
 	var noPrompt = false
+	var tolerance float64 = 5.0
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
@@ -38,12 +39,19 @@ func main() {
 				Flags: []cli.Flag{
 					ExecNodeFlag,
 					BeaconNodeFlag,
+					&cli.Float64Flag{
+						Name:        "tolerance",
+						Value:       5,
+						Usage:       "The percentage balance deviation to tolerate when deciding whether an eigenpod should be corrected. Default is 5%.",
+						Destination: &tolerance,
+					},
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.FindStalePodsCommand(commands.TFindStalePodsCommandArgs{
 						EthNode:    node,
 						BeaconNode: beacon,
 						Verbose:    verbose,
+						Tolerance:  tolerance,
 					})
 				},
 			},

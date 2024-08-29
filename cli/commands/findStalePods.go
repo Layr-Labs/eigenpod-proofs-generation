@@ -12,6 +12,7 @@ type TFindStalePodsCommandArgs struct {
 	EthNode    string
 	BeaconNode string
 	Verbose    bool
+	Tolerance  float64
 }
 
 func FindStalePodsCommand(args TFindStalePodsCommandArgs) error {
@@ -19,7 +20,7 @@ func FindStalePodsCommand(args TFindStalePodsCommandArgs) error {
 	eth, beacon, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode /* verbose */, args.Verbose)
 	core.PanicOnError("failed to dial clients", err)
 
-	results, err := core.FindStaleEigenpods(ctx, eth, args.EthNode, beacon, chainId, args.Verbose)
+	results, err := core.FindStaleEigenpods(ctx, eth, args.EthNode, beacon, chainId, args.Verbose, args.Tolerance)
 	core.PanicOnError("failed to find stale eigenpods", err)
 
 	if !args.Verbose {
