@@ -20,26 +20,30 @@ import (
 	"github.com/fatih/color"
 )
 
-func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool, noSend bool) ([]*types.Transaction, error) {
+func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool, noSend bool, verbose bool) ([]*types.Transaction, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
 	allProofChunks := chunk(proof.BalanceProofs, batchSize)
 	transactions := []*types.Transaction{}
-	color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
+	if verbose {
+		color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
+	}
 
 	for i := 0; i < len(allProofChunks); i++ {
 		balanceProofs := allProofChunks[i]
 		tracing.OnStartSection("pepe::proof::checkpoint::batch::submit", map[string]string{
 			"chunk": fmt.Sprintf("%d", i),
 		})
-		txn, err := SubmitCheckpointProofBatch(ctx, owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth, noSend)
+		txn, err := SubmitCheckpointProofBatch(ctx, owner, eigenpodAddress, chainId, proof.ValidatorBalancesRootProof, balanceProofs, eth, noSend, verbose)
 		tracing.OnEndSection()
 		if err != nil {
 			// failed to submit batch.
 			return transactions, err
 		}
 		transactions = append(transactions, txn)
-		fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, len(allProofChunks))
+		if verbose {
+			fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, len(allProofChunks))
+		}
 		tracing.OnStartSection("pepe::proof::checkpoint::batch::wait", map[string]string{
 			"chunk": fmt.Sprintf("%d", i),
 		})
@@ -48,18 +52,22 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 			bind.WaitMined(ctx, eth, txn)
 		}
 		tracing.OnEndSection()
-		color.Green("OK")
+		if verbose {
+			color.Green("OK")
+		}
 	}
 
-	if !noSend {
-		color.Green("Complete! re-run with `status` to see the updated Eigenpod state.")
-	} else {
-		color.Yellow("Submit these proofs to network and re-run with `status` to see the updated Eigenpod state.")
+	if verbose {
+		if !noSend {
+			color.Green("Complete! re-run with `status` to see the updated Eigenpod state.")
+		} else {
+			color.Yellow("Submit these proofs to network and re-run with `status` to see the updated Eigenpod state.")
+		}
 	}
 	return transactions, nil
 }
 
-func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, noSend bool) (*types.Transaction, error) {
+func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, noSend bool, verbose bool) (*types.Transaction, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
 	ownerAccount, err := PrepareAccount(&owner, chainId, noSend)
@@ -67,7 +75,9 @@ func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress stri
 		return nil, err
 	}
 
-	fmt.Printf("Using account(0x%s) to submit onchain\n", common.Bytes2Hex(ownerAccount.FromAddress[:]))
+	if verbose {
+		fmt.Printf("Using account(0x%s) to submit onchain\n", common.Bytes2Hex(ownerAccount.FromAddress[:]))
+	}
 
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
@@ -114,7 +124,7 @@ func asJSON(obj interface{}) string {
 	return string(bytes)
 }
 
-func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, verbose bool) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
 	tracing.OnStartSection("GetCurrentCheckpoint", map[string]string{})
@@ -159,10 +169,10 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 		return nil, fmt.Errorf("failed to initialize prover: %w", err)
 	}
 
-	return GenerateCheckpointProofForState(ctx, eigenpodAddress, beaconState, header, eth, currentCheckpoint, proofs)
+	return GenerateCheckpointProofForState(ctx, eigenpodAddress, beaconState, header, eth, currentCheckpoint, proofs, verbose)
 }
 
-func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string, beaconState *spec.VersionedBeaconState, header *v1.BeaconBlockHeader, eth *ethclient.Client, currentCheckpointTimestamp uint64, proofs *eigenpodproofs.EigenPodProofs) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string, beaconState *spec.VersionedBeaconState, header *v1.BeaconBlockHeader, eth *ethclient.Client, currentCheckpointTimestamp uint64, proofs *eigenpodproofs.EigenPodProofs, verbose bool) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
 	tracing := GetContextTracingCallbacks(ctx)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
@@ -173,7 +183,9 @@ func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string
 	}
 	tracing.OnEndSection()
 
-	color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
+	if verbose {
+		color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
+	}
 
 	tracing.OnStartSection("SelectCheckpointableValidators", map[string]string{})
 	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpointTimestamp)
@@ -187,7 +199,9 @@ func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string
 		validatorIndices[i] = v.Index
 	}
 
-	color.Yellow("Proving validators at indices: %s", asJSON(validatorIndices))
+	if verbose {
+		color.Yellow("Proving validators at indices: %s", asJSON(validatorIndices))
+	}
 
 	tracing.OnStartSection("ProveCheckpointProofs", map[string]string{})
 	proof, err := proofs.ProveCheckpointProofs(header.Header.Message, beaconState, validatorIndices)

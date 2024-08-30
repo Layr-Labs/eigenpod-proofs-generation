@@ -24,6 +24,11 @@ type TFixStaleBalanceArgs struct {
 	NoPrompt              bool
 }
 
+type TransactionDescription struct {
+	Hash string
+	Type string
+}
+
 // another fun cast brought to you by golang!
 func proofCast(proof []eigenpodproofs.Bytes32) [][32]byte {
 	res := make([][32]byte, len(proof))
@@ -36,7 +41,7 @@ func proofCast(proof []eigenpodproofs.Bytes32) [][32]byte {
 func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	ctx := context.Background()
 
-	sentTxns := []string{}
+	sentTxns := []TransactionDescription{}
 
 	eth, beacon, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, args.Verbose)
 	core.PanicOnError("failed to get clients", err)
@@ -63,10 +68,10 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 			core.PanicIfNoConsent(fmt.Sprintf("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing. This will invoke `EigenPod.verifyCheckpointProofs()`, which will end the checkpoint. This may be expensive.", currentCheckpointTimestamp))
 		}
 
-		proofs, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon)
+		proofs, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon, args.Verbose)
 		core.PanicOnError("failed to generate checkpoint proofs", err)
 
-		txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proofs, eth, args.CheckpointBatchSize, args.NoPrompt /* noSend */, false)
+		txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proofs, eth, args.CheckpointBatchSize, args.NoPrompt, false /* noSend */, args.Verbose)
 		core.PanicOnError("failed to submit checkpoint proofs", err)
 
 		for i, txn := range txns {
@@ -74,7 +79,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 				fmt.Printf("sending txn[%d/%d]: %s (waiting)...", i, len(txns), txn.Hash())
 			}
 			bind.WaitMined(ctx, eth, txn)
-			sentTxns = append(sentTxns, txn.Hash().Hex())
+			sentTxns = append(sentTxns, TransactionDescription{Type: "complete_existing_checkpoint", Hash: txn.Hash().Hex()})
 		}
 	}
 
@@ -102,7 +107,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 		},
 	)
 	core.PanicOnError("failed to call verifyStaleBalance()", err)
-	sentTxns = append(sentTxns, txn.Hash().Hex())
+	sentTxns = append(sentTxns, TransactionDescription{Type: "verify_stale_balance", Hash: txn.Hash().Hex()})
 
 	printAsJSON(sentTxns)
 	return nil
