@@ -117,10 +117,11 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, checkpointTimestamp)
 	PanicOnError("failed to find checkpointable validators", err)
 
-	sumBeaconBalancesGwei := sumActiveValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances, state)
+	sumBeaconBalancesGwei := new(big.Float).SetUint64(uint64(sumActiveValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances, state)))
 
-	sumRestakedBalancesGwei, err := sumRestakedBalancesGwei(eth, eigenpodAddress, activeValidators)
+	sumRestakedBalancesU64, err := sumRestakedBalancesGwei(eth, eigenpodAddress, activeValidators)
 	PanicOnError("failed to calculate sum of onchain validator balances", err)
+	sumRestakedBalancesGwei := new(big.Float).SetUint64(uint64(sumRestakedBalancesU64))
 
 	for i := 0; i < len(allValidators); i++ {
 		validator := allValidators[i].Validator
@@ -173,6 +174,12 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		// Change in the pod's native ETH balance (already calculated for us when the checkpoint was started)
 		nativeETHDeltaGwei = new(big.Float).SetUint64(checkpoint.PodBalanceGwei)
 
+		// Remove already-computed delta from an in-progress checkpoint
+		sumRestakedBalancesGwei = new(big.Float).Sub(
+			sumRestakedBalancesGwei,
+			new(big.Float).SetInt(checkpoint.BalanceDeltasGwei),
+		)
+
 		activeCheckpoint = &Checkpoint{
 			ProofsRemaining: checkpoint.ProofsRemaining.Uint64(),
 			StartedAt:       checkpointTimestamp,
@@ -200,8 +207,8 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	//
 	// beaconETHDeltaGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei
 	beaconETHDeltaGwei := new(big.Float).Sub(
-		new(big.Float).SetUint64(uint64(sumBeaconBalancesGwei)),
-		new(big.Float).SetUint64(uint64(sumRestakedBalancesGwei)),
+		sumBeaconBalancesGwei,
+		sumRestakedBalancesGwei,
 	)
 
 	// Sum of these two deltas represents the change in shares after this checkpoint
