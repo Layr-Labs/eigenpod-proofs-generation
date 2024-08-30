@@ -90,7 +90,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 		color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
 	}
 
-	proof, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient)
+	proof, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, isVerbose)
 	core.PanicOnError("failed to generate checkpoint proof", err)
 
 	txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction)
