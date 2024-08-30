@@ -16,7 +16,7 @@ var specificValidator uint64 = math.MaxUint64
 var estimateGas = false
 var slashedValidatorIndex uint64
 
-const DEFAULT_HEALTHCHECK_TOLERANCE = float64(5.0)
+const DefaultHealthcheckTolerance = float64(5.0)
 
 func main() {
 	var batchSize uint64
@@ -24,7 +24,7 @@ func main() {
 	var disableColor = false
 	var verbose = false
 	var noPrompt = false
-	var tolerance = DEFAULT_HEALTHCHECK_TOLERANCE
+	var tolerance = DefaultHealthcheckTolerance
 
 	app := &cli.App{
 		Name:                   "Eigenlayer Proofs CLi",
