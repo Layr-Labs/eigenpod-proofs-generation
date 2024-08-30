@@ -93,7 +93,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 	proof, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, isVerbose)
 	core.PanicOnError("failed to generate checkpoint proof", err)
 
-	txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction)
+	txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction, args.Verbose)
 	if args.SimulateTransaction {
 		printableTxns := utils.Map(txns, func(txn *types.Transaction, _ uint64) Transaction {
 			return Transaction{
