@@ -43,7 +43,7 @@ func main() {
 					BeaconNodeFlag,
 					&cli.Float64Flag{
 						Name:        "tolerance",
-						Value:       DEFAULT_HEALTHCHECK_TOLERANCE, // default: 5
+						Value:       DefaultHealthcheckTolerance, // default: 5
 						Usage:       "The percentage balance deviation to tolerate when deciding whether an eigenpod should be corrected. Default is 5% (e.g --tolerance 5).",
 						Destination: &tolerance,
 					},
