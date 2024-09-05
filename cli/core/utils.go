@@ -21,7 +21,6 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -98,26 +97,14 @@ type ValidatorWithIndex = struct {
 	Index     uint64
 }
 
-func withDryRun(opts *bind.TransactOpts) *bind.TransactOpts {
-	// golang doesn't have a spread operator for structs smh
-	return &bind.TransactOpts{
-		From:   opts.From,
-		Nonce:  opts.Nonce,
-		Signer: opts.Signer,
-
-		Value:     opts.Value,
-		GasPrice:  opts.GasPrice,
-		GasFeeCap: opts.GasFeeCap,
-		GasTipCap: opts.GasTipCap,
-		GasLimit:  0, // Gas limit to set for the transaction execution (0 = estimate)
-
-		Context: opts.Context, // Network context to support cancellation and timeouts (nil = no timeout)
-		NoSend:  true,         // Do all transact steps but do not send the transaction
-	}
+type ValidatorWithOnchainInfo = struct {
+	Info      onchain.IEigenPodValidatorInfo
+	Validator *phase0.Validator
+	Index     uint64
 }
 
 type Owner = struct {
-	FromAddress        gethCommon.Address
+	FromAddress        common.Address
 	PublicKey          *ecdsa.PublicKey
 	TransactionOptions *bind.TransactOpts
 	IsDryRun           bool
@@ -129,7 +116,7 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
@@ -293,13 +280,13 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 	return outputValidators, nil
 }
 
-func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) ([]onchain.IEigenPodValidatorInfo, error) {
+func FetchMultipleOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) ([]ValidatorWithOnchainInfo, error) {
 	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
 	if err != nil {
 		return nil, fmt.Errorf("failed to locate Eigenpod. Is your address correct?: %w", err)
 	}
 
-	var validatorInfo []onchain.IEigenPodValidatorInfo = []onchain.IEigenPodValidatorInfo{}
+	var validators []ValidatorWithOnchainInfo = []ValidatorWithOnchainInfo{}
 
 	// TODO: batch/multicall
 	zeroes := [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
@@ -316,10 +303,14 @@ func GetOnchainValidatorInfo(client *ethclient.Client, eigenpodAddress string, a
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch validator eigeninfo: %w", err)
 		}
-		validatorInfo = append(validatorInfo, info)
+		validators = append(validators, ValidatorWithOnchainInfo{
+			Index:     allValidators[i].Index,
+			Validator: allValidators[i].Validator,
+			Info:      info,
+		})
 	}
 
-	return validatorInfo, nil
+	return validators, nil
 }
 
 func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
@@ -510,21 +501,15 @@ func WriteOutputToFileOrStdout(output []byte, out *string) error {
 func SelectCheckpointableValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
-	validators []ValidatorWithIndex,
+	validators []ValidatorWithOnchainInfo,
 	lastCheckpoint uint64,
-) ([]ValidatorWithIndex, error) {
-	validatorInfos, err := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
-	if err != nil {
-		return nil, err
-	}
-
-	var checkpointValidators = []ValidatorWithIndex{}
+) ([]ValidatorWithOnchainInfo, error) {
+	var checkpointValidators = []ValidatorWithOnchainInfo{}
 	for i := 0; i < len(validators); i++ {
 		validator := validators[i]
-		validatorInfo := validatorInfos[i]
 
-		notCheckpointed := (validatorInfo.LastCheckpointedAt != lastCheckpoint) || (validatorInfo.LastCheckpointedAt == 0)
-		isActive := validatorInfo.Status == ValidatorStatusActive
+		notCheckpointed := (validator.Info.LastCheckpointedAt != lastCheckpoint) || (validator.Info.LastCheckpointedAt == 0)
+		isActive := validator.Info.Status == ValidatorStatusActive
 
 		if notCheckpointed && isActive {
 			checkpointValidators = append(checkpointValidators, validator)
@@ -541,9 +526,9 @@ const FAR_FUTURE_EPOCH = math.MaxUint64
 func SelectAwaitingActivationValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
-	validators []ValidatorWithIndex,
-) ([]ValidatorWithIndex, error) {
-	var awaitingActivationValidators = []ValidatorWithIndex{}
+	validators []ValidatorWithOnchainInfo,
+) ([]ValidatorWithOnchainInfo, error) {
+	var awaitingActivationValidators = []ValidatorWithOnchainInfo{}
 	for i := 0; i < len(validators); i++ {
 		validator := validators[i]
 
@@ -557,19 +542,13 @@ func SelectAwaitingActivationValidators(
 func SelectAwaitingCredentialValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
-	validators []ValidatorWithIndex,
-) ([]ValidatorWithIndex, error) {
-	validatorInfos, err := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
-	if err != nil {
-		return nil, err
-	}
-
-	var awaitingCredentialValidators = []ValidatorWithIndex{}
+	validators []ValidatorWithOnchainInfo,
+) ([]ValidatorWithOnchainInfo, error) {
+	var awaitingCredentialValidators = []ValidatorWithOnchainInfo{}
 	for i := 0; i < len(validators); i++ {
 		validator := validators[i]
-		validatorInfo := validatorInfos[i]
 
-		if (validatorInfo.Status == ValidatorStatusInactive) &&
+		if (validator.Info.Status == ValidatorStatusInactive) &&
 			(validator.Validator.ExitEpoch == FAR_FUTURE_EPOCH) &&
 			(validator.Validator.ActivationEpoch != FAR_FUTURE_EPOCH) {
 			awaitingCredentialValidators = append(awaitingCredentialValidators, validator)
@@ -581,19 +560,12 @@ func SelectAwaitingCredentialValidators(
 func SelectActiveValidators(
 	client *ethclient.Client,
 	eigenpodAddress string,
-	validators []ValidatorWithIndex,
-) ([]ValidatorWithIndex, error) {
-	validatorInfos, err := GetOnchainValidatorInfo(client, eigenpodAddress, validators)
-	if err != nil {
-		return nil, err
-	}
-
-	var activeValidators = []ValidatorWithIndex{}
+	validators []ValidatorWithOnchainInfo,
+) ([]ValidatorWithOnchainInfo, error) {
+	var activeValidators = []ValidatorWithOnchainInfo{}
 	for i := 0; i < len(validators); i++ {
 		validator := validators[i]
-		validatorInfo := validatorInfos[i]
-
-		if validatorInfo.Status == ValidatorStatusActive {
+		if validator.Info.Status == ValidatorStatusActive {
 			activeValidators = append(activeValidators, validator)
 		}
 	}

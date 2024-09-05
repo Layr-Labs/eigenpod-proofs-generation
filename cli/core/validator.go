@@ -10,6 +10,7 @@ import (
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
@@ -176,11 +177,19 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 		}
 	} else {
 		// default behavior -- load any validators that are inactive / need a credential proof
-		awaitingCredentialValidators, err = SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidators)
-	}
+		allValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(eth, eigenpodAddress, allValidators)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load validator information: %s", err.Error())
+		}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to find validators awaiting credential proofs: %w", err)
+		_awaitingCredentialValidators, err := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidatorsWithInfo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to select awaiting credential validators: %s", err.Error())
+		}
+
+		awaitingCredentialValidators = utils.Map(_awaitingCredentialValidators, func(validator ValidatorWithOnchainInfo, index uint64) ValidatorWithIndex {
+			return ValidatorWithIndex{Index: validator.Index, Validator: validator.Validator}
+		})
 	}
 
 	if len(awaitingCredentialValidators) == 0 {

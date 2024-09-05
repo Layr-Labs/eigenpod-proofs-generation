@@ -57,14 +57,14 @@ type EigenpodStatus struct {
 	MustForceCheckpoint bool
 }
 
-func getRegularBalancesGwei(allValidators []ValidatorWithIndex, state *spec.VersionedBeaconState) []phase0.Gwei {
+func getRegularBalancesGwei(state *spec.VersionedBeaconState) []phase0.Gwei {
 	validatorBalances, err := state.ValidatorBalances()
 	PanicOnError("failed to load validator balances", err)
 
 	return validatorBalances
 }
 
-func sumActiveValidatorBeaconBalancesGwei(allValidators []ValidatorWithIndex, allBalances []phase0.Gwei, state *spec.VersionedBeaconState) phase0.Gwei {
+func sumActiveValidatorBeaconBalancesGwei(allValidators []ValidatorWithOnchainInfo, allBalances []phase0.Gwei, state *spec.VersionedBeaconState) phase0.Gwei {
 	var sumGwei phase0.Gwei = 0
 
 	for i := 0; i < len(allValidators); i++ {
@@ -75,18 +75,12 @@ func sumActiveValidatorBeaconBalancesGwei(allValidators []ValidatorWithIndex, al
 	return sumGwei
 }
 
-func sumRestakedBalancesGwei(eth *ethclient.Client, eigenpodAddress string, activeValidators []ValidatorWithIndex) (phase0.Gwei, error) {
+func sumRestakedBalancesGwei(eth *ethclient.Client, eigenpodAddress string, activeValidators []ValidatorWithOnchainInfo) (phase0.Gwei, error) {
 	var sumGwei phase0.Gwei = 0
 
-	validatorInfos, err := GetOnchainValidatorInfo(eth, eigenpodAddress, activeValidators)
-	if err != nil {
-		return 0, err
-	}
-
 	for i := 0; i < len(activeValidators); i++ {
-		validatorInfo := validatorInfos[i]
-
-		sumGwei += phase0.Gwei(validatorInfo.RestakedBalanceGwei)
+		validator := activeValidators[i]
+		sumGwei += phase0.Gwei(validator.Info.RestakedBalanceGwei)
 	}
 
 	return sumGwei, nil
@@ -106,15 +100,18 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	checkpointTimestamp, state, err := GetCheckpointTimestampAndBeaconState(ctx, eigenpodAddress, eth, beaconClient)
 	PanicOnError("failed to fetch checkpoint and beacon state", err)
 
-	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
+	allValidatorsForEigenpod, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	PanicOnError("failed to find validators", err)
 
-	allBeaconBalances := getRegularBalancesGwei(allValidators, state)
+	allValidatorsWithInfoForEigenpod, err := FetchMultipleOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
+	PanicOnError("failed to fetch validator info", err)
 
-	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidators)
+	allBeaconBalances := getRegularBalancesGwei(state)
+
+	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod)
 	PanicOnError("failed to find active validators", err)
 
-	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, checkpointTimestamp)
+	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod, checkpointTimestamp)
 	PanicOnError("failed to find checkpointable validators", err)
 
 	sumBeaconBalancesGwei := new(big.Float).SetUint64(uint64(sumActiveValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances, state)))
@@ -123,9 +120,9 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to calculate sum of onchain validator balances", err)
 	sumRestakedBalancesGwei := new(big.Float).SetUint64(uint64(sumRestakedBalancesU64))
 
-	for i := 0; i < len(allValidators); i++ {
-		validator := allValidators[i].Validator
-		validatorIndex := allValidators[i].Index
+	for i := 0; i < len(allValidatorsForEigenpod); i++ {
+		validator := allValidatorsForEigenpod[i].Validator
+		validatorIndex := allValidatorsForEigenpod[i].Index
 
 		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, validator.PublicKey[:])
 		PanicOnError("failed to fetch validator info", err)
