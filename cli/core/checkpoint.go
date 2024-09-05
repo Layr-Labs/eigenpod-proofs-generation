@@ -187,8 +187,13 @@ func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string
 		color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
 	}
 
+	allValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(eth, eigenpodAddress, allValidators)
+	if err != nil {
+		return nil, err
+	}
+
 	tracing.OnStartSection("SelectCheckpointableValidators", map[string]string{})
-	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidators, currentCheckpointTimestamp)
+	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfo, currentCheckpointTimestamp)
 	if err != nil {
 		return nil, err
 	}
