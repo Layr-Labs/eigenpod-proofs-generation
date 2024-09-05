@@ -19,7 +19,7 @@ import (
 
 func PodManagerContracts() map[uint64]string {
 	return map[uint64]string{
-		0:     "0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338",
+		1:     "0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338",
 		17000: "0x30770d7E3e71112d7A6b7259542D1f680a70e315", //testnet holesky
 	}
 }
@@ -71,7 +71,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	}
 	podMan, err := onchain.NewEigenPodManager(common.HexToAddress(podManAddress), eth)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error contacting eigenpod manager: %w", err)
 	}
 
 	if podMan == nil {
@@ -80,12 +80,12 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 
 	pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error contacting eigenpod: %w", err)
 	}
 
 	owner, err := pod.PodOwner(nil)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error loading podowner: %w", err)
 	}
 
 	expectedPod, err := podMan.OwnerToPod(&bind.CallOpts{}, owner)
@@ -166,9 +166,17 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 	}
 
 	allSlashedValidatorsBelongingToEigenpods := utils.Filter(allSlashedValidators, func(validator ValidatorWithIndex) bool {
-		isPod, err := isEigenpod(eth, chainId.Uint64(), *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials))
+		podAddr := *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
+		isPod, err := isEigenpod(eth, chainId.Uint64(), podAddr)
 		if err != nil {
+			if verbose {
+				if !strings.Contains(err.Error(), "no contract code at given address") {
+					log.Printf("error checking whether contract(%s) was eigenpod: %s\n", podAddr, err.Error())
+				}
+			}
 			return false
+		} else if verbose && isPod {
+			log.Printf("Detected slashed pod: %s", podAddr)
 		}
 		return isPod
 	})
@@ -196,7 +204,8 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 	})
 
 	if verbose {
-		log.Printf("%d EigenValidators were slashed\n", len(allActiveSlashedValidatorsBelongingToEigenpods))
+		log.Printf("%d EigenValidators have been slashed\n", len(allSlashedValidatorsBelongingToEigenpods))
+		log.Printf("%d EigenValidators have been slashed AND were active\n", len(allActiveSlashedValidatorsBelongingToEigenpods))
 	}
 
 	slashedEigenpods := utils.Reduce(allActiveSlashedValidatorsBelongingToEigenpods, func(pods map[string][]ValidatorWithIndex, validator ValidatorWithIndex) map[string][]ValidatorWithIndex {
