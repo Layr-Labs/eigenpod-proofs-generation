@@ -120,22 +120,17 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	PanicOnError("failed to calculate sum of onchain validator balances", err)
 	sumRestakedBalancesGwei := new(big.Float).SetUint64(uint64(sumRestakedBalancesU64))
 
-	for i := 0; i < len(allValidatorsForEigenpod); i++ {
-		validator := allValidatorsForEigenpod[i].Validator
-		validatorIndex := allValidatorsForEigenpod[i].Index
+	for _, validator := range allValidatorsWithInfoForEigenpod {
 
-		validatorInfo, err := eigenPod.ValidatorPubkeyToInfo(nil, validator.PublicKey[:])
-		PanicOnError("failed to fetch validator info", err)
-
-		validators[fmt.Sprintf("%d", validatorIndex)] = Validator{
-			Index:                               validatorIndex,
-			Status:                              int(validatorInfo.Status),
-			Slashed:                             validator.Slashed,
-			PublicKey:                           validator.PublicKey.String(),
-			IsAwaitingActivationQueue:           validator.ActivationEpoch == FAR_FUTURE_EPOCH,
-			IsAwaitingWithdrawalCredentialProof: IsAwaitingWithdrawalCredentialProof(validatorInfo, validator),
-			EffectiveBalance:                    uint64(validator.EffectiveBalance),
-			CurrentBalance:                      uint64(allBeaconBalances[validatorIndex]),
+		validators[fmt.Sprintf("%d", validator.Index)] = Validator{
+			Index:                               validator.Index,
+			Status:                              int(validator.Info.Status),
+			Slashed:                             validator.Validator.Slashed,
+			PublicKey:                           validator.Validator.PublicKey.String(),
+			IsAwaitingActivationQueue:           validator.Validator.ActivationEpoch == FAR_FUTURE_EPOCH,
+			IsAwaitingWithdrawalCredentialProof: IsAwaitingWithdrawalCredentialProof(validator.Info, validator.Validator),
+			EffectiveBalance:                    uint64(validator.Validator.EffectiveBalance),
+			CurrentBalance:                      uint64(allBeaconBalances[validator.Index]),
 		}
 	}
 
