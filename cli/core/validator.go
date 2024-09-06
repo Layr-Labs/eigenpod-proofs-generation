@@ -152,11 +152,11 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	proofs, err := GenerateValidatorProofAtState(proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time(), validatorIndex, verbose)
+	proofs, err := GenerateValidatorProofAtState(ctx, proofExecutor, eigenpodAddress, beaconState, eth, chainId, header, latestBlock.Time(), validatorIndex, verbose)
 	return proofs, latestBlock.Time(), err
 }
 
-func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
+func GenerateValidatorProofAtState(ctx context.Context, proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
 	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find validators: %w", err)
@@ -177,7 +177,7 @@ func GenerateValidatorProofAtState(proofs *eigenpodproofs.EigenPodProofs, eigenp
 		}
 	} else {
 		// default behavior -- load any validators that are inactive / need a credential proof
-		allValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(eth, eigenpodAddress, allValidators)
+		allValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidators)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load validator information: %s", err.Error())
 		}
