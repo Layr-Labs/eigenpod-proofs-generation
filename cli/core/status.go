@@ -103,7 +103,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	allValidatorsForEigenpod, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
 	PanicOnError("failed to find validators", err)
 
-	allValidatorsWithInfoForEigenpod, err := FetchMultipleOnchainValidatorInfo(eth, eigenpodAddress, allValidatorsForEigenpod)
+	allValidatorsWithInfoForEigenpod, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidatorsForEigenpod)
 	PanicOnError("failed to fetch validator info", err)
 
 	allBeaconBalances := getRegularBalancesGwei(state)
