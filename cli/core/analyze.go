@@ -3,10 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
-	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -14,7 +13,6 @@ import (
 type PodInfo struct {
 	PodAddress gethCommon.Address
 	Owner      gethCommon.Address
-	Validators map[string]Validator
 }
 
 type PodAnalysis struct {
@@ -46,62 +44,70 @@ type PodAnalysis struct {
 }
 
 func AnalyzePods(ctx context.Context, pods map[string]PodInfo, eth *ethclient.Client, beaconClient BeaconClient) PodAnalysis {
-	fmt.Printf("Analyzing %d pods", len(pods))
+	fmt.Printf("Analyzing %d pods\n", len(pods))
 
 	beaconState, err := beaconClient.GetBeaconState(ctx, "head")
 	PanicOnError("failed to fetch beacon state: %w", err)
 
-	allValidators, err := beaconState.Validators()
-	PanicOnError("failed to fetch state validators: %w", err)
+	var inactiveFound bool
+	var problemsFound bool
+	podsAnalyzed := 0
+	validatorsAnalyzed := 0
+	numWithExitEpochs := 0
 
-	for _, pod := range pods {
-		podValidators, err := FindAllValidatorsForEigenpod()
-	}
+	for addr, _ := range pods {
+		podValidators, err := FindAllValidatorsForEigenpod(addr, beaconState)
+		PanicOnError("failed to fetch validators for pod: %w", err)
 
-	validators := map[string]Validator{}
-	var activeCheckpoint *Checkpoint = nil
+		podsAnalyzed++
+		validatorsAnalyzed += len(podValidators)
 
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	PanicOnError("failed to reach eigenpod", err)
-
-	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
-	PanicOnError("failed to fetch checkpoint information", err)
-
-	// Fetch the beacon state associated with the checkpoint (or "head" if there is no checkpoint)
-	checkpointTimestamp, state, err := GetCheckpointTimestampAndBeaconState(ctx, eigenpodAddress, eth, beaconClient)
-	PanicOnError("failed to fetch checkpoint and beacon state", err)
-
-	allValidatorsForEigenpod, err := FindAllValidatorsForEigenpod(eigenpodAddress, state)
-	PanicOnError("failed to find validators", err)
-
-	allValidatorsWithInfoForEigenpod, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidatorsForEigenpod)
-	PanicOnError("failed to fetch validator info", err)
-
-	allBeaconBalances := getRegularBalancesGwei(state)
-
-	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod)
-	PanicOnError("failed to find active validators", err)
-
-	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod, checkpointTimestamp)
-	PanicOnError("failed to find checkpointable validators", err)
-
-	sumBeaconBalancesGwei := new(big.Float).SetUint64(uint64(sumActiveValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances, state)))
-
-	sumRestakedBalancesU64, err := sumRestakedBalancesGwei(eth, eigenpodAddress, activeValidators)
-	PanicOnError("failed to calculate sum of onchain validator balances", err)
-	sumRestakedBalancesGwei := new(big.Float).SetUint64(uint64(sumRestakedBalancesU64))
-
-	for _, validator := range allValidatorsWithInfoForEigenpod {
-
-		validators[fmt.Sprintf("%d", validator.Index)] = Validator{
-			Index:                               validator.Index,
-			Status:                              int(validator.Info.Status),
-			Slashed:                             validator.Validator.Slashed,
-			PublicKey:                           validator.Validator.PublicKey.String(),
-			IsAwaitingActivationQueue:           validator.Validator.ActivationEpoch == FAR_FUTURE_EPOCH,
-			IsAwaitingWithdrawalCredentialProof: IsAwaitingWithdrawalCredentialProof(validator.Info, validator.Validator),
-			EffectiveBalance:                    uint64(validator.Validator.EffectiveBalance),
-			CurrentBalance:                      uint64(allBeaconBalances[validator.Index]),
+		if podsAnalyzed%100 == 0 {
+			fmt.Printf("Analyzed %d/%d pods (%d total validators | %d total exited)...\n", podsAnalyzed, len(pods), validatorsAnalyzed, numWithExitEpochs)
 		}
+
+		var inactiveValidators []ValidatorWithIndex
+		for _, validator := range podValidators {
+			if validator.Validator.ActivationEpoch == math.MaxUint64 {
+				inactiveFound = true
+				inactiveValidators = append(inactiveValidators, validator)
+			}
+
+			if validator.Validator.ExitEpoch != math.MaxUint64 {
+				numWithExitEpochs++
+			}
+		}
+
+		if len(inactiveValidators) == 0 {
+			continue
+		}
+
+		fmt.Printf("Found %d inactive validators in pod %s\n", len(inactiveValidators), addr)
+
+		inactiveValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(context.Background(), eth, addr, inactiveValidators)
+		PanicOnError("failed to fetch onchain info for pod: %w", err)
+
+		var problemValidators []ValidatorWithOnchainInfo
+		for _, validator := range inactiveValidatorsWithInfo {
+			if validator.Info.Status == ValidatorStatusActive {
+				problemValidators = append(problemValidators, validator)
+			}
+		}
+
+		if len(problemValidators) == 0 {
+			continue
+		}
+
+		fmt.Printf("Found %d problematic validators in pod %s\n", len(problemValidators), addr)
 	}
+
+	if !inactiveFound {
+		fmt.Printf("Didn't find any inactive validators!\n")
+	}
+
+	if !problemsFound {
+		fmt.Printf("Didn't find any problematic validators!\n")
+	}
+
+	return PodAnalysis{}
 }

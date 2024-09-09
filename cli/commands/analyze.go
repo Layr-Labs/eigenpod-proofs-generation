@@ -40,16 +40,15 @@ func AnalyzeCommand(args TAnalyzeArgs) error {
 	records, err := reader.ReadAll()
 	core.PanicOnError("error reading records: %w", err)
 
-	var pods []core.PodData
+	pods := make(map[string]core.PodInfo)
 	for _, record := range records {
-		pod := core.PodData{
+		pods[record[0]] = core.PodInfo{
 			PodAddress: common.HexToAddress(record[0]),
 			Owner:      common.HexToAddress(record[1]),
 		}
-		pods = append(pods, pod)
 	}
 
-	analysis := core.AnalyzePods(ctx, pods, eth, beaconClient)
+	core.AnalyzePods(ctx, pods, eth, beaconClient)
 
 	return nil
 }
