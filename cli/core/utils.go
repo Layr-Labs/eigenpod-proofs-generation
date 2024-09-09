@@ -335,7 +335,9 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 	})
 
 	// make the multicall requests
-	multicallInstance, err := multicall.NewMulticallContract(ctx, client, nil, 4096 /* no batching */)
+	multicallInstance, err := multicall.NewMulticallClient(ctx, client, &multicall.TMulticallClientOptions{
+		MaxBatchSizeBytes: 4096,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to contact multicall: %s", err.Error())
 	}
