@@ -130,6 +130,24 @@ func main() {
 				},
 			},
 			{
+				Name:  "analyze",
+				Usage: "Checks for inactive validators with verified withdrawal credentials",
+				Flags: []cli.Flag{
+					BeaconNodeFlag,
+					ExecNodeFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.AnalyzeCommand(commands.TAnalyzeArgs{
+						EigenpodAddress: eigenpodAddress,
+						DisableColor:    disableColor,
+						UseJSON:         useJSON,
+						Node:            node,
+						BeaconNode:      beacon,
+						Verbose:         verbose,
+					})
+				},
+			},
+			{
 				Name:    "checkpoint",
 				Aliases: []string{"cp"},
 				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
