@@ -14,6 +14,7 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type TComputeCheckpointableValueCommandArgs struct {
@@ -27,6 +28,96 @@ func PodManagerContracts() map[uint64]string {
 		1:     "0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338",
 		17000: "0x30770d7E3e71112d7A6b7259542D1f680a70e315", //testnet holesky
 	}
+}
+
+type TQueryAllEigenpodsOnNetworkArgs struct {
+	Ctx               context.Context
+	AllValidators     []core.ValidatorWithIndex
+	Eth               *ethclient.Client
+	EigenpodAbi       abi.ABI
+	PodManagerAbi     abi.ABI
+	PodManagerAddress string
+	Mc                *multicall.MulticallClient
+}
+
+func queryAllEigenpodsOnNetwork(args TQueryAllEigenpodsOnNetworkArgs) ([]string, error) {
+	// see which validators are eigenpods
+	//
+	// 1. can ignore anything that isn't withdrawing to the execution chain.
+	executionLayerWithdrawalCredentialValidators := utils.Filter(args.AllValidators, func(validator core.ValidatorWithIndex) bool {
+		return validator.Validator.WithdrawalCredentials[0] == 1
+	})
+
+	interestingWithdrawalAddresses := getKeys(utils.Reduce(executionLayerWithdrawalCredentialValidators, func(accum map[string]int, next core.ValidatorWithIndex) map[string]int {
+		accum[common.Bytes2Hex(next.Validator.WithdrawalCredentials[12:])] = 1
+		return accum
+	}, map[string]int{}))
+
+	fmt.Printf("Querying %d addresses to see if they may be eigenpods\n", len(interestingWithdrawalAddresses))
+	podOwners, err := multicall.DoMultiCallManyReportingFailures[*common.Address](*args.Mc, utils.Map(interestingWithdrawalAddresses, func(address string, index uint64) *multicall.MultiCallMetaData[*common.Address] {
+		callMeta, err := multicall.MultiCall(
+			common.HexToAddress(address),
+			args.EigenpodAbi,
+			func(data []byte) (*common.Address, error) {
+				res, err := args.EigenpodAbi.Unpack("podOwner", data)
+				if err != nil {
+					return nil, err
+				}
+				return abi.ConvertType(res[0], new(common.Address)).(*common.Address), nil
+			}, "podOwner",
+		)
+		core.PanicOnError("failed to form mc", err)
+		return callMeta
+	})...)
+
+	if podOwners == nil || err != nil || len(*podOwners) == 0 {
+		core.PanicOnError("failed to fetch podOwners", err)
+		core.Panic("loaded no pod owners")
+		return nil, err
+	}
+
+	// now we can filter by which addresses actually claimed to have podOwner()
+	podToPodOwner := map[string]*common.Address{}
+	addressesWithPodOwners := utils.FilterI(interestingWithdrawalAddresses, func(address string, i uint64) bool {
+		success := (*podOwners)[i].Success
+		if success {
+			podToPodOwner[address] = (*podOwners)[i].Value
+		}
+		return success
+	})
+
+	printAsJSON(podToPodOwner)
+
+	// array[eigenpods given the owner]
+	fmt.Printf("Querying %d addresses (podMan=%s) to see if it knows about these eigenpods\n", len(addressesWithPodOwners), args.PodManagerAddress)
+
+	eigenpodForOwner, err := multicall.DoMultiCallManyReportingFailures(
+		*args.Mc,
+		utils.Map(addressesWithPodOwners, func(address string, i uint64) *multicall.MultiCallMetaData[*common.Address] {
+			claimedOwner := *podToPodOwner[address]
+			call, err := multicall.MultiCall(
+				common.HexToAddress(args.PodManagerAddress),
+				args.PodManagerAbi,
+				func(data []byte) (*common.Address, error) {
+					res, err := args.PodManagerAbi.Unpack("ownerToPod", data)
+					if err != nil {
+						return nil, err
+					}
+					return abi.ConvertType(res[0], new(common.Address)).(*common.Address), nil
+				},
+				"ownerToPod",
+				claimedOwner,
+			)
+			core.PanicOnError("failed to form multicall", err)
+			return call
+		})...,
+	)
+	core.PanicOnError("failed to query", err)
+
+	// now, see which of `addressesWithPodOwners` properly were eigenpods.
+	return utils.FilterI(addressesWithPodOwners, func(address string, i uint64) bool {
+		return (*eigenpodForOwner)[i].Success && (*eigenpodForOwner)[i].Value.Cmp(common.HexToAddress(addressesWithPodOwners[i])) == 0
+	}), nil
 }
 
 //go:embed multicallAbi.json
@@ -43,6 +134,11 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 
 	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, true)
 	core.PanicOnError("failed to reach ethereum clients", err)
+
+	mc, err := multicall.NewMulticallClient(ctx, eth, &multicall.TMulticallClientOptions{
+		MaxBatchSizeBytes: 8192,
+	})
+	core.PanicOnError("error initializing mc", err)
 
 	podManagerAddress, ok := PodManagerContracts()[chainId.Uint64()]
 	if !ok {
@@ -65,90 +161,16 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		}
 	})
 
-	// see which validators are eigenpods
-	//
-	// 1. can ignore anything that isn't withdrawing to the execution chain.
-	executionLayerWithdrawalCredentialValidators := utils.Filter(allValidators, func(validator core.ValidatorWithIndex) bool {
-		return validator.Validator.WithdrawalCredentials[0] == 1
+	allEigenpods, err := queryAllEigenpodsOnNetwork(TQueryAllEigenpodsOnNetworkArgs{
+		Ctx:               ctx,
+		AllValidators:     allValidators,
+		Eth:               eth,
+		EigenpodAbi:       eigenpodAbi,
+		PodManagerAbi:     podManagerAbi,
+		PodManagerAddress: podManagerAddress,
+		Mc:                mc,
 	})
 
-	// multicall request a bunch of different validators to check whether they're eigenpods
-	mc, err := multicall.NewMulticallClient(ctx, eth, &multicall.TMulticallClientOptions{
-		MaxBatchSizeBytes: 8192,
-	})
-	core.PanicOnError("error initializing mc", err)
-
-	interestingWithdrawalAddresses := getKeys(utils.Reduce(executionLayerWithdrawalCredentialValidators, func(accum map[string]int, next core.ValidatorWithIndex) map[string]int {
-		accum[common.Bytes2Hex(next.Validator.WithdrawalCredentials[12:])] = 1
-		return accum
-	}, map[string]int{}))
-
-	fmt.Printf("Querying %d addresses to see if they may be eigenpods\n", len(interestingWithdrawalAddresses))
-	podOwners, err := multicall.DoMultiCallManyReportingFailures[*common.Address](*mc, utils.Map(interestingWithdrawalAddresses, func(address string, index uint64) *multicall.MultiCallMetaData[*common.Address] {
-		callMeta, err := multicall.MultiCall(
-			common.HexToAddress(address),
-			eigenpodAbi,
-			func(data []byte) (*common.Address, error) {
-				res, err := eigenpodAbi.Unpack("podOwner", data)
-				if err != nil {
-					return nil, err
-				}
-				return abi.ConvertType(res[0], new(common.Address)).(*common.Address), nil
-			}, "podOwner",
-		)
-		core.PanicOnError("failed to form mc", err)
-		return callMeta
-	})...)
-
-	if podOwners == nil || err != nil || len(*podOwners) == 0 {
-		core.PanicOnError("failed to fetch podOwners", err)
-		core.Panic("loaded no pod owners")
-		return err
-	}
-
-	// now we can filter by which addresses actually claimed to have podOwner()
-	podToPodOwner := map[string]*common.Address{}
-	addressesWithPodOwners := utils.FilterI(interestingWithdrawalAddresses, func(address string, i uint64) bool {
-		success := (*podOwners)[i].Success
-		if success {
-			podToPodOwner[address] = (*podOwners)[i].Value
-		}
-		return success
-	})
-
-	printAsJSON(podToPodOwner)
-
-	// array[eigenpods given the owner]
-	fmt.Printf("Querying %d addresses (podMan=%s) to see if it knows about these eigenpods\n", len(addressesWithPodOwners), podManagerAddress)
-
-	printAsJSON(podManagerAbi.Methods)
-	eigenpodForOwner, err := multicall.DoMultiCallManyReportingFailures(
-		*mc,
-		utils.Map(addressesWithPodOwners, func(address string, i uint64) *multicall.MultiCallMetaData[*common.Address] {
-			claimedOwner := *podToPodOwner[address]
-			call, err := multicall.MultiCall(
-				common.HexToAddress(podManagerAddress),
-				podManagerAbi,
-				func(data []byte) (*common.Address, error) {
-					res, err := podManagerAbi.Unpack("ownerToPod", data)
-					if err != nil {
-						return nil, err
-					}
-					return abi.ConvertType(res[0], new(common.Address)).(*common.Address), nil
-				},
-				"ownerToPod",
-				claimedOwner,
-			)
-			core.PanicOnError("failed to form multicall", err)
-			return call
-		})...,
-	)
-	core.PanicOnError("failed to query", err)
-
-	// now, see which of `addressesWithPodOwners` properly were eigenpods.
-	allEigenpods := utils.FilterI(addressesWithPodOwners, func(address string, i uint64) bool {
-		return (*eigenpodForOwner)[i].Success && (*eigenpodForOwner)[i].Value.Cmp(common.HexToAddress(addressesWithPodOwners[i])) == 0
-	})
 	isEigenpodSet := utils.Reduce(allEigenpods, func(allEigenpodSet map[string]int, eigenpod string) map[string]int {
 		allEigenpodSet[eigenpod] = 1
 		return allEigenpodSet
@@ -161,12 +183,12 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	// now, determine their pending checkpoint rewards per checkpoint
 	pendingRewardsWeiPerEigenpod := map[string]*big.Int{}
 
-	// TODO: compute pending rewards per eigenpod;
+	// Compute all pending rewards for each eigenpod;
 	//		see: https://github.com/Layr-Labs/eigenlayer-contracts/blob/dev/src/contracts/pods/EigenPod.sol#L656
-	//			return (podBalanceGwei + checkpoint.balanceDeltasGwei)
 	//
-	//			where
+	//			allRewards(eigenpod) := (podBalanceGwei + checkpoint.balanceDeltasGwei)
 	//
+	//			where:
 	//				podBalanceGwei = address(pod).balanceGwei - pod.withdrawableRestakedExecutionLayerGwei
 	//			and
 	//				checkpoint.balanceDeltasGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei

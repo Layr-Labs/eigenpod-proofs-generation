@@ -34,8 +34,9 @@ func main() {
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
-				Name: "find-all-pods",
-				Args: true,
+				Name:  "total-checkpointable-value",
+				Args:  true,
+				Usage: "Computes the sum of all shares that would be minted if every EigenPod on the network ran a checkpoint right now.",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
 					BeaconNodeFlag,
