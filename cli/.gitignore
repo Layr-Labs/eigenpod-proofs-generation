@@ -1,5 +1,4 @@
 cli
-*.json
 *.pem
 
 dist/
