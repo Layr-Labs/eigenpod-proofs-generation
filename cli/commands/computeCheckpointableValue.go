@@ -335,10 +335,10 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 
 	totalRewards := map[string]*big.Float{
 		"pending_execution_wei": new(big.Float).SetInt(pendingExecutionWei),
-		"pending_beacon_wei":    new(big.Float).SetInt(pendingBeaconWei),
-
 		"pending_execution_eth": core.GweiToEther(core.WeiToGwei(pendingExecutionWei)),
-		"pending_beacon_eth":    core.GweiToEther(core.WeiToGwei(pendingBeaconWei)),
+
+		"pending_beacon_wei": new(big.Float).SetInt(pendingBeaconWei),
+		"pending_beacon_eth": core.GweiToEther(core.WeiToGwei(pendingBeaconWei)),
 
 		"total_pending_shares_wei":  new(big.Float).SetInt(totalPendingRewards),
 		"total_pending_shares_gwei": core.WeiToGwei(totalPendingRewards),
