@@ -85,8 +85,9 @@ func queryAllEigenpodsOnNetwork(args TQueryAllEigenpodsOnNetworkArgs) ([]string,
 		}
 		return success
 	})
-
+	fmt.Printf("podToOwner\n")
 	printAsJSON(podToPodOwner)
+	fmt.Printf("=============")
 
 	// array[eigenpods given the owner]
 	fmt.Printf("Querying %d addresses (podMan=%s) to see if it knows about these eigenpods\n", len(addressesWithPodOwners), args.PodManagerAddress)
@@ -129,8 +130,8 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	eigenpodAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodABI))
 	core.PanicOnError("failed to load eigenpod abi", err)
 
-	// _, err := abi.JSON(strings.NewReader(onchain.EigenPodManagerABI))
-	// core.PanicOnError("failed to load eigenpod manager abi", err)
+	podManagerAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodManagerABI))
+	core.PanicOnError("failed to load eigenpod manager abi", err)
 
 	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, true)
 	core.PanicOnError("failed to reach ethereum clients", err)
@@ -140,7 +141,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	})
 	core.PanicOnError("error initializing mc", err)
 
-	_, ok := PodManagerContracts()[chainId.Uint64()]
+	podManagerAddress, ok := PodManagerContracts()[chainId.Uint64()]
 	if !ok {
 		core.Panic("unsupported network")
 	}
@@ -161,25 +162,25 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		}
 	})
 
-	// allEigenpods, err := queryAllEigenpodsOnNetwork(TQueryAllEigenpodsOnNetworkArgs{
-	// 	Ctx:               ctx,
-	// 	AllValidators:     allValidators,
-	// 	Eth:               eth,
-	// 	EigenpodAbi:       eigenpodAbi,
-	// 	PodManagerAbi:     podManagerAbi,
-	// 	PodManagerAddress: podManagerAddress,
-	// 	Mc:                mc,
-	// })
-	// core.PanicOnError("queryAllEigenpodsOnNetwork", err)
-
-	allEigenpods := []string{"0xA6f93249580EC3F08016cD3d4154AADD70aC3C96"}
+	allEigenpods, err := queryAllEigenpodsOnNetwork(TQueryAllEigenpodsOnNetworkArgs{
+		Ctx:               ctx,
+		AllValidators:     allValidators,
+		Eth:               eth,
+		EigenpodAbi:       eigenpodAbi,
+		PodManagerAbi:     podManagerAbi,
+		PodManagerAddress: podManagerAddress,
+		Mc:                mc,
+	})
+	core.PanicOnError("queryAllEigenpodsOnNetwork", err)
 
 	isEigenpodSet := utils.Reduce(allEigenpods, func(allEigenpodSet map[string]int, eigenpod string) map[string]int {
-		allEigenpodSet[eigenpod] = 1
+		allEigenpodSet[strings.ToLower(eigenpod)] = 1
 		return allEigenpodSet
 	}, map[string]int{})
 
+	fmt.Printf("allEigenpods\n")
 	printAsJSON(allEigenpods)
+	fmt.Printf("==========\n")
 
 	fmt.Printf("%d eigenpods discovered on the network", len(allEigenpods))
 
@@ -251,13 +252,14 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 
 	allPendingExecutionWei := utils.Map(allEigenpods, func(eigenpod string, index uint64) *big.Int {
 		podCurrentNativeWei := (*podNativeEthBalances)[index]
-		podEigenLayerAwareWei := core.IGweiToWei(new(big.Int).SetUint64((*withdrawableRestakedExecutionLayerGwei)[index]))
-		return new(big.Int).Sub(podCurrentNativeWei, podEigenLayerAwareWei)
+		podWithdrawableRestakedExecutionLayerWei := core.IGweiToWei(new(big.Int).SetUint64((*withdrawableRestakedExecutionLayerGwei)[index]))
+		return new(big.Int).Sub(podCurrentNativeWei, podWithdrawableRestakedExecutionLayerWei)
 	})
 
 	allValidatorsForEigenpod := utils.Reduce(allValidators, func(validatorsByPod map[string][]core.ValidatorWithIndex, validator core.ValidatorWithIndex) map[string][]core.ValidatorWithIndex {
 		withdrawalAddress := common.BytesToAddress(validator.Validator.WithdrawalCredentials[12:])
-		eigenpod := withdrawalAddress.Hex()
+		eigenpod := strings.ToLower(withdrawalAddress.Hex()[2:]) // remove 0x
+
 		if isEigenpodSet[eigenpod] == 1 {
 			if validatorsByPod[eigenpod] == nil {
 				validatorsByPod[eigenpod] = []core.ValidatorWithIndex{}
@@ -288,7 +290,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		core.PanicOnError("failed to form mc", err)
 		return res[0]
 	})
-	allValidatorInfo, err := multicall.DoMultiCallMany[*onchain.IEigenPodValidatorInfo](*mc, allValidatorInfoRequests...)
+	allValidatorInfo, err := multicall.DoMultiCallMany(*mc, allValidatorInfoRequests...)
 	core.PanicOnError("failed to multicall validator info", err)
 
 	i := 0
@@ -304,27 +306,27 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 			return big.NewInt(0)
 		}
 
-		return new(big.Int).SetUint64(uint64(allBalances[validatorPodPair.Validator.Index]))
+		balanceGwei := allBalances[validatorPodPair.Validator.Index]
+		return core.IGweiToWei(new(big.Int).SetUint64(uint64(balanceGwei)))
 	})
 
 	sumBeaconBalancesWei := utils.Reduce(beaconBalancesWei, func(sum *big.Int, cur *big.Int) *big.Int {
-		sum = sum.Add(sum, cur)
-		return sum
+		return sum.Add(sum, cur)
 	}, big.NewInt(0))
-
-	fmt.Printf("Sum-beacon-balances: %d", sumBeaconBalancesWei.Uint64())
 
 	sumRestakedBalancesWei := utils.Reduce(allEigenlayerValidatorsWithPod, func(sum *big.Int, cur ValidatorPodPair) *big.Int {
 		info := allValidatorInfoLookup[cur.Validator.Index]
 		if info.Status != core.ValidatorStatusActive {
-			return big.NewInt(0)
+			return sum
 		}
 
 		restakedBalance := core.IGweiToWei(new(big.Int).SetUint64(info.RestakedBalanceGwei))
-		return sum.Add(sum, restakedBalance)
+		return big.NewInt(0).Add(sum, restakedBalance)
 	}, big.NewInt(0))
 
 	pendingBeaconWei := big.NewInt(0).Sub(sumBeaconBalancesWei, sumRestakedBalancesWei)
+	fmt.Printf("(sumBeaconBalancesWei = %s) - (sumRestakedBalancesWei = %s) = %s\n", sumBeaconBalancesWei.String(), sumRestakedBalancesWei.String(), pendingBeaconWei.String())
+
 	pendingExecutionWei := utils.Reduce(allPendingExecutionWei, func(sum *big.Int, cur *big.Int) *big.Int {
 		return sum.Add(sum, cur)
 	}, big.NewInt(0))
@@ -335,8 +337,9 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		"pending_execution_wei": new(big.Float).SetInt(pendingExecutionWei),
 		"pending_beacon_wei":    new(big.Float).SetInt(pendingBeaconWei),
 
-		"pending_execution_eth":     core.GweiToEther(core.WeiToGwei(pendingExecutionWei)),
-		"pending_beacon_eth":        core.GweiToEther(core.WeiToGwei(pendingBeaconWei)),
+		"pending_execution_eth": core.GweiToEther(core.WeiToGwei(pendingExecutionWei)),
+		"pending_beacon_eth":    core.GweiToEther(core.WeiToGwei(pendingBeaconWei)),
+
 		"total_pending_shares_wei":  new(big.Float).SetInt(totalPendingRewards),
 		"total_pending_shares_gwei": core.WeiToGwei(totalPendingRewards),
 		"total_pending_shares_eth":  core.GweiToEther(core.WeiToGwei(totalPendingRewards)),

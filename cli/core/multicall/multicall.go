@@ -150,6 +150,9 @@ func DoMultiCallMany[A any](mc MulticallClient, requests ...*MultiCallMetaData[A
 	// unwind results
 	unwoundResults := utils.Map(res, func(d DeserializedMulticall3Result, i uint64) A {
 		// force these back to A
+		if !d.Success {
+			panic(errors.New("unexpected multicall failure"))
+		}
 		return any(d.Value).(A)
 	})
 	return &unwoundResults, nil
@@ -259,7 +262,6 @@ func doMultiCallMany(mc MulticallClient, calls ...RawMulticall) ([]DeserializedM
 			if res.ReturnData != nil {
 				val, err := call.Deserialize(res.ReturnData)
 				if err != nil {
-					fmt.Printf("[multicall] Call failed: %s\n", err.Error())
 					outputs[i] = DeserializedMulticall3Result{
 						Value:   err,
 						Success: false,
@@ -275,7 +277,6 @@ func doMultiCallMany(mc MulticallClient, calls ...RawMulticall) ([]DeserializedM
 					Value:   errors.New("no data returned"),
 					Success: false,
 				}
-				fmt.Printf("[multicall] No data returned\n")
 			}
 		} else {
 			outputs[i] = DeserializedMulticall3Result{
