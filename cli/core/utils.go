@@ -59,6 +59,10 @@ func GweiToWei(val *big.Float) *big.Float {
 	return new(big.Float).Mul(val, big.NewFloat(params.GWei))
 }
 
+func IGweiToWei(val *big.Int) *big.Int {
+	return new(big.Int).Mul(val, big.NewInt(params.GWei))
+}
+
 func IweiToEther(val *big.Int) *big.Float {
 	return new(big.Float).Quo(new(big.Float).SetInt(val), big.NewFloat(params.Ether))
 }
@@ -286,7 +290,7 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 
 var zeroes = [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
-func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) ([]ValidatorWithOnchainInfo, error) {
+func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allValidators []*phase0.Validator) ([]*multicall.MultiCallMetaData[*onchain.IEigenPodValidatorInfo], error) {
 	eigenpodAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodABI))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load eigenpod abi: %s", err)
@@ -297,10 +301,10 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 		Error     error
 	}
 
-	requests := utils.Map(allValidators, func(validator ValidatorWithIndex, index uint64) MulticallAndError {
+	requests := utils.Map(allValidators, func(validator *phase0.Validator, index uint64) MulticallAndError {
 		pubKeyHash := sha256.Sum256(
 			append(
-				validator.Validator.PublicKey[:],
+				validator.PublicKey[:],
 				zeroes[:]...,
 			),
 		)
@@ -333,6 +337,14 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 	allMulticalls := utils.Map(requests, func(mc MulticallAndError, _ uint64) *multicall.MultiCallMetaData[*onchain.IEigenPodValidatorInfo] {
 		return mc.Multicall
 	})
+	return allMulticalls, nil
+}
+
+func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) ([]ValidatorWithOnchainInfo, error) {
+	allMulticalls, err := FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress, utils.Map(allValidators, func(validator ValidatorWithIndex, i uint64) *phase0.Validator { return validator.Validator }))
+	if err != nil {
+		return nil, fmt.Errorf("failed to form multicalls: %s", err.Error())
+	}
 
 	// make the multicall requests
 	multicallInstance, err := multicall.NewMulticallClient(ctx, client, &multicall.TMulticallClientOptions{

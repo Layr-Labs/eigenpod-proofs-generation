@@ -15,14 +15,21 @@ import (
 )
 
 type MultiCallMetaData[T interface{}] struct {
-	Address     common.Address
-	Data        []byte
-	Deserialize func([]byte) (T, error)
+	Address      common.Address
+	Data         []byte
+	FunctionName string
+	Deserialize  func([]byte) (T, error)
 }
 
 type Multicall3Result struct {
 	Success    bool
 	ReturnData []byte
+}
+
+type TypedMulticall3Result[A any] struct {
+	Success bool
+	Value   A
+	Error   error
 }
 
 type DeserializedMulticall3Result struct {
@@ -32,8 +39,9 @@ type DeserializedMulticall3Result struct {
 
 func (md *MultiCallMetaData[T]) Raw() RawMulticall {
 	return RawMulticall{
-		Address: md.Address,
-		Data:    md.Data,
+		Address:      md.Address,
+		Data:         md.Data,
+		FunctionName: md.FunctionName,
 		Deserialize: func(data []byte) (any, error) {
 			res, err := md.Deserialize(data)
 			return any(res), err
@@ -42,9 +50,10 @@ func (md *MultiCallMetaData[T]) Raw() RawMulticall {
 }
 
 type RawMulticall struct {
-	Address     common.Address
-	Data        []byte
-	Deserialize func([]byte) (any, error)
+	Address      common.Address
+	Data         []byte
+	FunctionName string
+	Deserialize  func([]byte) (any, error)
 }
 
 type MulticallClient struct {
@@ -95,7 +104,14 @@ func NewMulticallClient(ctx context.Context, eth *ethclient.Client, options *TMu
 		}
 	}()
 
-	return &MulticallClient{OverrideCallOptions: options.OverrideCallOptions, MaxBatchSize: maxBatchSize, Context: ctx, ABI: &parsed, Contract: bind.NewBoundContract(contractAddress, parsed, eth, eth, eth)}, nil
+	callOptions := func() *bind.CallOpts {
+		if options != nil {
+			return options.OverrideCallOptions
+		}
+		return nil
+	}()
+
+	return &MulticallClient{OverrideCallOptions: callOptions, MaxBatchSize: maxBatchSize, Context: ctx, ABI: &parsed, Contract: bind.NewBoundContract(contractAddress, parsed, eth, eth, eth)}, nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -108,9 +124,10 @@ func MultiCall[T any](contractAddress common.Address, abi abi.ABI, deserialize f
 		return nil, fmt.Errorf("error packing multicall: %s", err.Error())
 	}
 	return &MultiCallMetaData[T]{
-		Address:     contractAddress,
-		Data:        callData,
-		Deserialize: deserialize,
+		Address:      contractAddress,
+		Data:         callData,
+		FunctionName: method,
+		Deserialize:  deserialize,
 	}, nil
 }
 
@@ -134,6 +151,32 @@ func DoMultiCallMany[A any](mc MulticallClient, requests ...*MultiCallMetaData[A
 	unwoundResults := utils.Map(res, func(d DeserializedMulticall3Result, i uint64) A {
 		// force these back to A
 		return any(d.Value).(A)
+	})
+	return &unwoundResults, nil
+}
+
+func DoMultiCallManyReportingFailures[A any](mc MulticallClient, requests ...*MultiCallMetaData[A]) (*[]TypedMulticall3Result[A], error) {
+	res, err := doMultiCallMany(mc, utils.Map(requests, func(mc *MultiCallMetaData[A], index uint64) RawMulticall {
+		return mc.Raw()
+	})...)
+	if err != nil {
+		return nil, fmt.Errorf("multicall failed: %s", err.Error())
+	}
+
+	// unwind results
+	unwoundResults := utils.Map(res, func(d DeserializedMulticall3Result, i uint64) TypedMulticall3Result[A] {
+		val, ok := any(d.Value).(A)
+		if !ok {
+			return TypedMulticall3Result[A]{
+				Value:   val,
+				Success: false,
+			}
+		}
+
+		return TypedMulticall3Result[A]{
+			Value:   val,
+			Success: d.Success,
+		}
 	})
 	return &unwoundResults, nil
 }
@@ -191,8 +234,12 @@ func doMultiCallMany(mc MulticallClient, calls ...RawMulticall) ([]DeserializedM
 	var results = make([]interface{}, len(calls))
 	var totalResults = 0
 
+	chunkNumber := 1
 	for _, multicalls := range chunkedCalls {
 		var res []interface{}
+		fmt.Printf("[multicall3] [%f%%] executing...\n", float64(chunkNumber*100.0)/float64(len(chunkedCalls)))
+
+		chunkNumber++
 		err := mc.Contract.Call(mc.OverrideCallOptions, &res, "aggregate3", multicalls)
 		if err != nil {
 			return nil, fmt.Errorf("aggregate3 failed: %s", err)
@@ -212,6 +259,7 @@ func doMultiCallMany(mc MulticallClient, calls ...RawMulticall) ([]DeserializedM
 			if res.ReturnData != nil {
 				val, err := call.Deserialize(res.ReturnData)
 				if err != nil {
+					fmt.Printf("[multicall] Call failed: %s\n", err.Error())
 					outputs[i] = DeserializedMulticall3Result{
 						Value:   err,
 						Success: false,
@@ -227,6 +275,7 @@ func doMultiCallMany(mc MulticallClient, calls ...RawMulticall) ([]DeserializedM
 					Value:   errors.New("no data returned"),
 					Success: false,
 				}
+				fmt.Printf("[multicall] No data returned\n")
 			}
 		} else {
 			outputs[i] = DeserializedMulticall3Result{

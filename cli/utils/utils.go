@@ -13,12 +13,37 @@ func Map[A any, B any](coll []A, mapper func(i A, index uint64) B) []B {
 	return out
 }
 
+type Addable interface {
+	~int | ~float64 | ~int64 | ~float32 | ~uint64
+}
+
+// A generic Sum function that sums up all elements in a list.
+func Sum[T Addable](list []T) T {
+	var sum T
+	for _, item := range list {
+		sum += item
+	}
+	return sum
+}
+
 func Filter[A any](coll []A, criteria func(i A) bool) []A {
 	out := []A{}
 	for _, item := range coll {
 		if criteria(item) {
 			out = append(out, item)
 		}
+	}
+	return out
+}
+
+func FilterI[A any](coll []A, criteria func(i A, index uint64) bool) []A {
+	out := []A{}
+	i := uint64(0)
+	for _, item := range coll {
+		if criteria(item, i) {
+			out = append(out, item)
+		}
+		i++
 	}
 	return out
 }

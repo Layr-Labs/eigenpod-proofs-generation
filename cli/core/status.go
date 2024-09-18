@@ -64,7 +64,7 @@ func getRegularBalancesGwei(state *spec.VersionedBeaconState) []phase0.Gwei {
 	return validatorBalances
 }
 
-func sumActiveValidatorBeaconBalancesGwei(allValidators []ValidatorWithOnchainInfo, allBalances []phase0.Gwei, state *spec.VersionedBeaconState) phase0.Gwei {
+func sumValidatorBeaconBalancesGwei(allValidators []ValidatorWithOnchainInfo, allBalances []phase0.Gwei) phase0.Gwei {
 	var sumGwei phase0.Gwei = 0
 
 	for i := 0; i < len(allValidators); i++ {
@@ -75,7 +75,7 @@ func sumActiveValidatorBeaconBalancesGwei(allValidators []ValidatorWithOnchainIn
 	return sumGwei
 }
 
-func sumRestakedBalancesGwei(eth *ethclient.Client, eigenpodAddress string, activeValidators []ValidatorWithOnchainInfo) (phase0.Gwei, error) {
+func sumRestakedBalancesGwei(activeValidators []ValidatorWithOnchainInfo) (phase0.Gwei, error) {
 	var sumGwei phase0.Gwei = 0
 
 	for i := 0; i < len(activeValidators); i++ {
@@ -114,11 +114,11 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod, checkpointTimestamp)
 	PanicOnError("failed to find checkpointable validators", err)
 
-	sumBeaconBalancesGwei := new(big.Float).SetUint64(uint64(sumActiveValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances, state)))
+	sumBeaconBalancesGwei := new(big.Float).SetUint64(uint64(sumValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances)))
 
-	sumRestakedBalancesU64, err := sumRestakedBalancesGwei(eth, eigenpodAddress, activeValidators)
+	sumRestakedBalancesU64, err := sumRestakedBalancesGwei(activeValidators)
 	PanicOnError("failed to calculate sum of onchain validator balances", err)
-	sumRestakedBalancesGwei := new(big.Float).SetUint64(uint64(sumRestakedBalancesU64))
+	sumRestakedBalancesGweiTotal := new(big.Float).SetUint64(uint64(sumRestakedBalancesU64))
 
 	for _, validator := range allValidatorsWithInfoForEigenpod {
 
@@ -167,8 +167,8 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		nativeETHDeltaGwei = new(big.Float).SetUint64(checkpoint.PodBalanceGwei)
 
 		// Remove already-computed delta from an in-progress checkpoint
-		sumRestakedBalancesGwei = new(big.Float).Sub(
-			sumRestakedBalancesGwei,
+		sumRestakedBalancesGweiTotal = new(big.Float).Sub(
+			sumRestakedBalancesGweiTotal,
 			new(big.Float).SetInt(checkpoint.BalanceDeltasGwei),
 		)
 
@@ -200,7 +200,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	// beaconETHDeltaGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei
 	beaconETHDeltaGwei := new(big.Float).Sub(
 		sumBeaconBalancesGwei,
-		sumRestakedBalancesGwei,
+		sumRestakedBalancesGweiTotal,
 	)
 
 	// Sum of these two deltas represents the change in shares after this checkpoint

@@ -4,7 +4,7 @@ all: codegen
 
 clone: 
 	@echo "Cloning eigenlayer-contracts..."
-	git clone -b feat/partial-withdrawal-batching --depth=1 git@github.com:Layr-Labs/eigenlayer-contracts.git $(TMP_DIR)
+	git clone --depth=1 git@github.com:Layr-Labs/eigenlayer-contracts.git $(TMP_DIR)
 	
 abi: clone
 	@echo "Generating abi..."
