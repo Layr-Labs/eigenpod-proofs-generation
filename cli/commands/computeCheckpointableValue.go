@@ -129,8 +129,8 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	eigenpodAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodABI))
 	core.PanicOnError("failed to load eigenpod abi", err)
 
-	podManagerAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodManagerABI))
-	core.PanicOnError("failed to load eigenpod manager abi", err)
+	// _, err := abi.JSON(strings.NewReader(onchain.EigenPodManagerABI))
+	// core.PanicOnError("failed to load eigenpod manager abi", err)
 
 	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, true)
 	core.PanicOnError("failed to reach ethereum clients", err)
@@ -140,7 +140,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	})
 	core.PanicOnError("error initializing mc", err)
 
-	podManagerAddress, ok := PodManagerContracts()[chainId.Uint64()]
+	_, ok := PodManagerContracts()[chainId.Uint64()]
 	if !ok {
 		core.Panic("unsupported network")
 	}
@@ -161,15 +161,18 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		}
 	})
 
-	allEigenpods, err := queryAllEigenpodsOnNetwork(TQueryAllEigenpodsOnNetworkArgs{
-		Ctx:               ctx,
-		AllValidators:     allValidators,
-		Eth:               eth,
-		EigenpodAbi:       eigenpodAbi,
-		PodManagerAbi:     podManagerAbi,
-		PodManagerAddress: podManagerAddress,
-		Mc:                mc,
-	})
+	// allEigenpods, err := queryAllEigenpodsOnNetwork(TQueryAllEigenpodsOnNetworkArgs{
+	// 	Ctx:               ctx,
+	// 	AllValidators:     allValidators,
+	// 	Eth:               eth,
+	// 	EigenpodAbi:       eigenpodAbi,
+	// 	PodManagerAbi:     podManagerAbi,
+	// 	PodManagerAddress: podManagerAddress,
+	// 	Mc:                mc,
+	// })
+	// core.PanicOnError("queryAllEigenpodsOnNetwork", err)
+
+	allEigenpods := []string{"0xA6f93249580EC3F08016cD3d4154AADD70aC3C96"}
 
 	isEigenpodSet := utils.Reduce(allEigenpods, func(allEigenpodSet map[string]int, eigenpod string) map[string]int {
 		allEigenpodSet[eigenpod] = 1
@@ -180,13 +183,10 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 
 	fmt.Printf("%d eigenpods discovered on the network", len(allEigenpods))
 
-	// now, determine their pending checkpoint rewards per checkpoint
-	pendingRewardsWeiPerEigenpod := map[string]*big.Int{}
-
 	// Compute all pending rewards for each eigenpod;
 	//		see: https://github.com/Layr-Labs/eigenlayer-contracts/blob/dev/src/contracts/pods/EigenPod.sol#L656
 	//
-	//			allRewards(eigenpod) := (podBalanceGwei + checkpoint.balanceDeltasGwei)
+	//			futureCheckpointableRewards(eigenpod) := (podBalanceGwei + checkpoint.balanceDeltasGwei)
 	//
 	//			where:
 	//				podBalanceGwei = address(pod).balanceGwei - pod.withdrawableRestakedExecutionLayerGwei
@@ -249,7 +249,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		core.Panic("failed to load eigenpod withdrawableRestakedExecutionLayerGwei")
 	}
 
-	pendingExecutionWei := utils.Map(allEigenpods, func(eigenpod string, index uint64) *big.Int {
+	allPendingExecutionWei := utils.Map(allEigenpods, func(eigenpod string, index uint64) *big.Int {
 		podCurrentNativeWei := (*podNativeEthBalances)[index]
 		podEigenLayerAwareWei := core.IGweiToWei(new(big.Int).SetUint64((*withdrawableRestakedExecutionLayerGwei)[index]))
 		return new(big.Int).Sub(podCurrentNativeWei, podEigenLayerAwareWei)
@@ -308,8 +308,11 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	})
 
 	sumBeaconBalancesWei := utils.Reduce(beaconBalancesWei, func(sum *big.Int, cur *big.Int) *big.Int {
-		return sum.Add(sum, cur)
+		sum = sum.Add(sum, cur)
+		return sum
 	}, big.NewInt(0))
+
+	fmt.Printf("Sum-beacon-balances: %d", sumBeaconBalancesWei.Uint64())
 
 	sumRestakedBalancesWei := utils.Reduce(allEigenlayerValidatorsWithPod, func(sum *big.Int, cur ValidatorPodPair) *big.Int {
 		info := allValidatorInfoLookup[cur.Validator.Index]
@@ -322,19 +325,18 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	}, big.NewInt(0))
 
 	pendingBeaconWei := big.NewInt(0).Sub(sumBeaconBalancesWei, sumRestakedBalancesWei)
+	pendingExecutionWei := utils.Reduce(allPendingExecutionWei, func(sum *big.Int, cur *big.Int) *big.Int {
+		return sum.Add(sum, cur)
+	}, big.NewInt(0))
 
-	for i, eigenpod := range allEigenpods {
-		pendingRewardsWeiPerEigenpod[eigenpod] = pendingExecutionWei[i]
-	}
-
-	// aggregate result
-	totalPendingRewards := big.NewInt(0)
-	for _, reward := range pendingRewardsWeiPerEigenpod {
-		totalPendingRewards.Add(totalPendingRewards, reward)
-	}
-	totalPendingRewards = totalPendingRewards.Add(totalPendingRewards, pendingBeaconWei)
+	totalPendingRewards := big.NewInt(0).Add(pendingExecutionWei, pendingBeaconWei)
 
 	totalRewards := map[string]*big.Float{
+		"pending_execution_wei": new(big.Float).SetInt(pendingExecutionWei),
+		"pending_beacon_wei":    new(big.Float).SetInt(pendingBeaconWei),
+
+		"pending_execution_eth":     core.GweiToEther(core.WeiToGwei(pendingExecutionWei)),
+		"pending_beacon_eth":        core.GweiToEther(core.WeiToGwei(pendingBeaconWei)),
 		"total_pending_shares_wei":  new(big.Float).SetInt(totalPendingRewards),
 		"total_pending_shares_gwei": core.WeiToGwei(totalPendingRewards),
 		"total_pending_shares_eth":  core.GweiToEther(core.WeiToGwei(totalPendingRewards)),
