@@ -187,7 +187,6 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	//				podBalanceGwei = address(pod).balanceGwei - pod.withdrawableRestakedExecutionLayerGwei
 	//			and
 	//				checkpoint.balanceDeltasGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei
-
 	multicallAbiRef, err := abi.JSON(strings.NewReader(multicallAbi))
 	core.PanicOnError("failed to load multicall abi", err)
 
@@ -381,8 +380,6 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	pendingExecutionWei := utils.BigSum(allPendingExecutionWei)
 
 	totalPendingRewards := big.NewInt(0).Add(pendingExecutionWei, pendingBeaconWei)
-
-	fmt.Printf("(sumBeaconBalancesWei = %s) - (sumRestakedBalancesWei = %s) = %s\n", sumBeaconBalancesWei.String(), sumRestakedBalancesWei.String(), pendingBeaconWei.String())
 
 	totalRewards := map[string]*big.Float{
 		// `podBalanceGwei` - `withdrawableRestakedExecutionLayerGwei`
