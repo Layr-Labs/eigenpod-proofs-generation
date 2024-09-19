@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"fmt"
 	"math/big"
-	"math/rand"
 	"strings"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
@@ -303,19 +302,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		return core.IGweiToWei(new(big.Int).SetUint64(uint64(balanceGwei)))
 	})
 
-	type BeaconBalanceAndValidator struct {
-		Balance *big.Int
-		Pair    ValidatorPodPair
-	}
-
-	beaconBalancesWeiWithPod := utils.Map(allEigenlayerValidatorsWithPod, func(validatorPodPair ValidatorPodPair, i uint64) BeaconBalanceAndValidator {
-		return BeaconBalanceAndValidator{
-			Balance: beaconBalancesWei[i],
-			Pair:    validatorPodPair,
-		}
-	})
 	sumBeaconBalancesWei := utils.BigSum(beaconBalancesWei)
-
 	restakedBalancesByValidator := utils.Reduce(allEigenlayerValidatorsWithPod, func(accum map[uint64]*big.Int, next ValidatorPodPair) map[uint64]*big.Int {
 		info := allValidatorInfoLookupByIndex[next.Validator.Index]
 		if info.Status != core.ValidatorStatusActive {
@@ -326,54 +313,6 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 
 		return accum
 	}, map[uint64]*big.Int{})
-
-	////////////////////////// PICK 5 random eigenpods, and predict what their values will be.
-	numEigenpods := len(allEigenpods)
-	randomEigenpods := []int{rand.Intn(numEigenpods), rand.Intn(numEigenpods), rand.Intn(numEigenpods), rand.Intn(numEigenpods), rand.Intn(numEigenpods)}
-	for i, eigenpodIndex := range randomEigenpods {
-		// compute rewards for a single eigenpod.
-		eigenpod := allEigenpods[eigenpodIndex]
-		pendingExecutionWei := allPendingExecutionWei[randomEigenpods[i]]
-
-		activePodValidators := utils.Filter(beaconBalancesWeiWithPod, func(v BeaconBalanceAndValidator) bool {
-			return strings.EqualFold(v.Pair.Pod, eigenpod) && allValidatorInfoLookupByIndex[v.Pair.Validator.Index].Status == core.ValidatorStatusActive
-		})
-
-		podBeaconBalances := utils.Map(
-			activePodValidators,
-			func(v BeaconBalanceAndValidator, i uint64) *big.Int {
-				return v.Balance
-			},
-		)
-		podSumBeaconBalancesWei := utils.BigSum(podBeaconBalances)
-
-		podRestakedBalancesWei := utils.Map(
-			activePodValidators,
-			func(v BeaconBalanceAndValidator, i uint64) *big.Int {
-				return restakedBalancesByValidator[v.Pair.Validator.Index]
-			},
-		)
-		podSumRestakedBalancesWei := utils.BigSum(podRestakedBalancesWei)
-
-		pendingBeaconWei := new(big.Int).Sub(podSumBeaconBalancesWei, podSumRestakedBalancesWei)
-		totalPendingRewardsWei := big.NewInt(0).Add(pendingExecutionWei, pendingBeaconWei)
-
-		printAsJSON(map[string]any{
-			"eigenpod":              eigenpod,
-			"num_active_validators": len(activePodValidators),
-			"active_validator_indices": utils.Map(activePodValidators, func(v BeaconBalanceAndValidator, i uint64) uint64 {
-				return v.Pair.Validator.Index
-			}),
-			"restaked_balances_wei":     podRestakedBalancesWei,
-			"beacon_balances_wei":       podBeaconBalances,
-			"total_pending_shares_eth":  core.GweiToEther(core.WeiToGwei(totalPendingRewardsWei)),
-			"pending_beacon_eth":        core.GweiToEther(core.WeiToGwei(pendingBeaconWei)),
-			"pending_execution_eth":     core.GweiToEther(core.WeiToGwei(pendingExecutionWei)),
-			"sum_restaked_balances_wei": podSumRestakedBalancesWei,
-			"sum_beacon_balances_wei":   podSumBeaconBalancesWei,
-		})
-	}
-	/////////////////////////////////////////////////////////////////////////////////
 
 	sumRestakedBalancesWei := utils.BigSum(getValues(restakedBalancesByValidator))
 	pendingBeaconWei := big.NewInt(0).Sub(sumBeaconBalancesWei, sumRestakedBalancesWei)

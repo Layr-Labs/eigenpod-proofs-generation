@@ -147,6 +147,13 @@ func DoMultiCallMany[A any](mc MulticallClient, requests ...*MultiCallMetaData[A
 		return nil, fmt.Errorf("multicall failed: %s", err.Error())
 	}
 
+	anyFailures := utils.Filter(res, func(cur DeserializedMulticall3Result) bool {
+		return !cur.Success
+	})
+	if len(anyFailures) > 0 {
+		return nil, errors.New("1 or more calls failed")
+	}
+
 	// unwind results
 	unwoundResults := utils.Map(res, func(d DeserializedMulticall3Result, i uint64) A {
 		// force these back to A
