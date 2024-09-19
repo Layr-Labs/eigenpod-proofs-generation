@@ -185,7 +185,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		// checkpoint.PodBalanceGwei would be if we started one now:
 		nativeETHDeltaWei = new(big.Int).Sub(
 			latestPodBalanceWei,
-			new(big.Int).SetUint64(withdrawableRestakedExecutionLayerGwei),
+			IGweiToWei(new(big.Int).SetUint64(withdrawableRestakedExecutionLayerGwei)),
 		)
 
 		// Determine whether the checkpoint needs to be started with `--force`
