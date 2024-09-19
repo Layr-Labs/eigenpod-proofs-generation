@@ -21,7 +21,27 @@ type CredentialProofTransaction struct {
 }
 
 func printAsJSON(txns any) {
-	out, err := json.Marshal(txns)
+	out, err := json.MarshalIndent(txns, " ", "   ")
 	core.PanicOnError("failed to serialize", err)
 	fmt.Println(string(out))
+}
+
+func getKeys[A comparable, B any](data map[A]B) []A {
+	values := make([]A, len(data))
+	i := 0
+	for key, _ := range data {
+		values[i] = key
+		i++
+	}
+	return values
+}
+
+func getValues[A comparable, B any](data map[A]B) []B {
+	values := make([]B, len(data))
+	i := 0
+	for _, value := range data {
+		values[i] = value
+		i++
+	}
+	return values
 }

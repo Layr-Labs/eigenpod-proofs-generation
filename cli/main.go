@@ -34,6 +34,21 @@ func main() {
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
 			{
+				Name:  "total-checkpointable-value",
+				Args:  true,
+				Usage: "Computes the sum of all shares that would be minted if every EigenPod on the network ran a checkpoint right now.",
+				Flags: []cli.Flag{
+					ExecNodeFlag,
+					BeaconNodeFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.ComputeCheckpointableValueCommand(commands.TComputeCheckpointableValueCommandArgs{
+						Node:       node,
+						BeaconNode: beacon,
+					})
+				},
+			},
+			{
 				Name:      "find-stale-pods",
 				Args:      true,
 				Usage:     "Locate stale pods, whose balances have deviated by more than 5% due to beacon slashing.",

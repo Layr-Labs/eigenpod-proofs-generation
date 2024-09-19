@@ -25,6 +25,7 @@ type BeaconClient interface {
 	GetBeaconHeader(ctx context.Context, blockId string) (*v1.BeaconBlockHeader, error)
 	GetBeaconState(ctx context.Context, stateId string) (*spec.VersionedBeaconState, error)
 	GetValidator(ctx context.Context, index uint64) (*v1.Validator, error)
+	GetGenesisForkVersion(ctx context.Context) (*phase0.Version, error)
 }
 
 type beaconClient struct {
@@ -62,6 +63,19 @@ func (b *beaconClient) GetBeaconHeader(ctx context.Context, blockId string) (*v1
 			return nil, err
 		}
 		return response.Data, nil
+	}
+
+	return nil, ErrBeaconClientNotSupported
+}
+
+func (b *beaconClient) GetGenesisForkVersion(ctx context.Context) (*phase0.Version, error) {
+	if provider, isProvider := b.eth2client.(eth2client.GenesisProvider); isProvider {
+		opts := &api.GenesisOpts{}
+		response, err := provider.Genesis(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+		return &response.Data.GenesisForkVersion, nil
 	}
 
 	return nil, ErrBeaconClientNotSupported
