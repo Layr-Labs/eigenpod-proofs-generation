@@ -35,3 +35,13 @@ func getKeys[A comparable, B any](data map[A]B) []A {
 	}
 	return values
 }
+
+func getValues[A comparable, B any](data map[A]B) []B {
+	values := make([]B, len(data))
+	i := 0
+	for _, value := range data {
+		values[i] = value
+		i++
+	}
+	return values
+}

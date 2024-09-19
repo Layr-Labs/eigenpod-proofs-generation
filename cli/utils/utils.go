@@ -1,5 +1,7 @@
 package utils
 
+import "math/big"
+
 // maximum number of proofs per txn for each of the following proof types:
 const DEFAULT_BATCH_CREDENTIALS = 60
 const DEFAULT_BATCH_CHECKPOINT = 80
@@ -24,6 +26,12 @@ func Sum[T Addable](list []T) T {
 		sum += item
 	}
 	return sum
+}
+
+func BigSum(list []*big.Int) *big.Int {
+	return Reduce(list, func(sum *big.Int, cur *big.Int) *big.Int {
+		return sum.Add(sum, cur)
+	}, big.NewInt(0))
 }
 
 func Filter[A any](coll []A, criteria func(i A) bool) []A {

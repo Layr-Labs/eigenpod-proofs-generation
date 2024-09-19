@@ -240,8 +240,6 @@ func doMultiCallMany(mc MulticallClient, calls ...RawMulticall) ([]DeserializedM
 	chunkNumber := 1
 	for _, multicalls := range chunkedCalls {
 		var res []interface{}
-		fmt.Printf("[multicall3] [%f%%] executing...\n", float64(chunkNumber*100.0)/float64(len(chunkedCalls)))
-
 		chunkNumber++
 		err := mc.Contract.Call(mc.OverrideCallOptions, &res, "aggregate3", multicalls)
 		if err != nil {
