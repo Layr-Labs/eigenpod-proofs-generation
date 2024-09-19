@@ -164,7 +164,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	if checkpointTimestamp != 0 {
 		// Change in the pod's native ETH balance (already calculated for us when the checkpoint was started)
 		fmt.Printf("pod had a checkpoint\n")
-		nativeETHDeltaWei = new(big.Int).SetUint64(checkpoint.PodBalanceGwei)
+		nativeETHDeltaWei = IGweiToWei(new(big.Int).SetUint64(checkpoint.PodBalanceGwei))
 
 		// Remove already-computed delta from an in-progress checkpoint
 		sumRestakedBalancesWei = new(big.Int).Sub(
