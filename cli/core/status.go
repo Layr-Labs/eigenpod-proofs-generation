@@ -8,7 +8,6 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -90,7 +89,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	validators := map[string]Validator{}
 	var activeCheckpoint *Checkpoint = nil
 
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
 	PanicOnError("failed to reach eigenpod", err)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
@@ -106,7 +105,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	allValidatorsWithInfoForEigenpod, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidatorsForEigenpod)
 	PanicOnError("failed to fetch validator info", err)
 
-	allBeaconBalances := getRegularBalancesGwei(state)
+	allBeaconBalancesGwei := getRegularBalancesGwei(state)
 
 	activeValidators, err := SelectActiveValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod)
 	PanicOnError("failed to find active validators", err)
@@ -114,7 +113,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	checkpointableValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfoForEigenpod, checkpointTimestamp)
 	PanicOnError("failed to find checkpointable validators", err)
 
-	sumBeaconBalancesWei := IGweiToWei(sumValidatorBeaconBalancesGwei(activeValidators, allBeaconBalances))
+	sumBeaconBalancesWei := IGweiToWei(sumValidatorBeaconBalancesGwei(activeValidators, allBeaconBalancesGwei))
 	sumRestakedBalancesWei := IGweiToWei(sumRestakedBalancesGwei(activeValidators))
 
 	PanicOnError("failed to calculate sum of onchain validator balances", err)
@@ -129,7 +128,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			IsAwaitingActivationQueue:           validator.Validator.ActivationEpoch == FAR_FUTURE_EPOCH,
 			IsAwaitingWithdrawalCredentialProof: IsAwaitingWithdrawalCredentialProof(validator.Info, validator.Validator),
 			EffectiveBalance:                    uint64(validator.Validator.EffectiveBalance),
-			CurrentBalance:                      uint64(allBeaconBalances[validator.Index]),
+			CurrentBalance:                      uint64(allBeaconBalancesGwei[validator.Index]),
 		}
 	}
 
@@ -178,7 +177,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		}
 	} else {
 		fmt.Printf("pod did not have a checkpoint\n")
-		latestPodBalanceWei, err := eth.BalanceAt(ctx, common.HexToAddress(eigenpodAddress), nil)
+		latestPodBalanceWei, err := eth.BalanceAt(ctx, gethCommon.HexToAddress(eigenpodAddress), nil)
 		PanicOnError("failed to fetch pod balance", err)
 
 		// We don't have a checkpoint currently, so we need to calculate what
@@ -214,11 +213,6 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		currentOwnerSharesWei,
 		totalShareDeltaWei,
 	)
-
-	fmt.Printf("beaconETHDeltaETH: %s\n", GweiToEther(WeiToGwei(beaconETHDeltaWei)).String())
-	fmt.Printf("sumBeaconBalancesETH: %s\n", GweiToEther(WeiToGwei(sumBeaconBalancesWei)).String())
-	fmt.Printf("sumRestakedBalancesETH: %s\n", GweiToEther(WeiToGwei(sumRestakedBalancesWei)).String())
-	fmt.Printf("nativeETHDeltaETH: %s\n", GweiToEther(WeiToGwei(nativeETHDeltaWei)).String())
 
 	pendingEth := GweiToEther(WeiToGwei(pendingSharesWei))
 

@@ -86,12 +86,9 @@ func queryAllEigenpodsOnNetwork(args TQueryAllEigenpodsOnNetworkArgs) ([]string,
 		}
 		return success
 	})
-	fmt.Printf("podToOwner\n")
-	printAsJSON(podToPodOwner)
-	fmt.Printf("=============")
 
 	// array[eigenpods given the owner]
-	fmt.Printf("Querying %d addresses (podMan=%s) to see if it knows about these eigenpods\n", len(addressesWithPodOwners), args.PodManagerAddress)
+	fmt.Printf("Querying %d addresses on (EigenPodManager=%s) to see if it knows about these eigenpods\n", len(addressesWithPodOwners), args.PodManagerAddress)
 
 	eigenpodForOwner, err := multicall.DoMultiCallManyReportingFailures(
 		*args.Mc,
@@ -179,10 +176,6 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		return allEigenpodSet
 	}, map[string]int{})
 
-	fmt.Printf("allEigenpods\n")
-	printAsJSON(allEigenpods)
-	fmt.Printf("==========\n")
-
 	fmt.Printf("%d eigenpods discovered on the network", len(allEigenpods))
 
 	// Compute all pending rewards for each eigenpod;
@@ -198,7 +191,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	multicallAbiRef, err := abi.JSON(strings.NewReader(multicallAbi))
 	core.PanicOnError("failed to load multicall abi", err)
 
-	fmt.Printf("Loading address(EigenPod).balance....\n")
+	fmt.Printf("Loading Eigenpod ETH balances....\n")
 	podNativeEthBalances, err := multicall.DoMultiCallMany(
 		*mc,
 		utils.Map(allEigenpods, func(eigenpod string, index uint64) *multicall.MultiCallMetaData[*big.Int] {

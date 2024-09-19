@@ -275,7 +275,7 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 		// // first 12 bytes are not the pubKeyHash, see (https://github.com/Layr-Labs/eigenlayer-contracts/blob/d148952a2942a97a218a2ab70f9b9f1792796081/src/contracts/pods/EigenPod.sol#L663)
 		validatorWithdrawalAddress := common.BytesToAddress(validator.WithdrawalCredentials[12:])
 
-		if strings.EqualFold(eigenpod.Hex(), validatorWithdrawalAddress.Hex()) {
+		if eigenpod.Cmp(validatorWithdrawalAddress) == 0 {
 			outputValidators = append(outputValidators, ValidatorWithIndex{
 				Validator: validator,
 				Index:     i,
