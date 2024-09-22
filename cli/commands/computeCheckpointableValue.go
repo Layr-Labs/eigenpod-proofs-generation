@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/multicall"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	multicall "github.com/jbrower95/multicall-go"
 )
 
 type TComputeCheckpointableValueCommandArgs struct {
@@ -54,17 +54,11 @@ func queryAllEigenpodsOnNetwork(args TQueryAllEigenpodsOnNetworkArgs) ([]string,
 	}, map[string]int{}))
 
 	fmt.Printf("Querying %d addresses to see if they may be eigenpods\n", len(interestingWithdrawalAddresses))
-	podOwners, err := multicall.DoMultiCallManyReportingFailures[*common.Address](*args.Mc, utils.Map(interestingWithdrawalAddresses, func(address string, index uint64) *multicall.MultiCallMetaData[*common.Address] {
-		callMeta, err := multicall.MultiCall(
+	podOwners, err := multicall.DoManyAllowFailures(args.Mc, utils.Map(interestingWithdrawalAddresses, func(address string, index uint64) *multicall.MultiCallMetaData[common.Address] {
+		callMeta, err := multicall.Describe[common.Address](
 			common.HexToAddress(address),
 			args.EigenpodAbi,
-			func(data []byte) (*common.Address, error) {
-				res, err := args.EigenpodAbi.Unpack("podOwner", data)
-				if err != nil {
-					return nil, err
-				}
-				return abi.ConvertType(res[0], new(common.Address)).(*common.Address), nil
-			}, "podOwner",
+			"podOwner",
 		)
 		core.PanicOnError("failed to form mc", err)
 		return callMeta
@@ -89,20 +83,13 @@ func queryAllEigenpodsOnNetwork(args TQueryAllEigenpodsOnNetworkArgs) ([]string,
 	// array[eigenpods given the owner]
 	fmt.Printf("Querying %d addresses on (EigenPodManager=%s) to see if it knows about these eigenpods\n", len(addressesWithPodOwners), args.PodManagerAddress)
 
-	eigenpodForOwner, err := multicall.DoMultiCallManyReportingFailures(
-		*args.Mc,
-		utils.Map(addressesWithPodOwners, func(address string, i uint64) *multicall.MultiCallMetaData[*common.Address] {
+	eigenpodForOwner, err := multicall.DoManyAllowFailures(
+		args.Mc,
+		utils.Map(addressesWithPodOwners, func(address string, i uint64) *multicall.MultiCallMetaData[common.Address] {
 			claimedOwner := *podToPodOwner[address]
-			call, err := multicall.MultiCall(
+			call, err := multicall.Describe[common.Address](
 				common.HexToAddress(args.PodManagerAddress),
 				args.PodManagerAbi,
-				func(data []byte) (*common.Address, error) {
-					res, err := args.PodManagerAbi.Unpack("ownerToPod", data)
-					if err != nil {
-						return nil, err
-					}
-					return abi.ConvertType(res[0], new(common.Address)).(*common.Address), nil
-				},
 				"ownerToPod",
 				claimedOwner,
 			)
@@ -117,9 +104,6 @@ func queryAllEigenpodsOnNetwork(args TQueryAllEigenpodsOnNetworkArgs) ([]string,
 		return (*eigenpodForOwner)[i].Success && (*eigenpodForOwner)[i].Value.Cmp(common.HexToAddress(addressesWithPodOwners[i])) == 0
 	}), nil
 }
-
-//go:embed multicallAbi.json
-var multicallAbi string
 
 func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandArgs) error {
 	ctx := context.Background()
@@ -186,29 +170,12 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	//				podBalanceGwei = address(pod).balanceGwei - pod.withdrawableRestakedExecutionLayerGwei
 	//			and
 	//				checkpoint.balanceDeltasGwei = sumBeaconBalancesGwei - sumRestakedBalancesGwei
-	multicallAbiRef, err := abi.JSON(strings.NewReader(multicallAbi))
-	core.PanicOnError("failed to load multicall abi", err)
 
 	fmt.Printf("Loading Eigenpod ETH balances....\n")
-	podNativeEthBalances, err := multicall.DoMultiCallMany(
-		*mc,
-		utils.Map(allEigenpods, func(eigenpod string, index uint64) *multicall.MultiCallMetaData[*big.Int] {
-			call, err := multicall.MultiCall(
-				common.HexToAddress("0xcA11bde05977b3631167028862bE2a173976CA11"),
-				multicallAbiRef,
-				func(b []byte) (*big.Int, error) {
-					res, err := multicallAbiRef.Unpack("getEthBalance", b)
-					if err != nil {
-						return nil, err
-					}
-					out := abi.ConvertType(res[0], new(big.Int)).(*big.Int)
-					return out, nil
-				},
-				"getEthBalance",
-				common.HexToAddress(eigenpod),
-			)
-			core.PanicOnError("failed to form multicall", err)
-			return call
+	podNativeEthBalances, err := multicall.DoMany(
+		mc,
+		utils.Map(allEigenpods, func(eigenpod string, index uint64) *multicall.MultiCallMetaData[big.Int] {
+			return mc.GetBalance(common.HexToAddress(eigenpod))
 		})...,
 	)
 	if err != nil || podNativeEthBalances == nil {
@@ -217,20 +184,12 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 	}
 
 	fmt.Printf("Loading EigenPod.withdrawableRestakedExecutionLayerGwei....\n")
-	withdrawableRestakedExecutionLayerGwei, err := multicall.DoMultiCallMany(
-		*mc,
+	withdrawableRestakedExecutionLayerGwei, err := multicall.DoMany(
+		mc,
 		utils.Map(allEigenpods, func(eigenpod string, index uint64) *multicall.MultiCallMetaData[uint64] {
-			call, err := multicall.MultiCall(
+			call, err := multicall.Describe[uint64](
 				common.HexToAddress(eigenpod),
 				eigenpodAbi,
-				func(b []byte) (uint64, error) {
-					res, err := eigenpodAbi.Unpack("withdrawableRestakedExecutionLayerGwei", b)
-					if err != nil {
-						return 0, err
-					}
-					out := abi.ConvertType(res[0], new(uint64)).(*uint64)
-					return *out, nil
-				},
 				"withdrawableRestakedExecutionLayerGwei",
 			)
 			core.PanicOnError("failed to form multicall", err)
@@ -244,7 +203,7 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 
 	allPendingExecutionWei := utils.Map(allEigenpods, func(eigenpod string, index uint64) *big.Int {
 		podCurrentNativeWei := (*podNativeEthBalances)[index]
-		podWithdrawableRestakedExecutionLayerWei := core.IGweiToWei(new(big.Int).SetUint64((*withdrawableRestakedExecutionLayerGwei)[index]))
+		podWithdrawableRestakedExecutionLayerWei := core.IGweiToWei(new(big.Int).SetUint64(*(*withdrawableRestakedExecutionLayerGwei)[index]))
 		return new(big.Int).Sub(podCurrentNativeWei, podWithdrawableRestakedExecutionLayerWei)
 	})
 
@@ -277,12 +236,12 @@ func ComputeCheckpointableValueCommand(args TComputeCheckpointableValueCommandAr
 		return validators
 	}, []ValidatorPodPair{})
 
-	allValidatorInfoRequests := utils.Map(allEigenlayerValidatorsWithPod, func(validatorPodPair ValidatorPodPair, index uint64) *multicall.MultiCallMetaData[*onchain.IEigenPodValidatorInfo] {
+	allValidatorInfoRequests := utils.Map(allEigenlayerValidatorsWithPod, func(validatorPodPair ValidatorPodPair, index uint64) *multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo] {
 		res, err := core.FetchMultipleOnchainValidatorInfoMulticalls(validatorPodPair.Pod, []*phase0.Validator{validatorPodPair.Validator.Validator})
 		core.PanicOnError("failed to form mc", err)
 		return res[0]
 	})
-	allValidatorInfo, err := multicall.DoMultiCallMany(*mc, allValidatorInfoRequests...)
+	allValidatorInfo, err := multicall.DoMany(mc, allValidatorInfoRequests...)
 	core.PanicOnError("failed to multicall validator info", err)
 
 	i := 0
