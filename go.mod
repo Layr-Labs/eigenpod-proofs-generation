@@ -10,7 +10,7 @@ require (
 	github.com/fatih/color v1.16.0
 	github.com/ferranbt/fastssz v0.1.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/jbrower95/multicall-go v0.0.0-20240922171241-ac7c02a28686
+	github.com/jbrower95/multicall-go v0.0.0-20240923010412-060e37b98d03
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.1

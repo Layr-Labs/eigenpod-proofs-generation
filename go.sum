@@ -124,6 +124,8 @@ github.com/jackpal/go-nat-pmp v1.0.2 h1:KzKSgb7qkJvOUTqYl9/Hg/me3pWgBmERKrTGD7Bd
 github.com/jackpal/go-nat-pmp v1.0.2/go.mod h1:QPH045xvCAeXUZOxsnwmrtiCoxIr9eob+4orBN1SBKc=
 github.com/jbrower95/multicall-go v0.0.0-20240922171241-ac7c02a28686 h1:qF5gBTD/k6sBIR3suNzLuSnjWgePwVbnxxQIAMl2TpY=
 github.com/jbrower95/multicall-go v0.0.0-20240922171241-ac7c02a28686/go.mod h1:cl6hJrk69g0EyKPgNySQbJE1nj29t2q7Pu0as27uC04=
+github.com/jbrower95/multicall-go v0.0.0-20240923010412-060e37b98d03 h1:N9nayQNnI9v8HBOUEewiSwYK9/ovMQ8ousqAeKm6RQg=
+github.com/jbrower95/multicall-go v0.0.0-20240923010412-060e37b98d03/go.mod h1:cl6hJrk69g0EyKPgNySQbJE1nj29t2q7Pu0as27uC04=
 github.com/klauspost/compress v1.16.0 h1:iULayQNOReoYUe+1qtKOqw9CwJv3aNQu8ivo7lw1HU4=
 github.com/klauspost/compress v1.16.0/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
 github.com/klauspost/cpuid/v2 v2.2.6 h1:ndNyv040zDGIDh8thGkXYjnFtiN02M1PVVF+JE/48xc=
