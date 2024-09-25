@@ -28,6 +28,12 @@ type Cache struct {
 	PodOwnerShares map[string]PodOwnerShare
 }
 
+// multiply by a fraction
+func FracMul(a *big.Int, x *big.Int, y *big.Int) *big.Int {
+	_a := new(big.Int).Mul(a, x)
+	return _a.Div(_a, y)
+}
+
 func keys[A comparable, B any](coll map[A]B) []A {
 	if len(coll) == 0 {
 		return []A{}
@@ -42,8 +48,8 @@ func keys[A comparable, B any](coll map[A]B) []A {
 }
 
 type PodOwnerShare struct {
-	SharesWei                uint64
-	ExecutionLayerBalanceWei uint64
+	SharesWei                *big.Int
+	ExecutionLayerBalanceWei *big.Int
 	IsEigenpod               bool
 }
 
@@ -60,8 +66,8 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 
 	// default to false
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		SharesWei:                0,
-		ExecutionLayerBalanceWei: 0,
+		SharesWei:                big.NewInt(0),
+		ExecutionLayerBalanceWei: big.NewInt(0),
 		IsEigenpod:               false,
 	}
 
@@ -109,8 +115,8 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		SharesWei:                podOwnerShares.Uint64(),
-		ExecutionLayerBalanceWei: balance.Uint64(),
+		SharesWei:                podOwnerShares,
+		ExecutionLayerBalanceWei: balance,
 		IsEigenpod:               true,
 	}
 
@@ -205,7 +211,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 
 	if verbose {
 		log.Printf("%d EigenValidators have been slashed\n", len(allSlashedValidatorsBelongingToEigenpods))
-		log.Printf("%d EigenValidators have been slashed AND were active\n", len(allActiveSlashedValidatorsBelongingToEigenpods))
+		log.Printf("%d EigenValidators have been slashed + active\n", len(allActiveSlashedValidatorsBelongingToEigenpods))
 	}
 
 	slashedEigenpods := utils.Reduce(allActiveSlashedValidatorsBelongingToEigenpods, func(pods map[string][]ValidatorWithIndex, validator ValidatorWithIndex) map[string][]ValidatorWithIndex {
@@ -224,14 +230,24 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		return nil, err
 	}
 
-	totalAssetsWeiByEigenpod := utils.Reduce(keys(slashedEigenpods), func(allBalances map[string]uint64, eigenpod string) map[string]uint64 {
+	totalAssetsWeiByEigenpod := utils.Reduce(keys(slashedEigenpods), func(allBalances map[string]*big.Int, eigenpod string) map[string]*big.Int {
 		// total assets of an eigenpod are determined as;
 		//	SUM(
 		//		- native ETH in the pod
 		//		- any active validators and their associated balances
 		// 	)
-		allActiveValidatorsForEigenpod := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
-			if allValidatorInfo[v.Index].Status != 1 {
+		validatorsForEigenpod := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+			withdrawal := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
+			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
+		})
+
+		podValidatorInfo, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpod, validatorsForEigenpod)
+		if err != nil {
+			return allBalances
+		}
+
+		allActiveValidatorsForEigenpod := utils.Filter(podValidatorInfo, func(v ValidatorWithOnchainInfo) bool {
+			if v.Info.Status != 1 { // ignore any inactive validators
 				return false
 			}
 
@@ -239,27 +255,50 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
 		})
 
-		allActiveValidatorBalancesSummedGwei := utils.Reduce(allActiveValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
+		allActiveValidatorBalancesSummedGwei := utils.Reduce(allActiveValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithOnchainInfo) phase0.Gwei {
 			return accum + allValidatorBalances[validator.Index]
 		}, phase0.Gwei(0))
-		//																				   converting gwei to wei
-		allBalances[eigenpod] = cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei + (uint64(allActiveValidatorBalancesSummedGwei) * params.GWei)
+		activeValidatorBalancesSum := new(big.Int).Mul(
+			new(big.Int).SetUint64(uint64(allActiveValidatorBalancesSummedGwei)),
+			new(big.Int).SetUint64(params.GWei),
+		)
+
+		if verbose {
+			log.Printf("[%s] podOwnerShares(%sETH), anticipated balance = beacon(%s across %d validators) + executionBalance(%sETH)\n",
+				eigenpod,
+				IweiToEther(cache.PodOwnerShares[eigenpod].SharesWei).String(),
+				IweiToEther(activeValidatorBalancesSum).String(),
+				len(allActiveValidatorsForEigenpod),
+				IweiToEther(cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei).String(),
+			) // converting gwei to wei
+		}
+
+		allBalances[eigenpod] = new(big.Int).Add(cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei, activeValidatorBalancesSum)
 		return allBalances
-	}, map[string]uint64{})
+	}, map[string]*big.Int{})
 
 	if verbose {
 		log.Printf("%d EigenPods were slashed\n", len(slashedEigenpods))
 	}
 
 	unhealthyEigenpods := utils.Filter(keys(slashedEigenpods), func(eigenpod string) bool {
-		balance, ok := totalAssetsWeiByEigenpod[eigenpod]
+		currentTotalAssets, ok := totalAssetsWeiByEigenpod[eigenpod]
 		if !ok {
 			return false
 		}
-		executionBalance := cache.PodOwnerShares[eigenpod].SharesWei
-		if balance <= uint64(float64(executionBalance)*(1-(tolerance/100))) {
+		currentShares := cache.PodOwnerShares[eigenpod].SharesWei
+
+		delta := new(big.Int).Sub(currentShares, currentTotalAssets)
+		allowableDelta := FracMul(currentShares, big.NewInt(int64(tolerance)), big.NewInt(100))
+		if delta.Cmp(allowableDelta) > 0 {
 			if verbose {
-				log.Printf("[%s] %.2f%% deviation (beacon: %d -> execution: %d)\n", eigenpod, 100*(float64(executionBalance)-float64(balance))/float64(executionBalance), balance, executionBalance)
+				log.Printf("[%s] %sETH drop in assets (max allowed: %sETH, current shares: %sETH, anticipated shares: %sETH)\n",
+					eigenpod,
+					IweiToEther(delta).String(),
+					IweiToEther(allowableDelta).String(),
+					IweiToEther(currentShares).String(),
+					IweiToEther(currentTotalAssets).String(),
+				)
 			}
 			return true
 		}
