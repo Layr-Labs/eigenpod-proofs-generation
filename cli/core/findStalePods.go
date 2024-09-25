@@ -230,16 +230,20 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		//		- native ETH in the pod
 		//		- any active validators and their associated balances
 		// 	)
-		allValidatorsForEigenpod := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+		allActiveValidatorsForEigenpod := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+			if allValidatorInfo[v.Index].Status != 1 {
+				return false
+			}
+
 			withdrawal := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
 			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
 		})
 
-		allValidatorBalancesSummedGwei := utils.Reduce(allValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
+		allActiveValidatorBalancesSummedGwei := utils.Reduce(allActiveValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithIndex) phase0.Gwei {
 			return accum + allValidatorBalances[validator.Index]
 		}, phase0.Gwei(0))
 		//																				   converting gwei to wei
-		allBalances[eigenpod] = cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei + (uint64(allValidatorBalancesSummedGwei) * params.GWei)
+		allBalances[eigenpod] = cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei + (uint64(allActiveValidatorBalancesSummedGwei) * params.GWei)
 		return allBalances
 	}, map[string]uint64{})
 
