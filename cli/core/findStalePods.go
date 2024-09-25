@@ -290,9 +290,9 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 
 		delta := new(big.Int).Sub(currentShares, currentTotalAssets)
 		allowableDelta := FracMul(currentShares, big.NewInt(int64(tolerance)), big.NewInt(100))
-		if delta.Cmp(allowableDelta) > 0 {
+		if delta.Cmp(allowableDelta) >= 0 {
 			if verbose {
-				log.Printf("[%s] %sETH drop in assets (max allowed: %sETH, current shares: %sETH, anticipated shares: %sETH)\n",
+				log.Printf("[%s] %sETH drop in assets (max drop allowed: %sETH, current shares: %sETH, anticipated shares: %sETH)\n",
 					eigenpod,
 					IweiToEther(delta).String(),
 					IweiToEther(allowableDelta).String(),
