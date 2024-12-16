@@ -27,7 +27,7 @@ func PodManagerContracts() map[uint64]string {
 }
 
 type Cache struct {
-	PodOwnerShares map[string]PodOwnerShare
+	Pods map[string]PodInfo
 }
 
 // multiply by a fraction
@@ -49,7 +49,7 @@ func keys[A comparable, B any](coll map[A]B) []A {
 	return out
 }
 
-type PodOwnerShare struct {
+type PodInfo struct {
 	SharesWei                *big.Int
 	ExecutionLayerBalanceWei *big.Int
 	IsEigenpod               bool
@@ -58,16 +58,16 @@ type PodOwnerShare struct {
 var cache Cache // valid for the duration of a command.
 
 func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (bool, error) {
-	if cache.PodOwnerShares == nil {
-		cache.PodOwnerShares = make(map[string]PodOwnerShare)
+	if cache.Pods == nil {
+		cache.Pods = make(map[string]PodInfo)
 	}
 
-	if val, ok := cache.PodOwnerShares[eigenpodAddress]; ok {
+	if val, ok := cache.Pods[eigenpodAddress]; ok {
 		return val.IsEigenpod, nil
 	}
 
 	// default to false
-	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
+	cache.Pods[eigenpodAddress] = PodInfo{
 		SharesWei:                big.NewInt(0),
 		ExecutionLayerBalanceWei: big.NewInt(0),
 		IsEigenpod:               false,
@@ -128,7 +128,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
-	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
+	cache.Pods[eigenpodAddress] = PodInfo{
 		SharesWei:                totalPodOwnerShares,
 		ExecutionLayerBalanceWei: balance,
 		IsEigenpod:               true,
@@ -280,14 +280,14 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		if verbose {
 			log.Printf("[%s] podOwnerShares(%sETH), anticipated balance = beacon(%s across %d validators) + executionBalance(%sETH)\n",
 				eigenpod,
-				IweiToEther(cache.PodOwnerShares[eigenpod].SharesWei).String(),
+				IweiToEther(cache.Pods[eigenpod].SharesWei).String(),
 				IweiToEther(activeValidatorBalancesSum).String(),
 				len(allActiveValidatorsForEigenpod),
-				IweiToEther(cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei).String(),
+				IweiToEther(cache.Pods[eigenpod].ExecutionLayerBalanceWei).String(),
 			) // converting gwei to wei
 		}
 
-		allBalances[eigenpod] = new(big.Int).Add(cache.PodOwnerShares[eigenpod].ExecutionLayerBalanceWei, activeValidatorBalancesSum)
+		allBalances[eigenpod] = new(big.Int).Add(cache.Pods[eigenpod].ExecutionLayerBalanceWei, activeValidatorBalancesSum)
 		return allBalances
 	}, map[string]*big.Int{})
 
@@ -295,28 +295,21 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		log.Printf("%d EigenPods were slashed\n", len(slashedEigenpods))
 	}
 
+	/**
+		goal: - C = check current shares in eigenlayer
+							- DM.getWithdrawableShares(podOwner, strategy[] { BeaconETHStrategy } )   => [shares]
+
+			  - P = check projected shares after a checkpoint
+			  				-
+
+			  - see if there is a larger than N% delta from C - P
+
+
+
+	**/
+
 	unhealthyEigenpods := utils.Filter(keys(slashedEigenpods), func(eigenpod string) bool {
-		currentTotalAssets, ok := totalAssetsWeiByEigenpod[eigenpod]
-		if !ok {
-			return false
-		}
-		currentShares := cache.PodOwnerShares[eigenpod].SharesWei
-
-		delta := new(big.Int).Sub(currentShares, currentTotalAssets)
-		allowableDelta := FracMul(currentShares, big.NewInt(int64(tolerance)), big.NewInt(100))
-		if delta.Cmp(allowableDelta) >= 0 {
-			if verbose {
-				log.Printf("[%s] %sETH drop in assets (max drop allowed: %sETH, current shares: %sETH, anticipated shares: %sETH)\n",
-					eigenpod,
-					IweiToEther(delta).String(),
-					IweiToEther(allowableDelta).String(),
-					IweiToEther(currentShares).String(),
-					IweiToEther(currentTotalAssets).String(),
-				)
-			}
-			return true
-		}
-
+		// TODO: compute which eigenpods are unhealthy.
 		return false
 	})
 
