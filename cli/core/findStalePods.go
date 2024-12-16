@@ -106,15 +106,20 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 
 	dmAddress, err := podMan.DelegationManager(nil)
 	if err != nil {
+		return false, fmt.Errorf("failed to read delegationManager: %w", err)
+	}
+
+	dm, err := DelegationManager.NewDelegationManager(dmAddress, eth)
+	if err != nil {
 		return false, fmt.Errorf("failed to reach delegationManager: %w", err)
 	}
-	dm, err := DelegationManager.NewDelegationManager(dmAddress, eth)
 
-	// TODO: are we looking for an aggregate sum here?
+	// TODO: is this computation correct?
 	_, podOwnerShares, err := dm.GetDepositedShares(nil, owner)
 	if err != nil {
 		return false, fmt.Errorf("PodOwnerShares() failed: %s", err.Error())
 	}
+	totalPodOwnerShares := utils.BigSum(podOwnerShares)
 
 	balance, err := eth.BalanceAt(context.Background(), common.HexToAddress(eigenpodAddress), nil)
 	if err != nil {
@@ -124,7 +129,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		SharesWei:                podOwnerShares[0],
+		SharesWei:                totalPodOwnerShares,
 		ExecutionLayerBalanceWei: balance,
 		IsEigenpod:               true,
 	}

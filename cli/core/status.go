@@ -8,6 +8,7 @@ import (
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPodManager"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -155,9 +156,11 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	_, shares, err := delegationManager.GetDepositedShares(nil, eigenPodOwner)
 	PanicOnError("failed to load owner shares", err)
 
-	// TODO: finish computation based on shares/strategies. (this is wrong)
-	currentOwnerSharesETH := IweiToEther(shares[0])
-	currentOwnerSharesWei := shares[0]
+	totalDepositedShares := utils.BigSum(shares)
+
+	// TODO: is this calculation correct?
+	currentOwnerSharesETH := IweiToEther(totalDepositedShares)
+	currentOwnerSharesWei := totalDepositedShares
 
 	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
 	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
