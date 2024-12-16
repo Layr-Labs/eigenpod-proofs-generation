@@ -306,7 +306,7 @@ func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allVali
 			),
 		)
 
-		mc, err := multicall.Describe[EigenPod.IEigenPodValidatorInfo](
+		mc, err := multicall.Describe[EigenPod.IEigenPodTypesValidatorInfo](
 			common.HexToAddress(eigenpodAddress),
 			eigenpodAbi,
 			"validatorPubkeyHashToInfo",

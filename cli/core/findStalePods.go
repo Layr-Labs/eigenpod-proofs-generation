@@ -7,16 +7,17 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPodManager"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IEigenPod"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/pkg/errors"
+	"github.com/jbrower95/multicall-go"
 )
 
 func PodManagerContracts() map[uint64]string {
@@ -26,115 +27,10 @@ func PodManagerContracts() map[uint64]string {
 	}
 }
 
-type Cache struct {
-	Pods map[string]PodInfo
-}
-
 // multiply by a fraction
 func FracMul(a *big.Int, x *big.Int, y *big.Int) *big.Int {
 	_a := new(big.Int).Mul(a, x)
 	return _a.Div(_a, y)
-}
-
-func keys[A comparable, B any](coll map[A]B) []A {
-	if len(coll) == 0 {
-		return []A{}
-	}
-	out := make([]A, len(coll))
-	i := 0
-	for key := range coll {
-		out[i] = key
-		i++
-	}
-	return out
-}
-
-type PodInfo struct {
-	SharesWei                *big.Int
-	ExecutionLayerBalanceWei *big.Int
-	IsEigenpod               bool
-}
-
-var cache Cache // valid for the duration of a command.
-
-func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (bool, error) {
-	if cache.Pods == nil {
-		cache.Pods = make(map[string]PodInfo)
-	}
-
-	if val, ok := cache.Pods[eigenpodAddress]; ok {
-		return val.IsEigenpod, nil
-	}
-
-	// default to false
-	cache.Pods[eigenpodAddress] = PodInfo{
-		SharesWei:                big.NewInt(0),
-		ExecutionLayerBalanceWei: big.NewInt(0),
-		IsEigenpod:               false,
-	}
-
-	podManAddress, ok := PodManagerContracts()[chainId]
-	if !ok {
-		return false, fmt.Errorf("chain %d not supported", chainId)
-	}
-	podMan, err := EigenPodManager.NewEigenPodManager(common.HexToAddress(podManAddress), eth)
-	if err != nil {
-		return false, fmt.Errorf("error contacting eigenpod manager: %w", err)
-	}
-
-	if podMan == nil {
-		return false, errors.New("failed to find eigenpod manager")
-	}
-
-	pod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-	if err != nil {
-		return false, fmt.Errorf("error contacting eigenpod: %w", err)
-	}
-
-	owner, err := pod.PodOwner(nil)
-	if err != nil {
-		return false, fmt.Errorf("error loading podowner: %w", err)
-	}
-
-	expectedPod, err := podMan.OwnerToPod(&bind.CallOpts{}, owner)
-	if err != nil {
-		return false, fmt.Errorf("ownerToPod() failed: %s", err.Error())
-	}
-	if expectedPod.Cmp(common.HexToAddress(eigenpodAddress)) != 0 {
-		return false, nil
-	}
-
-	dmAddress, err := podMan.DelegationManager(nil)
-	if err != nil {
-		return false, fmt.Errorf("failed to read delegationManager: %w", err)
-	}
-
-	dm, err := DelegationManager.NewDelegationManager(dmAddress, eth)
-	if err != nil {
-		return false, fmt.Errorf("failed to reach delegationManager: %w", err)
-	}
-
-	// TODO: is this computation correct?
-	_, podOwnerShares, err := dm.GetDepositedShares(nil, owner)
-	if err != nil {
-		return false, fmt.Errorf("PodOwnerShares() failed: %s", err.Error())
-	}
-	totalPodOwnerShares := utils.BigSum(podOwnerShares)
-
-	balance, err := eth.BalanceAt(context.Background(), common.HexToAddress(eigenpodAddress), nil)
-	if err != nil {
-		return false, fmt.Errorf("balance check failed: %s", err.Error())
-	}
-
-	// Simulate fetching from contracts
-	// Implement contract fetching logic here
-	cache.Pods[eigenpodAddress] = PodInfo{
-		SharesWei:                totalPodOwnerShares,
-		ExecutionLayerBalanceWei: balance,
-		IsEigenpod:               true,
-	}
-
-	return true, nil
 }
 
 func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
@@ -145,10 +41,144 @@ func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
 	return &addr
 }
 
+func validEigenpodsOnly(candidateAddresses []*common.Address, mc *multicall.MulticallClient, chainId uint64, eth *ethclient.Client) ([]*common.Address, error) {
+	EigenPodAbi, err := abi.JSON(strings.NewReader(EigenPod.EigenPodABI))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load eigenpod abi: %s", err)
+	}
+	EigenPodManagerAbi, err := abi.JSON(strings.NewReader(EigenPodManager.EigenPodManagerABI))
+	if err != nil {
+		return nil, fmt.Errorf("failed to load eigenpod manager abi: %s", err)
+	}
+
+	podManagerAddress, ok := PodManagerContracts()[chainId]
+	if !ok {
+		return nil, fmt.Errorf("Unsupported chainId: %d", chainId)
+	}
+
+	////// step 1: cast all addresses to EigenPod, and attempt to read the pod owner.
+	var lastError error
+
+	calls := utils.Map(candidateAddresses, func(addr *common.Address, i uint64) *multicall.MultiCallMetaData[common.Address] {
+		mc, err := multicall.Describe[common.Address](
+			*addr,
+			EigenPodAbi,
+			"podOwner",
+		)
+		if err != nil {
+			lastError = err
+			return nil
+		}
+		return mc
+	})
+	if lastError != nil {
+		return nil, lastError
+	}
+
+	reportedPodOwners, err := multicall.DoManyAllowFailures(
+		mc,
+		calls...,
+	)
+	if err != nil || reportedPodOwners == nil {
+		return nil, fmt.Errorf("failed to load podOwners: %w", err)
+	}
+
+	////// step 2: using the pod manager, check `ownerToPod` and validate which ones point back at the same address.
+	authoritativeOwnerToPodCalls := utils.Map(candidateAddresses, func(addr *common.Address, i uint64) *multicall.MultiCallMetaData[common.Address] {
+		mc, err := multicall.Describe[common.Address](
+			common.HexToAddress(podManagerAddress),
+			EigenPodManagerAbi,
+			"ownerToPod",
+			(*reportedPodOwners)[i],
+		)
+		if err != nil {
+			lastError = err
+			return nil
+		}
+		return mc
+	})
+	if lastError != nil {
+		return nil, lastError
+	}
+
+	authoritativeOwnerToPod, err := multicall.DoManyAllowFailures(mc, authoritativeOwnerToPodCalls...)
+
+	////// step 3: the valid eigenrestpods are the ones where authoritativeOwnerToPod[i] == candidateAddresses[i].
+	return utils.FilterI(candidateAddresses, func(candidate *common.Address, i uint64) bool {
+		return (candidate.String() == (*authoritativeOwnerToPod)[i].Value.Hex())
+	}), nil
+}
+
+func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, state *spec.VersionedBeaconState, eigenpod common.Address) (*big.Float, error) {
+	pod, err := IEigenPod.NewIEigenPod(eigenpod, eth)
+	if err != nil {
+		return nil, err
+	}
+
+	allValidators, err := state.Validators()
+	PanicOnError("failed to read validators", err)
+
+	allValidatorsWithIndexes := utils.Map(allValidators, func(v *phase0.Validator, i uint64) ValidatorWithIndex {
+		return ValidatorWithIndex{
+			Validator: v,
+			Index:     i,
+		}
+	})
+
+	podValidators := utils.FilterI[ValidatorWithIndex](allValidatorsWithIndexes, func(v ValidatorWithIndex, u uint64) bool {
+		addr := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
+		return addr != nil && *addr == eigenpod.Hex()
+	})
+
+	validatorBalances, err := state.ValidatorBalances()
+	PanicOnError("failed to read beacon state validator balances", err)
+
+	validatorInfo, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpod.Hex(), podValidators)
+	if err != nil {
+		return nil, err
+	}
+
+	podBalanceWei, err := eth.BalanceAt(ctx, eigenpod, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	sumCurrentBeaconBalancesGwei := utils.BigSum(utils.Map(podValidators, func(v ValidatorWithIndex, i uint64) *big.Int {
+		if validatorInfo[i].Info.Status == 1 /* ACTIVE */ {
+			return new(big.Int).SetUint64(uint64(validatorBalances[v.Index]))
+		}
+		return big.NewInt(0)
+	}))
+
+	sumPreviousBeaconBalancesGwei := utils.BigSum(utils.Map(podValidators, func(v ValidatorWithIndex, i uint64) *big.Int {
+		if validatorInfo[i].Info.Status == 1 /* ACTIVE */ {
+			return new(big.Int).SetUint64(validatorInfo[i].Info.RestakedBalanceGwei)
+		}
+		return big.NewInt(0)
+	}))
+
+	// TODO: when bindings are updated, call `restakedExecutionLayerGwei`.
+	regGwei, err := pod.WithdrawableRestakedExecutionLayerGwei(nil)
+	PanicOnError("failed to load restakedExecutionLayerGwei", err)
+
+	return new(big.Float).Sub(
+		big.NewFloat(1),
+		new(big.Float).Quo(
+			new(big.Float).Add(WeiToGwei(podBalanceWei), new(big.Float).SetInt(sumCurrentBeaconBalancesGwei)),
+			new(big.Float).Add(new(big.Float).SetUint64(regGwei), new(big.Float).SetInt(sumPreviousBeaconBalancesGwei)),
+		),
+	), nil
+}
+
 func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl string, beacon BeaconClient, chainId *big.Int, verbose bool, tolerance float64) (map[string][]ValidatorWithIndex, error) {
 	beaconState, err := beacon.GetBeaconState(ctx, "head")
 	if err != nil {
 		return nil, fmt.Errorf("error downloading beacon state: %s", err.Error())
+	}
+
+	mc, err := multicall.NewMulticallClient(ctx, eth, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	// Simulate fetching validators
@@ -175,142 +205,27 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		return true
 	})
 
-	withdrawalAddressesToCheck := make(map[uint64]string)
-	for _, validator := range allSlashedValidators {
-		withdrawalAddressesToCheck[validator.Index] = *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
-	}
+	slashedEigenpods, err := validEigenpodsOnly(utils.Map(allSlashedValidators, func(v ValidatorWithIndex, i uint64) *common.Address {
+		addr := common.HexToAddress(*executionWithdrawalAddress(v.Validator.WithdrawalCredentials))
+		return &addr
+	}), mc, chainId.Uint64(), eth)
 
-	if len(withdrawalAddressesToCheck) == 0 {
-		log.Println("No EigenValidators were slashed.")
+	if len(slashedEigenpods) == 0 {
+		log.Println("No eigenpods were slashed.")
 		return map[string][]ValidatorWithIndex{}, nil
 	}
 
-	allSlashedValidatorsBelongingToEigenpods := utils.Filter(allSlashedValidators, func(validator ValidatorWithIndex) bool {
-		podAddr := *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
-		isPod, err := isEigenpod(eth, chainId.Uint64(), podAddr)
-		if err != nil {
-			if verbose {
-				if !strings.Contains(err.Error(), "no contract code at given address") {
-					log.Printf("error checking whether contract(%s) was eigenpod: %s\n", podAddr, err.Error())
-				}
-			}
-			return false
-		} else if verbose && isPod {
-			log.Printf("Detected slashed pod: %s", podAddr)
-		}
-		return isPod
-	})
-
-	allValidatorInfo := make(map[uint64]EigenPod.IEigenPodTypesValidatorInfo)
-	for _, validator := range allSlashedValidatorsBelongingToEigenpods {
-		eigenpodAddress := *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
-		pod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
-		if err != nil {
-			// failed to load validator info.
-			return map[string][]ValidatorWithIndex{}, fmt.Errorf("failed to dial eigenpod: %s", err.Error())
-		}
-
-		info, err := pod.ValidatorPubkeyToInfo(nil, validator.Validator.PublicKey[:])
-		if err != nil {
-			// failed to load validator info.
-			return map[string][]ValidatorWithIndex{}, err
-		}
-		allValidatorInfo[validator.Index] = info
-	}
-
-	allActiveSlashedValidatorsBelongingToEigenpods := utils.Filter(allSlashedValidatorsBelongingToEigenpods, func(validator ValidatorWithIndex) bool {
-		validatorInfo := allValidatorInfo[validator.Index]
-		return validatorInfo.Status == 1 // "ACTIVE"
-	})
-
-	if verbose {
-		log.Printf("%d EigenValidators have been slashed\n", len(allSlashedValidatorsBelongingToEigenpods))
-		log.Printf("%d EigenValidators have been slashed + active\n", len(allActiveSlashedValidatorsBelongingToEigenpods))
-	}
-
-	slashedEigenpods := utils.Reduce(allActiveSlashedValidatorsBelongingToEigenpods, func(pods map[string][]ValidatorWithIndex, validator ValidatorWithIndex) map[string][]ValidatorWithIndex {
-		podAddress := executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
-		if podAddress != nil {
-			if pods[*podAddress] == nil {
-				pods[*podAddress] = []ValidatorWithIndex{}
-			}
-			pods[*podAddress] = append(pods[*podAddress], validator)
-		}
-		return pods
-	}, map[string][]ValidatorWithIndex{})
-
-	allValidatorBalances, err := beaconState.ValidatorBalances()
-	if err != nil {
-		return nil, err
-	}
-
-	totalAssetsWeiByEigenpod := utils.Reduce(keys(slashedEigenpods), func(allBalances map[string]*big.Int, eigenpod string) map[string]*big.Int {
-		// total assets of an eigenpod are determined as;
-		//	SUM(
-		//		- native ETH in the pod
-		//		- any active validators and their associated balances
-		// 	)
-		validatorsForEigenpod := utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
-			withdrawal := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
-			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
-		})
-
-		podValidatorInfo, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpod, validatorsForEigenpod)
-		if err != nil {
-			return allBalances
-		}
-
-		allActiveValidatorsForEigenpod := utils.Filter(podValidatorInfo, func(v ValidatorWithOnchainInfo) bool {
-			if v.Info.Status != 1 { // ignore any inactive validators
-				return false
-			}
-
-			withdrawal := executionWithdrawalAddress(v.Validator.WithdrawalCredentials)
-			return withdrawal != nil && strings.EqualFold(*withdrawal, eigenpod)
-		})
-
-		allActiveValidatorBalancesSummedGwei := utils.Reduce(allActiveValidatorsForEigenpod, func(accum phase0.Gwei, validator ValidatorWithOnchainInfo) phase0.Gwei {
-			return accum + allValidatorBalances[validator.Index]
-		}, phase0.Gwei(0))
-		activeValidatorBalancesSum := new(big.Int).Mul(
-			new(big.Int).SetUint64(uint64(allActiveValidatorBalancesSummedGwei)),
-			new(big.Int).SetUint64(params.GWei),
-		)
-
-		if verbose {
-			log.Printf("[%s] podOwnerShares(%sETH), anticipated balance = beacon(%s across %d validators) + executionBalance(%sETH)\n",
-				eigenpod,
-				IweiToEther(cache.Pods[eigenpod].SharesWei).String(),
-				IweiToEther(activeValidatorBalancesSum).String(),
-				len(allActiveValidatorsForEigenpod),
-				IweiToEther(cache.Pods[eigenpod].ExecutionLayerBalanceWei).String(),
-			) // converting gwei to wei
-		}
-
-		allBalances[eigenpod] = new(big.Int).Add(cache.Pods[eigenpod].ExecutionLayerBalanceWei, activeValidatorBalancesSum)
-		return allBalances
-	}, map[string]*big.Int{})
+	// 2. given the set of slashed eigenpods, determine which are unhealthy.
 
 	if verbose {
 		log.Printf("%d EigenPods were slashed\n", len(slashedEigenpods))
 	}
 
-	/**
-		goal: - C = check current shares in eigenlayer
-							- DM.getWithdrawableShares(podOwner, strategy[] { BeaconETHStrategy } )   => [shares]
+	unhealthyEigenpods := utils.Filter(slashedEigenpods, func(eigenpod *common.Address) bool {
+		deviation, err := ComputeBalanceDeviationSync(ctx, eth, beaconState, *eigenpod)
+		PanicOnError("failed to compute balance deviation for eigenpod", err)
 
-			  - P = check projected shares after a checkpoint
-			  				-
-
-			  - see if there is a larger than N% delta from C - P
-
-
-
-	**/
-
-	unhealthyEigenpods := utils.Filter(keys(slashedEigenpods), func(eigenpod string) bool {
-		// TODO: compute which eigenpods are unhealthy.
-		return false
+		return deviation.Cmp(big.NewFloat(tolerance)) > 0
 	})
 
 	if len(unhealthyEigenpods) == 0 {
@@ -326,7 +241,9 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 
 	var entries map[string][]ValidatorWithIndex = make(map[string][]ValidatorWithIndex)
 	for _, val := range unhealthyEigenpods {
-		entries[val] = slashedEigenpods[val]
+		entries[val.Hex()] = utils.Filter(allValidatorsWithIndices, func(v ValidatorWithIndex) bool {
+			return *executionWithdrawalAddress(v.Validator.WithdrawalCredentials) == val.Hex()
+		})
 	}
 
 	return entries, nil

@@ -1,7 +1,7 @@
 github.com/DataDog/zstd v1.4.5 h1:EndNeuB0l9syBZhut0wns3gV1hL8zX8LIu6ZiVHWLIQ=
 github.com/DataDog/zstd v1.4.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
-github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241214054442-85e12bab5f3d h1:m13s9zEqOjbX69GtQO6kpX9+ynaWNGZ5bFC53AK/ukQ=
-github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241214054442-85e12bab5f3d/go.mod h1:Ie8YE3EQkTHqG6/tnUS0He7/UPMkXPo/3OFXwSy0iRo=
+github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241216232148-75428be65f85 h1:nyMTaafrT29KlAKFisfhVVCRU+MZucnnIgO3M8M6qe0=
+github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241216232148-75428be65f85/go.mod h1:Ie8YE3EQkTHqG6/tnUS0He7/UPMkXPo/3OFXwSy0iRo=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/VictoriaMetrics/fastcache v1.12.2 h1:N0y9ASrJ0F6h0QaC3o6uJb3NIZ9VKLjCM7NQbSmF7WI=

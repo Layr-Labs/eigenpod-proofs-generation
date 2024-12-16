@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.4
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241214054442-85e12bab5f3d
+	github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241216232148-75428be65f85
 	github.com/attestantio/go-eth2-client v0.19.9
 	github.com/ethereum/go-ethereum v1.14.9
 	github.com/fatih/color v1.16.0
