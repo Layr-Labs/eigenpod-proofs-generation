@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/multicall"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/attestantio/go-eth2-client/spec"
@@ -29,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/fatih/color"
+	"github.com/jbrower95/multicall-go"
 )
 
 const (
@@ -287,14 +287,14 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 
 var zeroes = [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
-func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allValidators []*phase0.Validator) ([]*multicall.MultiCallMetaData[*onchain.IEigenPodValidatorInfo], error) {
+func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allValidators []*phase0.Validator) ([]*multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo], error) {
 	eigenpodAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodABI))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load eigenpod abi: %s", err)
 	}
 
 	type MulticallAndError struct {
-		Multicall *multicall.MultiCallMetaData[*onchain.IEigenPodValidatorInfo]
+		Multicall *multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo]
 		Error     error
 	}
 
@@ -306,13 +306,11 @@ func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allVali
 			),
 		)
 
-		mc, err := multicall.MultiCall(common.HexToAddress(eigenpodAddress), eigenpodAbi, func(data []byte) (*onchain.IEigenPodValidatorInfo, error) {
-			res, err := eigenpodAbi.Unpack("validatorPubkeyHashToInfo", data)
-			if err != nil {
-				return nil, err
-			}
-			return abi.ConvertType(res[0], new(onchain.IEigenPodValidatorInfo)).(*onchain.IEigenPodValidatorInfo), nil
-		}, "validatorPubkeyHashToInfo", pubKeyHash)
+		mc, err := multicall.Describe[onchain.IEigenPodValidatorInfo](
+			common.HexToAddress(eigenpodAddress),
+			eigenpodAbi,
+			"validatorPubkeyHashToInfo",
+			pubKeyHash)
 
 		return MulticallAndError{
 			Multicall: mc,
@@ -331,7 +329,7 @@ func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allVali
 		return nil, fmt.Errorf("failed to form request for validator info: %s", errors.Join(errs...))
 	}
 
-	allMulticalls := utils.Map(requests, func(mc MulticallAndError, _ uint64) *multicall.MultiCallMetaData[*onchain.IEigenPodValidatorInfo] {
+	allMulticalls := utils.Map(requests, func(mc MulticallAndError, _ uint64) *multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo] {
 		return mc.Multicall
 	})
 	return allMulticalls, nil
@@ -343,15 +341,14 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 		return nil, fmt.Errorf("failed to form multicalls: %s", err.Error())
 	}
 
-	// make the multicall requests
-	multicallInstance, err := multicall.NewMulticallClient(ctx, client, &multicall.TMulticallClientOptions{
+	mc, err := multicall.NewMulticallClient(ctx, client, &multicall.TMulticallClientOptions{
 		MaxBatchSizeBytes: 4096,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to contact multicall: %s", err.Error())
 	}
 
-	results, err := multicall.DoMultiCallMany(*multicallInstance, allMulticalls...)
+	results, err := multicall.DoMany(mc, allMulticalls...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch validator info: %s", err.Error())
 	}
