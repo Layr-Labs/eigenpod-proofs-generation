@@ -5,12 +5,13 @@ go 1.22.0
 toolchain go1.22.4
 
 require (
+	github.com/Layr-Labs/eigenlayer-contracts v0.4.3-mainnet-rewards-foundation-incentives.0.20241214054442-85e12bab5f3d
 	github.com/attestantio/go-eth2-client v0.19.9
 	github.com/ethereum/go-ethereum v1.14.9
 	github.com/fatih/color v1.16.0
 	github.com/ferranbt/fastssz v0.1.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/jbrower95/multicall-go v0.0.0-20240923010412-060e37b98d03
+	github.com/jbrower95/multicall-go v0.0.0-20241012224745-7e9c19976cb5
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.1

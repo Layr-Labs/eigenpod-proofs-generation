@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPodManager"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	gethCommon "github.com/ethereum/go-ethereum/common"
@@ -89,7 +91,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	validators := map[string]Validator{}
 	var activeCheckpoint *Checkpoint = nil
 
-	eigenPod, err := onchain.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := EigenPod.NewEigenPod(gethCommon.HexToAddress(eigenpodAddress), eth)
 	PanicOnError("failed to reach eigenpod", err)
 
 	checkpoint, err := eigenPod.CurrentCheckpoint(nil)
@@ -135,7 +137,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	eigenpodManagerContractAddress, err := eigenPod.EigenPodManager(nil)
 	PanicOnError("failed to get manager address", err)
 
-	eigenPodManager, err := onchain.NewEigenPodManager(eigenpodManagerContractAddress, eth)
+	eigenPodManager, err := EigenPodManager.NewEigenPodManager(eigenpodManagerContractAddress, eth)
 	PanicOnError("failed to get manager instance", err)
 
 	eigenPodOwner, err := eigenPod.PodOwner(nil)
@@ -144,11 +146,18 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	proofSubmitter, err := eigenPod.ProofSubmitter(nil)
 	PanicOnError("failed to get eigenpod proof submitter", err)
 
-	currentOwnerShares, err := eigenPodManager.PodOwnerShares(nil, eigenPodOwner)
-	// currentOwnerShares = big.NewInt(0)
-	PanicOnError("failed to load pod owner shares", err)
-	currentOwnerSharesETH := IweiToEther(currentOwnerShares)
-	currentOwnerSharesWei := currentOwnerShares
+	delegationManagerAddress, err := eigenPodManager.DelegationManager(nil)
+	PanicOnError("failed to read delegationManager", err)
+
+	delegationManager, err := DelegationManager.NewDelegationManager(delegationManagerAddress, eth)
+	PanicOnError("failed to reach delegationManager", err)
+
+	_, shares, err := delegationManager.GetDepositedShares(nil, eigenPodOwner)
+	PanicOnError("failed to load owner shares", err)
+
+	// TODO: finish computation based on shares/strategies. (this is wrong)
+	currentOwnerSharesETH := IweiToEther(shares[0])
+	currentOwnerSharesWei := shares[0]
 
 	withdrawableRestakedExecutionLayerGwei, err := eigenPod.WithdrawableRestakedExecutionLayerGwei(nil)
 	PanicOnError("failed to fetch withdrawableRestakedExecutionLayerGwei", err)
@@ -168,7 +177,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 		// Remove already-computed delta from an in-progress checkpoint
 		sumRestakedBalancesWei = new(big.Int).Sub(
 			sumRestakedBalancesWei,
-			IGweiToWei(checkpoint.BalanceDeltasGwei),
+			IGweiToWei(big.NewInt(checkpoint.BalanceDeltasGwei)),
 		)
 
 		activeCheckpoint = &Checkpoint{

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
@@ -44,7 +44,7 @@ func AssignSubmitterCommand(args TAssignSubmitterArgs) error {
 		return fmt.Errorf("failed to parse --sender: %w", err)
 	}
 
-	pod, err := onchain.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
+	pod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
 	if err != nil {
 		return fmt.Errorf("error contacting eigenpod: %w", err)
 	}

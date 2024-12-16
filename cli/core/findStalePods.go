@@ -7,7 +7,9 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPodManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -75,7 +77,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	if !ok {
 		return false, fmt.Errorf("chain %d not supported", chainId)
 	}
-	podMan, err := onchain.NewEigenPodManager(common.HexToAddress(podManAddress), eth)
+	podMan, err := EigenPodManager.NewEigenPodManager(common.HexToAddress(podManAddress), eth)
 	if err != nil {
 		return false, fmt.Errorf("error contacting eigenpod manager: %w", err)
 	}
@@ -84,7 +86,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 		return false, errors.New("failed to find eigenpod manager")
 	}
 
-	pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	pod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return false, fmt.Errorf("error contacting eigenpod: %w", err)
 	}
@@ -102,7 +104,14 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 		return false, nil
 	}
 
-	podOwnerShares, err := podMan.PodOwnerShares(nil, owner)
+	dmAddress, err := podMan.DelegationManager(nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to reach delegationManager: %w", err)
+	}
+	dm, err := DelegationManager.NewDelegationManager(dmAddress, eth)
+
+	// TODO: are we looking for an aggregate sum here?
+	_, podOwnerShares, err := dm.GetDepositedShares(nil, owner)
 	if err != nil {
 		return false, fmt.Errorf("PodOwnerShares() failed: %s", err.Error())
 	}
@@ -115,7 +124,7 @@ func isEigenpod(eth *ethclient.Client, chainId uint64, eigenpodAddress string) (
 	// Simulate fetching from contracts
 	// Implement contract fetching logic here
 	cache.PodOwnerShares[eigenpodAddress] = PodOwnerShare{
-		SharesWei:                podOwnerShares,
+		SharesWei:                podOwnerShares[0],
 		ExecutionLayerBalanceWei: balance,
 		IsEigenpod:               true,
 	}
@@ -187,10 +196,10 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		return isPod
 	})
 
-	allValidatorInfo := make(map[uint64]onchain.IEigenPodValidatorInfo)
+	allValidatorInfo := make(map[uint64]EigenPod.IEigenPodTypesValidatorInfo)
 	for _, validator := range allSlashedValidatorsBelongingToEigenpods {
 		eigenpodAddress := *executionWithdrawalAddress(validator.Validator.WithdrawalCredentials)
-		pod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+		pod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 		if err != nil {
 			// failed to load validator info.
 			return map[string][]ValidatorWithIndex{}, fmt.Errorf("failed to dial eigenpod: %s", err.Error())

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color"
@@ -57,7 +57,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	ownerAccount, err := core.PrepareAccount(&args.Sender, chainId, false /* noSend */)
 	core.PanicOnError("failed to parse sender PK", err)
 
-	eigenpod, err := onchain.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
+	eigenpod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
 	core.PanicOnError("failed to reach eigenpod", err)
 
 	currentCheckpointTimestamp, err := eigenpod.CurrentCheckpointTimestamp(nil)
@@ -97,11 +97,11 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 	txn, err := eigenpod.VerifyStaleBalance(
 		ownerAccount.TransactionOptions,
 		oracleBeaconTimesetamp,
-		onchain.BeaconChainProofsStateRootProof{
+		EigenPod.BeaconChainProofsStateRootProof{
 			Proof:           proof.StateRootProof.Proof.ToByteSlice(),
 			BeaconStateRoot: proof.StateRootProof.BeaconStateRoot,
 		},
-		onchain.BeaconChainProofsValidatorProof{
+		EigenPod.BeaconChainProofsValidatorProof{
 			ValidatorFields: proofCast(proof.ValidatorFields[0]),
 			Proof:           proof.ValidatorFieldsProofs[0].ToByteSlice(),
 		},

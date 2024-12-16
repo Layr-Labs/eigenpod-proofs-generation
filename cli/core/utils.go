@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
@@ -105,7 +105,7 @@ type ValidatorWithIndex = struct {
 }
 
 type ValidatorWithOnchainInfo = struct {
-	Info      onchain.IEigenPodValidatorInfo
+	Info      EigenPod.IEigenPodTypesValidatorInfo
 	Validator *phase0.Validator
 	Index     uint64
 }
@@ -123,7 +123,7 @@ func StartCheckpoint(ctx context.Context, eigenpodAddress string, ownerPrivateKe
 		return nil, fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
@@ -148,7 +148,7 @@ func GetBeaconClient(beaconUri string, verbose bool) (BeaconClient, error) {
 }
 
 func GetCurrentCheckpoint(eigenpodAddress string, client *ethclient.Client) (uint64, error) {
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
+	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), client)
 	if err != nil {
 		return 0, fmt.Errorf("failed to locate eigenpod. is your address correct?: %w", err)
 	}
@@ -287,14 +287,14 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 
 var zeroes = [16]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
-func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allValidators []*phase0.Validator) ([]*multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo], error) {
-	eigenpodAbi, err := abi.JSON(strings.NewReader(onchain.EigenPodABI))
+func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allValidators []*phase0.Validator) ([]*multicall.MultiCallMetaData[EigenPod.IEigenPodTypesValidatorInfo], error) {
+	eigenpodAbi, err := abi.JSON(strings.NewReader(EigenPod.EigenPodABI))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load eigenpod abi: %s", err)
 	}
 
 	type MulticallAndError struct {
-		Multicall *multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo]
+		Multicall *multicall.MultiCallMetaData[EigenPod.IEigenPodTypesValidatorInfo]
 		Error     error
 	}
 
@@ -306,7 +306,7 @@ func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allVali
 			),
 		)
 
-		mc, err := multicall.Describe[onchain.IEigenPodValidatorInfo](
+		mc, err := multicall.Describe[EigenPod.IEigenPodValidatorInfo](
 			common.HexToAddress(eigenpodAddress),
 			eigenpodAbi,
 			"validatorPubkeyHashToInfo",
@@ -329,7 +329,7 @@ func FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress string, allVali
 		return nil, fmt.Errorf("failed to form request for validator info: %s", errors.Join(errs...))
 	}
 
-	allMulticalls := utils.Map(requests, func(mc MulticallAndError, _ uint64) *multicall.MultiCallMetaData[onchain.IEigenPodValidatorInfo] {
+	allMulticalls := utils.Map(requests, func(mc MulticallAndError, _ uint64) *multicall.MultiCallMetaData[EigenPod.IEigenPodTypesValidatorInfo] {
 		return mc.Multicall
 	})
 	return allMulticalls, nil
@@ -357,7 +357,7 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 		return nil, errors.New("no results returned fetching validator info")
 	}
 
-	return utils.Map(*results, func(info *onchain.IEigenPodValidatorInfo, i uint64) ValidatorWithOnchainInfo {
+	return utils.Map(*results, func(info *EigenPod.IEigenPodTypesValidatorInfo, i uint64) ValidatorWithOnchainInfo {
 		return ValidatorWithOnchainInfo{
 			Info:      *info,
 			Validator: allValidators[i].Validator,
@@ -367,7 +367,7 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 }
 
 func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client) (*[32]byte, error) {
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to locate Eigenpod. Is your address correct?: %w", err)
 	}
@@ -380,7 +380,7 @@ func GetCurrentCheckpointBlockRoot(eigenpodAddress string, eth *ethclient.Client
 	return &checkpoint.BeaconBlockRoot, nil
 }
 
-func IsAwaitingWithdrawalCredentialProof(validatorInfo onchain.IEigenPodValidatorInfo, validator *phase0.Validator) bool {
+func IsAwaitingWithdrawalCredentialProof(validatorInfo EigenPod.IEigenPodTypesValidatorInfo, validator *phase0.Validator) bool {
 	return (validatorInfo.Status == ValidatorStatusInactive) && validator.ExitEpoch == FAR_FUTURE_EPOCH && validator.ActivationEpoch != FAR_FUTURE_EPOCH
 }
 
@@ -423,12 +423,12 @@ func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool
 	return eth, beaconClient, chainId, nil
 }
 
-func CastBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []onchain.BeaconChainProofsBalanceProof {
-	out := []onchain.BeaconChainProofsBalanceProof{}
+func CastBalanceProofs(proofs []*eigenpodproofs.BalanceProof) []EigenPod.BeaconChainProofsBalanceProof {
+	out := []EigenPod.BeaconChainProofsBalanceProof{}
 
 	for i := 0; i < len(proofs); i++ {
 		proof := proofs[i]
-		out = append(out, onchain.BeaconChainProofsBalanceProof{
+		out = append(out, EigenPod.BeaconChainProofsBalanceProof{
 			PubkeyHash:  proof.PubkeyHash,
 			BalanceRoot: proof.BalanceRoot,
 			Proof:       proof.Proof.ToByteSlice(),

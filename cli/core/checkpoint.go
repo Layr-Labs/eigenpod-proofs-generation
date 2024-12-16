@@ -9,8 +9,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -79,7 +79,7 @@ func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress stri
 		fmt.Printf("Using account(0x%s) to submit onchain\n", common.Bytes2Hex(ownerAccount.FromAddress[:]))
 	}
 
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress stri
 	})
 	txn, err := eigenPod.VerifyCheckpointProofs(
 		ownerAccount.TransactionOptions,
-		onchain.BeaconChainProofsBalanceContainerProof{
+		EigenPod.BeaconChainProofsBalanceContainerProof{
 			BalanceContainerRoot: proof.ValidatorBalancesRoot,
 			Proof:                proof.Proof.ToByteSlice(),
 		},

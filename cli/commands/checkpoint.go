@@ -3,8 +3,8 @@ package commands
 import (
 	"context"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -42,7 +42,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 	currentCheckpoint, err := core.GetCurrentCheckpoint(args.EigenpodAddress, eth)
 	core.PanicOnError("failed to load checkpoint", err)
 
-	eigenpod, err := onchain.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
+	eigenpod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
 	core.PanicOnError("failed to connect to eigenpod", err)
 
 	if currentCheckpoint == 0 {
