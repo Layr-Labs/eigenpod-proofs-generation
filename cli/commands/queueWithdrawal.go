@@ -2,7 +2,13 @@ package commands
 
 import "github.com/pkg/errors"
 
-func QueueWithdrawalCommand(args TComputeCheckpointableValueCommandArgs) error {
+type TQueueWithdrawallArgs struct {
+	EthNode    string
+	BeaconNode string
+	EigenPod   string
+}
+
+func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	// TODO: IDelegationManager.queueWithdrawals
 	/*
 		struct QueuedWithdrawalParams {

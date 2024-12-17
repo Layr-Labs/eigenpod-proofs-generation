@@ -2,7 +2,13 @@ package commands
 
 import "github.com/pkg/errors"
 
-func ShowWithdrawalsCommand(args TComputeCheckpointableValueCommandArgs) error {
+type TShowWithdrawalArgs struct {
+	EthNode    string
+	BeaconNode string
+	EigenPod   string
+}
+
+func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 	// IDelegationManager.getQueuedWithdrawals
 	return errors.New("unimplemented.")
 }
