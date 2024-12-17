@@ -10,7 +10,7 @@ import (
 )
 
 // Destinations for values set by various flags
-var eigenpodAddress, beacon, node, sender string
+var eigenpodAddress, beacon, node, sender, eigenpodOwner string
 var useJSON = false
 var specificValidator uint64 = math.MaxUint64
 var estimateGas = false

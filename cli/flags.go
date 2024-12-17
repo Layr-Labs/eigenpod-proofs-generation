@@ -12,6 +12,15 @@ var PodAddressFlag = &cli.StringFlag{
 	Destination: &eigenpodAddress,
 }
 
+var PodOwnerFlag = &cli.StringFlag{
+	Name:        "podOwner",
+	Aliases:     []string{"p", "podOwner"},
+	Value:       "",
+	Usage:       "[required] The onchain `address` of your eigenpod's owner (0x123123123123)",
+	Required:    true,
+	Destination: &eigenpodOwner,
+}
+
 // Required for commands that need a beacon chain RPC
 var BeaconNodeFlag = &cli.StringFlag{
 	Name:        "beaconNode",
