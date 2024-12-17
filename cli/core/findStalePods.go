@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPodManager"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IEigenPod"
@@ -169,28 +170,47 @@ func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, sta
 		}),
 	)
 
-	sumPreviousBeaconBalancesGwei := utils.BigSum(utils.Map(podValidators, func(v ValidatorWithIndex, i uint64) *big.Int {
-		if validatorInfo[i].Info != nil && validatorInfo[i].Info.Status == 1 /* ACTIVE */ {
-			return new(big.Int).SetUint64(validatorInfo[i].Info.RestakedBalanceGwei)
+	eigenPodManagerAddr, err := pod.EigenPodManager(nil)
+	PanicOnError("failed to load eigenpod manager", err)
+
+	eigenPodManager, err := EigenPodManager.NewEigenPodManager(eigenPodManagerAddr, eth)
+	PanicOnError("failed to load eigenpod manager", err)
+
+	delegationManagerAddress, err := eigenPodManager.DelegationManager(nil)
+	PanicOnError("failed to read delegationManager", err)
+
+	delegationManager, err := DelegationManager.NewDelegationManager(delegationManagerAddress, eth)
+	PanicOnError("failed to reach delegationManager", err)
+
+	podOwner, err := pod.PodOwner(nil)
+	PanicOnError("failed to load pod owner", err)
+
+	activeShares, err := delegationManager.GetWithdrawableShares(nil, podOwner, []common.Address{
+		common.HexToAddress(NATIVE_ETH_STRATEGY),
+	})
+	PanicOnError("failed to load owner shares", err)
+
+	var sharesPendingWithdrawal *big.Int
+	withdrawalInfo, err := delegationManager.GetQueuedWithdrawals(nil, podOwner)
+	PanicOnError("failed to load queued withdrawals", err)
+
+	for i, withdrawal := range withdrawalInfo.Withdrawals {
+		for j, strategy := range withdrawal.Strategies {
+			if strategy.Cmp(common.HexToAddress(NATIVE_ETH_STRATEGY)) == 0 {
+				sharesPendingWithdrawal = new(big.Int).Add(sharesPendingWithdrawal, withdrawalInfo.Shares[i][j])
+			}
 		}
-		return big.NewInt(0)
-	}))
+	}
 
-	// activeValidators := utils.FilterI(podValidators, func(v ValidatorWithIndex, i uint64) bool {
-	// 	return validatorInfo[i].Info.Status == 1
-	// })
+	totalSharesInEigenLayer := new(big.Int).Add(activeShares.WithdrawableShares[0], sharesPendingWithdrawal)
 
-	regGwei, err := pod.WithdrawableRestakedExecutionLayerGwei(nil)
-	PanicOnError("failed to load restakedExecutionLayerGwei", err)
-	// fmt.Printf("-----------------------------------\n")
-	// fmt.Printf("Pod: %s\n", eigenpod.Hex())
 	// fmt.Printf("# validators: %d\n", len(podValidators))
 	// fmt.Printf("# active validators: %d\n", len(activeValidators))
 	// fmt.Printf("delta := 1 - ((podBalanceGwei + sumCurrentBeaconBalancesGwei) / (regGwei + sumPreviousBeaconBalancesGwei)\n")
 	// fmt.Printf("delta := 1 - ((%s + %s) / (%d + %s)\n", WeiToGwei(podBalanceWei).String(), sumCurrentBeaconBalancesGwei.String(), regGwei, sumPreviousBeaconBalancesGwei.String())
 
 	currentState := new(big.Float).Add(WeiToGwei(podBalanceWei), new(big.Float).SetInt(sumCurrentBeaconBalancesGwei))
-	prevState := new(big.Float).Add(new(big.Float).SetUint64(regGwei), new(big.Float).SetInt(sumPreviousBeaconBalancesGwei))
+	prevState := WeiToGwei(totalSharesInEigenLayer)
 
 	var delta *big.Float
 
