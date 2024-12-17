@@ -15,10 +15,12 @@ type TQueueWithdrawallArgs struct {
 }
 
 func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
-	// TODO: IDelegationManager.queueWithdrawals
 	ctx := context.Background()
 	eth, _, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, false /* isVerbose */)
-	dm, err := IDelegationManager.NewIDelegationManager(DelegationManager(chainId), eth)
+	core.PanicOnError("failed to dial nodes", err)
+
+	_dm, err := IDelegationManager.NewIDelegationManager(DelegationManager(chainId), eth)
+	core.PanicOnError("failed to reach delegation manager", err)
 
 	// TODO: wait for G's conversion function from deposit[ed] shares to depositShares
 	// bound the withdrawals by REG - (sum(allWithdrawalsQueued))
