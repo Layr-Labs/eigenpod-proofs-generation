@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/onchain"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec"
@@ -46,7 +46,7 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	}
 	PanicOnError("failed to parse private key", err)
 
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, [][]*big.Int{}, err
 	}
@@ -98,14 +98,14 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	return transactions, validatorIndicesChunks, err
 }
 
-func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *onchain.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64, verbose bool) (*types.Transaction, error) {
+func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *EigenPod.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64, verbose bool) (*types.Transaction, error) {
 	if verbose {
-		color.Green("submitting onchain...")
+		color.Green("submitting...")
 	}
 	txn, err := eigenPod.VerifyWithdrawalCredentials(
 		ownerAccount.TransactionOptions,
 		oracleBeaconTimesetamp,
-		onchain.BeaconChainProofsStateRootProof{
+		EigenPod.BeaconChainProofsStateRootProof{
 			Proof:           stateRootProofs.Proof.ToByteSlice(),
 			BeaconStateRoot: stateRootProofs.BeaconStateRoot,
 		},
@@ -127,7 +127,7 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 		return nil, 0, fmt.Errorf("failed to load latest block: %w", err)
 	}
 
-	eigenPod, err := onchain.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
+	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to reach eigenpod: %w", err)
 	}
