@@ -196,6 +196,23 @@ func main() {
 					})
 				},
 			},
+			{
+				Name:  "queue-withdrawal",
+				Args:  true,
+				Usage: "Queues a withdrawal ",
+				Flags: []cli.Flag{
+					ExecNodeFlag,
+					BeaconNodeFlag,
+					PodAddressFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.QueueWithdrawalCommand(commands.TComputeCheckpointableValueCommandArgs{
+						Node:       node,
+						BeaconNode: beacon,
+						PodAddress: eigenpodAddress,
+					})
+				},
+			},
 		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
