@@ -110,6 +110,12 @@ type ValidatorWithOnchainInfo = struct {
 	Index     uint64
 }
 
+type ValidatorWithMaybeOnchainInfo = struct {
+	Info      *EigenPod.IEigenPodTypesValidatorInfo
+	Validator *phase0.Validator
+	Index     uint64
+}
+
 type Owner = struct {
 	FromAddress        common.Address
 	PublicKey          *ecdsa.PublicKey
@@ -360,6 +366,37 @@ func FetchMultipleOnchainValidatorInfo(ctx context.Context, client *ethclient.Cl
 	return utils.Map(*results, func(info *EigenPod.IEigenPodTypesValidatorInfo, i uint64) ValidatorWithOnchainInfo {
 		return ValidatorWithOnchainInfo{
 			Info:      *info,
+			Validator: allValidators[i].Validator,
+			Index:     allValidators[i].Index,
+		}
+	}), nil
+}
+
+func FetchMultipleOnchainValidatorInfoWithFailures(ctx context.Context, client *ethclient.Client, eigenpodAddress string, allValidators []ValidatorWithIndex) ([]ValidatorWithMaybeOnchainInfo, error) {
+	allMulticalls, err := FetchMultipleOnchainValidatorInfoMulticalls(eigenpodAddress, utils.Map(allValidators, func(validator ValidatorWithIndex, i uint64) *phase0.Validator { return validator.Validator }))
+	if err != nil {
+		return nil, fmt.Errorf("failed to form multicalls: %s", err.Error())
+	}
+
+	mc, err := multicall.NewMulticallClient(ctx, client, &multicall.TMulticallClientOptions{
+		MaxBatchSizeBytes: 4096,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to contact multicall: %s", err.Error())
+	}
+
+	results, err := multicall.DoManyAllowFailures(mc, allMulticalls...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch validator info: %s", err.Error())
+	}
+
+	if results == nil {
+		return nil, errors.New("no results returned fetching validator info")
+	}
+
+	return utils.Map(*results, func(info multicall.TypedMulticall3Result[*EigenPod.IEigenPodTypesValidatorInfo], i uint64) ValidatorWithMaybeOnchainInfo {
+		return ValidatorWithMaybeOnchainInfo{
+			Info:      info.Value,
 			Validator: allValidators[i].Validator,
 			Index:     allValidators[i].Index,
 		}

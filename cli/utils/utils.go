@@ -64,6 +64,15 @@ func Reduce[A any, B any](coll []A, processor func(accum B, next A) B, initialSt
 	return val
 }
 
+func Unique[A comparable](coll []A) []A {
+	values := map[A]bool{}
+	return Filter(coll, func(item A) bool {
+		isSet := values[item]
+		values[item] = true
+		return !isSet
+	})
+}
+
 func Flatten[A any](coll [][]A) []A {
 	out := []A{}
 	for _, arr := range coll {
