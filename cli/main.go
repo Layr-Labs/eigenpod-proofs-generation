@@ -202,14 +202,14 @@ func main() {
 				Usage: "Completes all withdrawals",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
-					BeaconNodeFlag,
 					PodAddressFlag,
+					SenderPkFlag,
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.CompleteAllWithdrawalsCommand(commands.TCompleteWithdrawalArgs{
-						EthNode:    node,
-						BeaconNode: beacon,
-						EigenPod:   eigenpodAddress,
+						EthNode:  node,
+						EigenPod: eigenpodAddress,
+						Sender:   sender,
 					})
 				},
 			},
@@ -219,14 +219,14 @@ func main() {
 				Usage: "Queues a withdrawal",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
-					BeaconNodeFlag,
 					PodAddressFlag,
+					SenderPkFlag,
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.QueueWithdrawalCommand(commands.TQueueWithdrawallArgs{
-						EthNode:    node,
-						BeaconNode: beacon,
-						EigenPod:   eigenpodAddress,
+						EthNode:  node,
+						EigenPod: eigenpodAddress,
+						Sender:   sender,
 					})
 				},
 			},
@@ -236,14 +236,12 @@ func main() {
 				Usage: "Shows all pending withdrawals",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
-					BeaconNodeFlag,
 					PodAddressFlag,
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.ShowWithdrawalsCommand(commands.TShowWithdrawalArgs{
-						EthNode:    node,
-						BeaconNode: beacon,
-						EigenPod:   eigenpodAddress,
+						EthNode:  node,
+						EigenPod: eigenpodAddress,
 					})
 				},
 			},

@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	. "github.com/samber/lo"
+	lo "github.com/samber/lo"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
@@ -58,7 +58,7 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 	withdrawalInfo := []TWithdrawalInfo{}
 
 	for i, shares := range allWithdrawals.Shares {
-		withdrawalTotalValueWei := Reduce(shares, func(accum *big.Int, item *big.Int, i int) *big.Int {
+		withdrawalTotalValueWei := lo.Reduce(shares, func(accum *big.Int, item *big.Int, i int) *big.Int {
 			return new(big.Int).Add(item, accum)
 		}, big.NewInt(0))
 

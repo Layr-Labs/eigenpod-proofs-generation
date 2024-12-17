@@ -5,21 +5,26 @@ import (
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 )
 
 type TQueueWithdrawallArgs struct {
-	EthNode    string
-	BeaconNode string
-	EigenPod   string
+	EthNode  string
+	EigenPod string
+	Sender   string
 }
 
 func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	ctx := context.Background()
-	eth, _, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, false /* isVerbose */)
-	core.PanicOnError("failed to dial nodes", err)
 
-	_dm, err := IDelegationManager.NewIDelegationManager(DelegationManager(chainId), eth)
+	eth, err := ethclient.DialContext(ctx, args.EthNode)
+	core.PanicOnError("failed to reach eth node", err)
+
+	chainId, err := eth.ChainID(nil)
+	core.PanicOnError("failed to load chainId", err)
+
+	_, err = IDelegationManager.NewIDelegationManager(DelegationManager(chainId), eth)
 	core.PanicOnError("failed to reach delegation manager", err)
 
 	// TODO: wait for G's conversion function from deposit[ed] shares to depositShares

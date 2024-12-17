@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"math/big"
 
-	. "github.com/samber/lo"
+	lo "github.com/samber/lo"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type TCompleteWithdrawalArgs struct {
-	EthNode    string
-	BeaconNode string
-	EigenPod   string
+	EthNode  string
+	EigenPod string
+	Sender   string
 }
 
 func DelegationManager(chainId *big.Int) common.Address {
@@ -35,7 +36,13 @@ func DelegationManager(chainId *big.Int) common.Address {
 
 func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	ctx := context.Background()
-	eth, _, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, false /* isVerbose */)
+
+	eth, err := ethclient.DialContext(ctx, args.EthNode)
+	core.PanicOnError("failed to reach eth node", err)
+
+	chainId, err := eth.ChainID(nil)
+	core.PanicOnError("failed to load chainId", err)
+
 	curBlockNumber, err := eth.BlockNumber(nil)
 
 	pod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenPod), eth)
@@ -58,7 +65,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 
 	beaconETHStrategy := common.HexToAddress("0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0")
 
-	eligibleWithdrawals := Map(queuedWithdrawals.Withdrawals, func(withdrawal IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
+	eligibleWithdrawals := lo.Map(queuedWithdrawals.Withdrawals, func(withdrawal IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		isBeaconWithdrawal := len(withdrawal.Strategies) == 1 && withdrawal.Strategies[0].Cmp(beaconETHStrategy) == 0
 		isExecutable := curBlockNumber <= uint64(withdrawal.StartBlock+minDelay)
 		if isBeaconWithdrawal && isExecutable {
@@ -68,7 +75,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	})
 
 	var runningSum uint64 = 0
-	affordedWithdrawals := Map(eligibleWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
+	affordedWithdrawals := lo.Map(eligibleWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		if withdrawal == nil {
 			return nil
 		}
@@ -81,7 +88,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	})
 
 	// filter out any nils.
-	affordedWithdrawals = Filter(affordedWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) bool {
+	affordedWithdrawals = lo.Filter(affordedWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) bool {
 		return withdrawal != nil
 	})
 
@@ -95,15 +102,15 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 
 	core.PanicIfNoConsent("Would you like to continue?")
 
-	withdrawals := Map(affordedWithdrawals, func(w *IDelegationManager.IDelegationManagerTypesWithdrawal, i int) IDelegationManager.IDelegationManagerTypesWithdrawal {
+	withdrawals := lo.Map(affordedWithdrawals, func(w *IDelegationManager.IDelegationManagerTypesWithdrawal, i int) IDelegationManager.IDelegationManagerTypesWithdrawal {
 		return *w
 	})
 
-	tokens := Map(withdrawals, func(_ IDelegationManager.IDelegationManagerTypesWithdrawal, _ int) []common.Address {
+	tokens := lo.Map(withdrawals, func(_ IDelegationManager.IDelegationManagerTypesWithdrawal, _ int) []common.Address {
 		return []common.Address{common.BigToAddress(big.NewInt(0))}
 	})
 
-	receiveAsTokens := Map(withdrawals, func(_ IDelegationManager.IDelegationManagerTypesWithdrawal, _ int) bool {
+	receiveAsTokens := lo.Map(withdrawals, func(_ IDelegationManager.IDelegationManagerTypesWithdrawal, _ int) bool {
 		return true
 	})
 
