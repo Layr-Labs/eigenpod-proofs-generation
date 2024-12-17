@@ -115,11 +115,12 @@ func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.Multi
 		return nil, lastError
 	}
 
-	authoritativeOwnerToPod, err := multicall.DoManyAllowFailures(mc, authoritativeOwnerToPodCalls...)
+	authoritativeOwnerToPod, err := multicall.DoMany(mc, authoritativeOwnerToPodCalls...)
+	nullAddress := common.BigToAddress(big.NewInt(0))
 
 	////// step 3: the valid eigenrestpods are the ones where authoritativeOwnerToPod[i] == candidateAddresses[i].
 	return utils.Map(utils.FilterI(podOwnerPairs, func(res PodOwnerResult, i uint64) bool {
-		return (res.Query.Cmp(*(*authoritativeOwnerToPod)[i].Value) == 0)
+		return (res.Query.Cmp(*(*authoritativeOwnerToPod)[i]) == 0) && (*authoritativeOwnerToPod)[i].Cmp(nullAddress) != 0
 	}), func(v PodOwnerResult, i uint64) common.Address {
 		return v.Query
 	}), nil
