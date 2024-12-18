@@ -42,7 +42,7 @@ func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
 	return &addr
 }
 
-func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.MulticallClient, chainId uint64, eth *ethclient.Client) ([]common.Address, error) {
+func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.MulticallClient, chainId uint64) ([]common.Address, error) {
 	EigenPodAbi, err := abi.JSON(strings.NewReader(EigenPod.EigenPodABI))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load eigenpod abi: %s", err)
@@ -275,7 +275,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 
 	// fmt.Printf("Checking %d slashed withdrawal addresses for eigenpod status\n", len(allSlashedWithdrawalAddresses))
 
-	slashedEigenpods, err := validEigenpodsOnly(allSlashedWithdrawalAddresses, mc, chainId.Uint64(), eth)
+	slashedEigenpods, err := validEigenpodsOnly(allSlashedWithdrawalAddresses, mc, chainId.Uint64())
 
 	if len(slashedEigenpods) == 0 {
 		log.Println("No eigenpods were slashed.")
