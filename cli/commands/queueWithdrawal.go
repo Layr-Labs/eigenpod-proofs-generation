@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"math/big"
 
-	lo "github.com/samber/lo"
-
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 )
 
 type TQueueWithdrawallArgs struct {
@@ -61,22 +59,12 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 
 	reg := new(big.Int).SetUint64(_reg)
 
-	sumQueuedWithdrawalsGwei := func() *big.Float {
-		queuedWithdrawals, err := dm.GetQueuedWithdrawals(nil, podOwner)
-		core.PanicOnError("failed to fetch queued withdrawals", err)
-
-		// calculate the 2d-sum of the `shares` array
-		return core.WeiToGwei(utils.BigSum(lo.Map(queuedWithdrawals.Shares, func(values []*big.Int, i int) *big.Int {
-			return utils.BigSum(values)
-		})))
-	}()
-
-	// maximumWithdrawalSizeGwei = reg - gwei(sumQueuedWithdrawals)
-	maximumWithdrawalSizeGwei := new(big.Float).Sub(new(big.Float).SetInt(reg), sumQueuedWithdrawalsGwei)
+	// TODO: maximumWithdrawalSizeGwei = reg - gwei(sumQueuedWithdrawals)
+	maximumWithdrawalSizeGwei := new(big.Float).SetInt(reg)
 
 	requestedWithdrawalSizeWei := func() *big.Int {
 		if args.AmountWei == 0 {
-			// if AmountWei isn't specified, we withdraw: all the shares in the beacon strategy
+			// default to the number of withdrawable shares in the beacon strategy
 			return res.WithdrawableShares[0]
 		}
 
@@ -87,11 +75,23 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 
 	if requestedWithdrawalSizeGwei.Cmp(new(big.Float).SetInt(res.WithdrawableShares[0])) > 0 {
 		// requested to withdraw too many shares.
-		return errors.New("the amount to withdraw is larger than the amount of withdrawable shares in the beacon strategy")
+		color.Yellow(
+			"Warning: the amount to withdraw from the beacon strategy (%sETH) is larger than the amount of withdrawable shares (%sETH) in the beacon strategy\n",
+			core.GweiToEther(requestedWithdrawalSizeGwei).String(),
+			core.GweiToEther(maximumWithdrawalSizeGwei).String(),
+		)
+		requestedWithdrawalSizeWei, _ = core.GweiToWei(maximumWithdrawalSizeGwei).Int(nil)
+		*requestedWithdrawalSizeGwei = *maximumWithdrawalSizeGwei
 	}
 
 	if requestedWithdrawalSizeGwei.Cmp(maximumWithdrawalSizeGwei) > 0 {
-		return errors.New("the amount to withdraw is larger than the total withdrawable amount")
+		color.Yellow(
+			"Warning: the amount to withdraw from the native ETH strategy (%sETH) is larger than the total withdrawable amount from the pod (%sETH). Will attempt a smaller withdrawal.\n",
+			core.GweiToEther(requestedWithdrawalSizeGwei).String(),
+			core.GweiToEther(maximumWithdrawalSizeGwei).String(),
+		)
+		requestedWithdrawalSizeWei, _ = core.GweiToWei(maximumWithdrawalSizeGwei).Int(nil)
+		*requestedWithdrawalSizeGwei = *maximumWithdrawalSizeGwei
 	}
 
 	_depositShares, err := dm.ConvertToDepositShares(nil, podOwner, []common.Address{core.BeaconStrategy()}, []*big.Int{requestedWithdrawalSizeWei})
@@ -109,14 +109,9 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	var amountToWithdrawDepositSharesGwei *big.Int = new(big.Int)
 	*amountToWithdrawDepositSharesGwei = *depositSharesGwei
 
-	fmt.Printf("In the Native ETH strategy, you have %sETH to be withdrawn.\n", core.GweiToEther(new(big.Float).SetInt(depositSharesGwei)))
-	fmt.Printf("NOTE: If you were or become slashed on EigenLayer during the withdrawal period, the total amount received will be less any slashed amount.\n")
-
-	if depositSharesGwei.Cmp(reg) > 0 {
-		fmt.Printf("Queueing a partial withdrawal. Your pod only had %sETH available to satisfy withdrawals.", core.GweiToEther(new(big.Float).SetInt(reg)).String())
-		fmt.Printf("Checkpointing may update this balance, if you have any uncheckpointed native eth or beacon rewards.")
-		*amountToWithdrawDepositSharesGwei = *reg
-	}
+	requestedWithdrawalSizeEth := core.GweiToEther(core.WeiToGwei(requestedWithdrawalSizeWei))
+	color.Blue("Withdrawing: %sETH.\n", requestedWithdrawalSizeEth.String())
+	color.Yellow("NOTE: If you were or become slashed on EigenLayer during the withdrawal period, the total amount received will be less any slashed amount.\n")
 
 	if !isSimulation {
 		core.PanicIfNoConsent(fmt.Sprintf("Would you like to queue a withdrawal %sETH from the Native ETH strategy? This will be withdrawable after approximately block #%d (current block: %d)\n", core.GweiToEther(new(big.Float).SetInt(amountToWithdrawDepositSharesGwei)), curBlock+uint64(minWithdrawalDelay), curBlock))
