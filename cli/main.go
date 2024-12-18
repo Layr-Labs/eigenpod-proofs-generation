@@ -10,11 +10,12 @@ import (
 )
 
 // Destinations for values set by various flags
-var eigenpodAddress, beacon, node, sender string
+var eigenpodAddress, beacon, node, sender, eigenpodOwner string
 var useJSON = false
 var specificValidator uint64 = math.MaxUint64
 var estimateGas = false
 var slashedValidatorIndex uint64
+var amountWei uint64
 
 const DefaultHealthcheckTolerance = float64(5.0)
 
@@ -33,21 +34,6 @@ func main() {
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
 		Commands: []*cli.Command{
-			{
-				Name:  "total-checkpointable-value",
-				Args:  true,
-				Usage: "Computes the sum of all shares that would be minted if every EigenPod on the network ran a checkpoint right now.",
-				Flags: []cli.Flag{
-					ExecNodeFlag,
-					BeaconNodeFlag,
-				},
-				Action: func(_ *cli.Context) error {
-					return commands.ComputeCheckpointableValueCommand(commands.TComputeCheckpointableValueCommandArgs{
-						Node:       node,
-						BeaconNode: beacon,
-					})
-				},
-			},
 			{
 				Name:      "find-stale-pods",
 				Args:      true,
@@ -208,6 +194,61 @@ func main() {
 						BatchSize:           batchSize,
 						NoPrompt:            noPrompt,
 						Verbose:             verbose,
+					})
+				},
+			},
+			{
+				Name:  "complete-all-withdrawals",
+				Args:  true,
+				Usage: "Completes all withdrawals queued on the podOwner, for which Native ETH is the sole strategy in the withdrawal. Attempts to execute a group of withdrawals whose sum does not exceed Pod.withdrawableRestakedExecutionLayerGwei() in value.",
+				Flags: []cli.Flag{
+					ExecNodeFlag,
+					PodAddressFlag,
+					SenderPkFlag,
+					EstimateGasFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.CompleteAllWithdrawalsCommand(commands.TCompleteWithdrawalArgs{
+						EthNode:     node,
+						EigenPod:    eigenpodAddress,
+						Sender:      sender,
+						EstimateGas: estimateGas,
+					})
+				},
+			},
+			{
+				Name:  "queue-withdrawal",
+				Args:  true,
+				Usage: "Queues a withdrawal for shares associated with the native ETH strategy. Queues a withdrawal whose size does not exceed Pod.withdrawableRestakedExecutionLayerGwei() in value.",
+				Flags: []cli.Flag{
+					ExecNodeFlag,
+					PodAddressFlag,
+					SenderPkFlag,
+					EstimateGasFlag,
+					AmountWeiFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.QueueWithdrawalCommand(commands.TQueueWithdrawallArgs{
+						EthNode:     node,
+						EigenPod:    eigenpodAddress,
+						Sender:      sender,
+						EstimateGas: estimateGas,
+						AmountWei:   amountWei,
+					})
+				},
+			},
+			{
+				Name:  "show-withdrawals",
+				Args:  true,
+				Usage: "Shows all pending withdrawals for the podOwner.",
+				Flags: []cli.Flag{
+					ExecNodeFlag,
+					PodAddressFlag,
+				},
+				Action: func(_ *cli.Context) error {
+					return commands.ShowWithdrawalsCommand(commands.TShowWithdrawalArgs{
+						EthNode:  node,
+						EigenPod: eigenpodAddress,
 					})
 				},
 			},
