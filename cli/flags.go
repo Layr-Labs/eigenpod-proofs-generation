@@ -12,6 +12,15 @@ var PodAddressFlag = &cli.StringFlag{
 	Destination: &eigenpodAddress,
 }
 
+var PodOwnerFlag = &cli.StringFlag{
+	Name:        "podOwner",
+	Aliases:     []string{"p", "podOwner"},
+	Value:       "",
+	Usage:       "[required] The onchain `address` of your eigenpod's owner (0x123123123123)",
+	Required:    true,
+	Destination: &eigenpodOwner,
+}
+
 // Required for commands that need a beacon chain RPC
 var BeaconNodeFlag = &cli.StringFlag{
 	Name:        "beaconNode",
@@ -49,6 +58,14 @@ var EstimateGasFlag = &cli.BoolFlag{
 	Value:       false,
 	Usage:       "Estimate gas on the transaction (using `--sender` as the sender for simulation). This will NOT send the transaction.",
 	Destination: &estimateGas,
+}
+
+var AmountWeiFlag = &cli.Uint64Flag{
+	Name:        "amountWei",
+	Aliases:     []string{},
+	Value:       0,
+	Usage:       "The amount, in Wei.",
+	Destination: &amountWei,
 }
 
 // Optional use for commands that support JSON output

@@ -42,7 +42,7 @@ func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
 	return &addr
 }
 
-func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.MulticallClient, chainId uint64, eth *ethclient.Client) ([]common.Address, error) {
+func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.MulticallClient, chainId uint64) ([]common.Address, error) {
 	EigenPodAbi, err := abi.JSON(strings.NewReader(EigenPod.EigenPodABI))
 	if err != nil {
 		return nil, fmt.Errorf("failed to load eigenpod abi: %s", err)
@@ -54,7 +54,7 @@ func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.Multi
 
 	podManagerAddress, ok := PodManagerContracts()[chainId]
 	if !ok {
-		return nil, fmt.Errorf("Unsupported chainId: %d", chainId)
+		return nil, fmt.Errorf("unsupported chainId: %d", chainId)
 	}
 
 	////// step 1: cast all addresses to EigenPod, and attempt to read the pod owner.
@@ -117,6 +117,10 @@ func validEigenpodsOnly(candidateAddresses []common.Address, mc *multicall.Multi
 	}
 
 	authoritativeOwnerToPod, err := multicall.DoMany(mc, authoritativeOwnerToPodCalls...)
+	if err != nil {
+		return nil, err
+	}
+
 	nullAddress := common.BigToAddress(big.NewInt(0))
 
 	////// step 3: the valid eigenrestpods are the ones where authoritativeOwnerToPod[i] == candidateAddresses[i].
@@ -186,7 +190,7 @@ func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, sta
 	PanicOnError("failed to load pod owner", err)
 
 	activeShares, err := delegationManager.GetWithdrawableShares(nil, podOwner, []common.Address{
-		common.HexToAddress(NATIVE_ETH_STRATEGY),
+		BeaconStrategy(),
 	})
 	PanicOnError("failed to load owner shares", err)
 
@@ -196,7 +200,7 @@ func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, sta
 
 	for i, withdrawal := range withdrawalInfo.Withdrawals {
 		for j, strategy := range withdrawal.Strategies {
-			if strategy.Cmp(common.HexToAddress(NATIVE_ETH_STRATEGY)) == 0 {
+			if strategy.Cmp(BeaconStrategy()) == 0 {
 				sharesPendingWithdrawal = new(big.Int).Add(sharesPendingWithdrawal, withdrawalInfo.Shares[i][j])
 			}
 		}
@@ -274,8 +278,10 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 	)
 
 	// fmt.Printf("Checking %d slashed withdrawal addresses for eigenpod status\n", len(allSlashedWithdrawalAddresses))
-
-	slashedEigenpods, err := validEigenpodsOnly(allSlashedWithdrawalAddresses, mc, chainId.Uint64(), eth)
+	slashedEigenpods, err := validEigenpodsOnly(allSlashedWithdrawalAddresses, mc, chainId.Uint64())
+	if err != nil {
+		return nil, err
+	}
 
 	if len(slashedEigenpods) == 0 {
 		log.Println("No eigenpods were slashed.")
