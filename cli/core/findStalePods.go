@@ -190,7 +190,7 @@ func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, sta
 	PanicOnError("failed to load pod owner", err)
 
 	activeShares, err := delegationManager.GetWithdrawableShares(nil, podOwner, []common.Address{
-		common.HexToAddress(NATIVE_ETH_STRATEGY),
+		BeaconStrategy(),
 	})
 	PanicOnError("failed to load owner shares", err)
 
@@ -200,7 +200,7 @@ func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, sta
 
 	for i, withdrawal := range withdrawalInfo.Withdrawals {
 		for j, strategy := range withdrawal.Strategies {
-			if strategy.Cmp(common.HexToAddress(NATIVE_ETH_STRATEGY)) == 0 {
+			if strategy.Cmp(BeaconStrategy()) == 0 {
 				sharesPendingWithdrawal = new(big.Int).Add(sharesPendingWithdrawal, withdrawalInfo.Shares[i][j])
 			}
 		}
