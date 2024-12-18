@@ -58,6 +58,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 
 	reg, err := pod.WithdrawableRestakedExecutionLayerGwei(nil)
 	core.PanicOnError("failed to fetch REG", err)
+	rew := core.GweiToWei(new(big.Float).SetUint64(reg))
 
 	podOwner, err := pod.PodOwner(nil)
 	core.PanicOnError("failed to read podOwner", err)
@@ -85,14 +86,15 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return nil
 	}
 
-	var runningSum uint64 = 0
+	var runningSumWei uint64 = 0
 	affordedWithdrawals := lo.Map(eligibleWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		if withdrawal == nil {
 			return nil
 		}
 		withdrawalShares := queuedWithdrawals.Shares[index][0].Uint64()
-		if reg < (runningSum + withdrawalShares) {
-			runningSum = runningSum + withdrawalShares
+		// if REW < runningSumWei + withdrawalShares, we can complete with withdrawal.
+		if rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares)) < 0 {
+			runningSumWei = runningSumWei + withdrawalShares
 			return withdrawal
 		}
 		return nil

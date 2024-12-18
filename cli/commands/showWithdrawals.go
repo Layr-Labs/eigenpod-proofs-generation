@@ -52,6 +52,7 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 		AvailableAfterBlock *big.Int
 		Ready               bool
 		TotalAmountETH      *big.Float
+		TotalAmountWei      *big.Float
 	}
 
 	minDelay, err := dm.MinWithdrawalDelayBlocks(nil)
@@ -71,6 +72,7 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 
 		withdrawalInfo = append(withdrawalInfo, TWithdrawalInfo{
 			TotalAmountETH:      core.GweiToEther(core.WeiToGwei(withdrawalTotalValueWei)),
+			TotalAmountWei:      new(big.Float).SetInt(withdrawalTotalValueWei),
 			Strategies:          allWithdrawals.Withdrawals[i].Strategies,
 			Staker:              allWithdrawals.Withdrawals[i].Staker.Hex(),
 			AvailableAfterBlock: targetBlock,

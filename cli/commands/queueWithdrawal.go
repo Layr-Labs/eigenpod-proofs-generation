@@ -67,10 +67,7 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 
 		// calculate the 2d-sum of the `shares` array
 		return core.WeiToGwei(utils.BigSum(lo.Map(queuedWithdrawals.Shares, func(values []*big.Int, i int) *big.Int {
-			// return a sum of values.
-			return lo.Reduce(values, func(accum *big.Int, val *big.Int, idx int) *big.Int {
-				return new(big.Int).Add(accum, val)
-			}, big.NewInt(0))
+			return utils.BigSum(values)
 		})))
 	}()
 
