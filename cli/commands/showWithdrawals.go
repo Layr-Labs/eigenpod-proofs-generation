@@ -2,6 +2,8 @@ package commands
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -17,6 +19,7 @@ type TShowWithdrawalArgs struct {
 	EthNode    string
 	BeaconNode string
 	EigenPod   string
+	Strategies common.Address
 }
 
 func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
@@ -46,6 +49,7 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 
 	type TWithdrawalInfo struct {
 		Staker              string
+		Strategies          []common.Address
 		AvailableAfter      string
 		AvailableAfterBlock *big.Int
 		Ready               bool
@@ -69,11 +73,17 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 
 		withdrawalInfo = append(withdrawalInfo, TWithdrawalInfo{
 			TotalAmountETH:      core.GweiToEther(core.WeiToGwei(withdrawalTotalValueWei)),
+			Strategies:          allWithdrawals.Withdrawals[i].Strategies,
 			Staker:              allWithdrawals.Withdrawals[i].Staker.Hex(),
 			AvailableAfterBlock: targetBlock,
 			AvailableAfter:      availableAfter.String(),
 			Ready:               targetBlock.Uint64() <= curBlock.NumberU64(),
 		})
 	}
+
+	jsonBytes, err := json.MarshalIndent(withdrawalInfo, "", "    ")
+	core.PanicOnError("failed to serialize", err)
+	fmt.Println(string(jsonBytes))
+
 	return nil
 }

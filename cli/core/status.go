@@ -10,7 +10,6 @@ import (
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPodManager"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
-	"github.com/ethereum/go-ethereum/common"
 	gethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -31,7 +30,9 @@ type Validator struct {
 	CurrentBalance                      uint64
 }
 
-const NATIVE_ETH_STRATEGY = "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0"
+func BeaconStrategy() gethCommon.Address {
+	return gethCommon.HexToAddress("0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0")
+}
 
 type EigenpodStatus struct {
 	Validators map[string]Validator
@@ -155,8 +156,8 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 	delegationManager, err := DelegationManager.NewDelegationManager(delegationManagerAddress, eth)
 	PanicOnError("failed to reach delegationManager", err)
 
-	shares, err := delegationManager.GetWithdrawableShares(nil, eigenPodOwner, []common.Address{
-		common.HexToAddress(NATIVE_ETH_STRATEGY),
+	shares, err := delegationManager.GetWithdrawableShares(nil, eigenPodOwner, []gethCommon.Address{
+		BeaconStrategy(),
 	})
 	PanicOnError("failed to load owner shares", err)
 

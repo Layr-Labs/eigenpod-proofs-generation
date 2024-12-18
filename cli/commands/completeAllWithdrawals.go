@@ -40,10 +40,11 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	eth, err := ethclient.DialContext(ctx, args.EthNode)
 	core.PanicOnError("failed to reach eth node", err)
 
-	chainId, err := eth.ChainID(nil)
+	chainId, err := eth.ChainID(ctx)
 	core.PanicOnError("failed to load chainId", err)
 
-	curBlockNumber, err := eth.BlockNumber(nil)
+	curBlockNumber, err := eth.BlockNumber(ctx)
+	core.PanicOnError("failed to load current block number", err)
 
 	pod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenPod), eth)
 	core.PanicOnError("failed to reach eigenpod", err)
@@ -63,10 +64,8 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	queuedWithdrawals, err := delegationManager.GetQueuedWithdrawals(nil, podOwner)
 	core.PanicOnError("failed to read queuedWithdrawals", err)
 
-	beaconETHStrategy := common.HexToAddress("0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0")
-
 	eligibleWithdrawals := lo.Map(queuedWithdrawals.Withdrawals, func(withdrawal IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
-		isBeaconWithdrawal := len(withdrawal.Strategies) == 1 && withdrawal.Strategies[0].Cmp(beaconETHStrategy) == 0
+		isBeaconWithdrawal := len(withdrawal.Strategies) == 1 && withdrawal.Strategies[0].Cmp(core.BeaconStrategy()) == 0
 		isExecutable := curBlockNumber <= uint64(withdrawal.StartBlock+minDelay)
 		if isBeaconWithdrawal && isExecutable {
 			return &withdrawal
@@ -114,7 +113,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return true
 	})
 
-	txn, err := delegationManager.CompleteQueuedWithdrawals0(nil, withdrawals, tokens, receiveAsTokens)
+	txn, err := delegationManager.CompleteQueuedWithdrawals(nil, withdrawals, tokens, receiveAsTokens)
 	core.PanicOnError("CompleteQueuedWithdrawals failed.", err)
 
 	fmt.Printf("%s\n", txn.Hash())
