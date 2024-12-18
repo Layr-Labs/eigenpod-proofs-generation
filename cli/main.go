@@ -199,7 +199,7 @@ func main() {
 			{
 				Name:  "complete-all-withdrawals",
 				Args:  true,
-				Usage: "Completes all withdrawals",
+				Usage: "Completes all withdrawals queued on the podOwner, for which Native ETH is the sole strategy in the withdrawal. Attempts to execute a group of withdrawals whose sum does not exceed Pod.withdrawableRestakedExecutionLayerGwei() in value.",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
 					PodAddressFlag,
@@ -218,7 +218,7 @@ func main() {
 			{
 				Name:  "queue-withdrawal",
 				Args:  true,
-				Usage: "Queues a withdrawal",
+				Usage: "Queues a withdrawal for shares associated with the native ETH strategy. Queues a withdrawal whose size does not exceed Pod.withdrawableRestakedExecutionLayerGwei() in value.",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
 					PodAddressFlag,
@@ -237,7 +237,7 @@ func main() {
 			{
 				Name:  "show-withdrawals",
 				Args:  true,
-				Usage: "Shows all pending withdrawals",
+				Usage: "Shows all pending withdrawals for the podOwner.",
 				Flags: []cli.Flag{
 					ExecNodeFlag,
 					PodAddressFlag,
