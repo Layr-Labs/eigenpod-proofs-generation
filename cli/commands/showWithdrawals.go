@@ -3,9 +3,6 @@ package commands
 import (
 	"context"
 	"math/big"
-	"time"
-
-	lo "github.com/samber/lo"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
@@ -15,23 +12,17 @@ import (
 
 type TShowWithdrawalArgs struct {
 	EthNode    string
-	BeaconNode string
 	EigenPod   string
 	Strategies common.Address
 }
 
 func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 	ctx := context.Background()
-	eth, _, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, false /* isVerbose */)
+	eth, chainId, err := core.GetEthClient(ctx, args.EthNode)
 	core.PanicOnError("failed to reach eth and beacon node", err)
 
 	curBlock, err := eth.BlockByNumber(ctx, nil) /* head */
 	core.PanicOnError("failed to load curBlock", err)
-
-	genBlock, err := eth.BlockByNumber(ctx, big.NewInt(0)) /* head */
-	core.PanicOnError("failed to load genesis block", err)
-
-	timePerBlockSeconds := float64(curBlock.NumberU64()-genBlock.NumberU64()) / float64(curBlock.Time()-genBlock.Time())
 
 	dm, err := IDelegationManager.NewIDelegationManager(DelegationManager(chainId), eth)
 	core.PanicOnError("failed to reach delegation manager", err)
@@ -47,12 +38,11 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 
 	type TWithdrawalInfo struct {
 		Staker              string
-		Strategies          []common.Address
-		AvailableAfter      string
+		Strategy            common.Address
+		CurrentBlock        uint64
 		AvailableAfterBlock *big.Int
 		Ready               bool
 		TotalAmountETH      *big.Float
-		TotalAmountWei      *big.Float
 	}
 
 	minDelay, err := dm.MinWithdrawalDelayBlocks(nil)
@@ -61,23 +51,22 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 	withdrawalInfo := []TWithdrawalInfo{}
 
 	for i, shares := range allWithdrawals.Shares {
-		withdrawalTotalValueWei := lo.Reduce(shares, func(accum *big.Int, item *big.Int, i int) *big.Int {
-			return new(big.Int).Add(item, accum)
-		}, big.NewInt(0))
+		withdrawal := allWithdrawals.Withdrawals[i]
+
+		// this cli is only for withdrawals of beaconstrategy for a single strategy
+		if withdrawal.Strategies[0].Cmp(core.BeaconStrategy()) != 0 || len(withdrawal.Strategies) != 1 {
+			continue
+		}
 
 		targetBlock := new(big.Int).SetUint64(uint64(allWithdrawals.Withdrawals[i].StartBlock + minDelay))
 
-		blockDeltaSeconds := (targetBlock.Uint64() - curBlock.NumberU64()) * uint64(timePerBlockSeconds)
-		availableAfter := time.Now().Add(time.Second * time.Duration(blockDeltaSeconds))
-
 		withdrawalInfo = append(withdrawalInfo, TWithdrawalInfo{
-			TotalAmountETH:      core.GweiToEther(core.WeiToGwei(withdrawalTotalValueWei)),
-			TotalAmountWei:      new(big.Float).SetInt(withdrawalTotalValueWei),
-			Strategies:          allWithdrawals.Withdrawals[i].Strategies,
+			TotalAmountETH:      core.GweiToEther(core.WeiToGwei(shares[0])),
+			Strategy:            allWithdrawals.Withdrawals[i].Strategies[0],
 			Staker:              allWithdrawals.Withdrawals[i].Staker.Hex(),
+			CurrentBlock:        curBlock.NumberU64(),
 			AvailableAfterBlock: targetBlock,
-			AvailableAfter:      availableAfter.String(),
-			Ready:               targetBlock.Uint64() <= curBlock.NumberU64(),
+			Ready:               targetBlock.Uint64() < curBlock.NumberU64(),
 		})
 	}
 

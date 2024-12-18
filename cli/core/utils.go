@@ -430,19 +430,27 @@ func ForkVersions() map[uint64]string {
 	}
 }
 
-func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool) (*ethclient.Client, BeaconClient, *big.Int, error) {
+func GetEthClient(ctx context.Context, node string) (*ethclient.Client, *big.Int, error) {
 	eth, err := ethclient.Dial(node)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to reach eth --node: %w", err)
+		return nil, nil, fmt.Errorf("failed to reach eth --node: %w", err)
 	}
 
 	chainId, err := eth.ChainID(ctx)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to fetch chain id: %w", err)
+		return nil, nil, fmt.Errorf("failed to fetch chain id: %w", err)
 	}
 
 	if chainId == nil || (chainId.Int64() != 17000 && chainId.Int64() != 1) {
-		return nil, nil, nil, errors.New("this tool only supports the Holesky and Mainnet Ethereum Networks")
+		return nil, nil, errors.New("this tool only supports the Holesky and Mainnet Ethereum Networks")
+	}
+	return eth, chainId, nil
+}
+
+func GetClients(ctx context.Context, node, beaconNodeUri string, enableLogs bool) (*ethclient.Client, BeaconClient, *big.Int, error) {
+	eth, chainId, err := GetEthClient(ctx, node)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to reach eth --node: %w", err)
 	}
 
 	beaconClient, err := GetBeaconClient(beaconNodeUri, enableLogs)
