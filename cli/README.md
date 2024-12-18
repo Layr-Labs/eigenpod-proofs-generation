@@ -38,7 +38,7 @@ Once this is done, running the status command should show an "active" validator:
 
 ## Checkpoint Proofs
 
-- Checkpoint proofs are a means of snapshotting your beacon state onto the execution chain via a Zero-Knowledge Proof. 
+- Checkpoint proofs are a means of snapshotting your beacon state onto the execution chain. 
 - Once you've brought your balance "up to date" on the execution chain, you can trigger a withdrawal of staking rewards and principal 
 from your eigenpod.
 - Checkpoints are started via the `EigenPod.StartCheckpoint()` contract function. They conclude when all proofs are submitted via `EigenPod.VerifyCheckpointProofs(...)`.
