@@ -204,12 +204,14 @@ func main() {
 					ExecNodeFlag,
 					PodAddressFlag,
 					SenderPkFlag,
+					EstimateGasFlag,
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.CompleteAllWithdrawalsCommand(commands.TCompleteWithdrawalArgs{
-						EthNode:  node,
-						EigenPod: eigenpodAddress,
-						Sender:   sender,
+						EthNode:     node,
+						EigenPod:    eigenpodAddress,
+						Sender:      sender,
+						EstimateGas: estimateGas,
 					})
 				},
 			},
@@ -221,12 +223,14 @@ func main() {
 					ExecNodeFlag,
 					PodAddressFlag,
 					SenderPkFlag,
+					EstimateGasFlag,
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.QueueWithdrawalCommand(commands.TQueueWithdrawallArgs{
-						EthNode:  node,
-						EigenPod: eigenpodAddress,
-						Sender:   sender,
+						EthNode:     node,
+						EigenPod:    eigenpodAddress,
+						Sender:      sender,
+						EstimateGas: estimateGas,
 					})
 				},
 			},

@@ -15,9 +15,10 @@ import (
 )
 
 type TCompleteWithdrawalArgs struct {
-	EthNode  string
-	EigenPod string
-	Sender   string
+	EthNode     string
+	EigenPod    string
+	Sender      string
+	EstimateGas bool
 }
 
 func DelegationManager(chainId *big.Int) common.Address {
@@ -37,11 +38,16 @@ func DelegationManager(chainId *big.Int) common.Address {
 func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	ctx := context.Background()
 
+	isSimulation := args.EstimateGas
+
 	eth, err := ethclient.DialContext(ctx, args.EthNode)
 	core.PanicOnError("failed to reach eth node", err)
 
 	chainId, err := eth.ChainID(ctx)
 	core.PanicOnError("failed to load chainId", err)
+
+	acc, err := core.PrepareAccount(&args.Sender, chainId, isSimulation)
+	core.PanicOnError("failed to parse private key", err)
 
 	curBlockNumber, err := eth.BlockNumber(ctx)
 	core.PanicOnError("failed to load current block number", err)
@@ -86,7 +92,6 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return nil
 	})
 
-	// filter out any nils.
 	affordedWithdrawals = lo.Filter(affordedWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) bool {
 		return withdrawal != nil
 	})
@@ -99,7 +104,11 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	fmt.Printf("Your podOwner(%s) has %d withdrawals that can be completed right now.\n", podOwner.Hex(), len(affordedWithdrawals))
 	fmt.Printf("Total ETH: %sETH\n", core.GweiToEther(core.WeiToGwei(new(big.Int).SetUint64(runningSum))).String())
 
-	core.PanicIfNoConsent("Would you like to continue?")
+	if !isSimulation {
+		core.PanicIfNoConsent("Would you like to continue?")
+	} else {
+		fmt.Printf("THIS IS A SIMULATION. No transaction will be recorded onchain.\n")
+	}
 
 	withdrawals := lo.Map(affordedWithdrawals, func(w *IDelegationManager.IDelegationManagerTypesWithdrawal, i int) IDelegationManager.IDelegationManagerTypesWithdrawal {
 		return *w
@@ -113,9 +122,21 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return true
 	})
 
-	txn, err := delegationManager.CompleteQueuedWithdrawals(nil, withdrawals, tokens, receiveAsTokens)
+	txn, err := delegationManager.CompleteQueuedWithdrawals(acc.TransactionOptions, withdrawals, tokens, receiveAsTokens)
 	core.PanicOnError("CompleteQueuedWithdrawals failed.", err)
 
-	fmt.Printf("%s\n", txn.Hash())
+	if !isSimulation {
+		fmt.Printf("%s\n", txn.Hash().Hex())
+	} else {
+		printAsJSON(Transaction{
+			Type:     "complete-withdrawals",
+			To:       txn.To().Hex(),
+			CallData: common.Bytes2Hex(txn.Data()),
+			GasEstimateGwei: func() *uint64 {
+				gas := txn.Gas()
+				return &gas
+			}(),
+		})
+	}
 	return nil
 }

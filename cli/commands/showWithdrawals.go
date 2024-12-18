@@ -2,8 +2,6 @@ package commands
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -81,9 +79,6 @@ func ShowWithdrawalsCommand(args TShowWithdrawalArgs) error {
 		})
 	}
 
-	jsonBytes, err := json.MarshalIndent(withdrawalInfo, "", "    ")
-	core.PanicOnError("failed to serialize", err)
-	fmt.Println(string(jsonBytes))
-
+	printAsJSON(withdrawalInfo)
 	return nil
 }
