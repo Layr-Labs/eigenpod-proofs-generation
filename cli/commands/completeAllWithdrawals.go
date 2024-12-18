@@ -74,8 +74,8 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 
 	eligibleWithdrawals := lo.Map(queuedWithdrawals.Withdrawals, func(withdrawal IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		isBeaconWithdrawal := len(withdrawal.Strategies) == 1 && withdrawal.Strategies[0].Cmp(core.BeaconStrategy()) == 0
-		isExecutable := curBlockNumber > uint64(withdrawal.StartBlock+minDelay)
-		if isBeaconWithdrawal && isExecutable {
+		isCompletable := curBlockNumber > uint64(withdrawal.StartBlock+minDelay)
+		if isBeaconWithdrawal && isCompletable {
 			return &withdrawal
 		}
 		return nil
@@ -92,6 +92,12 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 			return nil
 		}
 		withdrawalShares := queuedWithdrawals.Shares[index][0].Uint64()
+
+		fmt.Println("runningSumWei", runningSumWei)
+		fmt.Println("withdrawalShares", withdrawalShares)
+		fmt.Println("rew", rew)
+		fmt.Println("runningSumWei + withdrawalShares", new(big.Float).SetUint64(runningSumWei+withdrawalShares))
+		fmt.Println("rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares))", rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares)))
 		// if REW < runningSumWei + withdrawalShares, we can complete with withdrawal.
 		if rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares)) < 0 {
 			runningSumWei = runningSumWei + withdrawalShares
