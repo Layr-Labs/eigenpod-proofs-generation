@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/pkg/errors"
 	lo "github.com/samber/lo"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
@@ -79,6 +80,11 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return nil
 	})
 
+	if len(eligibleWithdrawals) == 0 {
+		fmt.Printf("Your pod has no eligible withdrawals.\n")
+		return nil
+	}
+
 	var runningSum uint64 = 0
 	affordedWithdrawals := lo.Map(eligibleWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		if withdrawal == nil {
@@ -95,6 +101,12 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	affordedWithdrawals = lo.Filter(affordedWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) bool {
 		return withdrawal != nil
 	})
+
+	if len(affordedWithdrawals) == 0 && len(eligibleWithdrawals) > 0 {
+		fmt.Printf("WARN: Your pod has %d withdrawals available, but your pod does not have enough funding to proceed.\n", len(eligibleWithdrawals))
+		fmt.Printf("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
+		return errors.New("Insufficient funds")
+	}
 
 	if len(affordedWithdrawals) != len(eligibleWithdrawals) {
 		fmt.Printf("WARN: Your pod has %d withdrawals available, but you only have enough balance to satisfy %d of them.\n", len(eligibleWithdrawals), len(affordedWithdrawals))
