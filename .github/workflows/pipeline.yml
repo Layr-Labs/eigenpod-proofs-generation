@@ -1,5 +1,5 @@
 # .github/workflows/release.yml
-name: Release CLI Binaries
+name: Build, test, release
 
 on:
   pull_request:
