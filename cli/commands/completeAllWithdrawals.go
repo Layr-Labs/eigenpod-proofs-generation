@@ -86,21 +86,21 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return nil
 	}
 
-	var runningSumWei uint64 = 0
+	var runningSumWei *big.Float = new(big.Float)
+
 	affordedWithdrawals := lo.Map(eligibleWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		if withdrawal == nil {
 			return nil
 		}
-		withdrawalShares := queuedWithdrawals.Shares[index][0].Uint64()
-
-		fmt.Println("runningSumWei", runningSumWei)
-		fmt.Println("withdrawalShares", withdrawalShares)
-		fmt.Println("rew", rew)
-		fmt.Println("runningSumWei + withdrawalShares", new(big.Float).SetUint64(runningSumWei+withdrawalShares))
-		fmt.Println("rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares))", rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares)))
-		// if REW < runningSumWei + withdrawalShares, we can complete with withdrawal.
-		if rew.Cmp(new(big.Float).SetUint64(runningSumWei+withdrawalShares)) < 0 {
-			runningSumWei = runningSumWei + withdrawalShares
+		withdrawalShares := queuedWithdrawals.Shares[index][0]
+		// if REW > runningSumWei + withdrawalShares, we can complete with withdrawal.
+		if rew.Cmp(
+			new(big.Float).Add(
+				runningSumWei,
+				new(big.Float).SetInt(withdrawalShares),
+			),
+		) > 0 {
+			runningSumWei = runningSumWei.Add(runningSumWei, new(big.Float).SetInt(withdrawalShares))
 			return withdrawal
 		}
 		return nil
@@ -111,18 +111,19 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	})
 
 	if len(affordedWithdrawals) == 0 && len(eligibleWithdrawals) > 0 {
-		fmt.Printf("WARN: Your pod has %d withdrawals available, but your pod does not have enough funding to proceed.\n", len(eligibleWithdrawals))
+		fmt.Printf("WARN: Your pod has %d withdrawal(s) available, but your pod does not have enough funding to proceed.\n", len(eligibleWithdrawals))
 		fmt.Printf("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
 		return errors.New("Insufficient funds")
 	}
 
 	if len(affordedWithdrawals) != len(eligibleWithdrawals) {
-		fmt.Printf("WARN: Your pod has %d withdrawals available, but you only have enough balance to satisfy %d of them.\n", len(eligibleWithdrawals), len(affordedWithdrawals))
+		fmt.Printf("WARN: Your pod has %d withdrawal(s) available, but you only have enough balance to satisfy %d of them.\n", len(eligibleWithdrawals), len(affordedWithdrawals))
 		fmt.Printf("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
 	}
 
-	fmt.Printf("Your podOwner(%s) has %d withdrawals that can be completed right now.\n", podOwner.Hex(), len(affordedWithdrawals))
-	fmt.Printf("Total ETH: %sETH\n", core.GweiToEther(core.WeiToGwei(new(big.Int).SetUint64(runningSumWei))).String())
+	fmt.Printf("Your podOwner(%s) has %d withdrawal(s) that can be completed right now.\n", podOwner.Hex(), len(affordedWithdrawals))
+	runningSumWeiInt, _ := runningSumWei.Int(nil)
+	fmt.Printf("Total ETH on all withdrawals: %sETH\n", core.GweiToEther(core.WeiToGwei(runningSumWeiInt)).String())
 
 	if !isSimulation {
 		core.PanicIfNoConsent("Would you like to continue?")
