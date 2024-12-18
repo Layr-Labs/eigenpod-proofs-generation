@@ -1,0 +1,97 @@
+# .github/workflows/release.yml
+name: Release CLI Binaries
+
+on:
+  pull_request:
+  push:
+    # run only against tags
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go 1.22
+      uses: actions/setup-go@v1
+      env:
+        GOPATH: /home/runner/.go
+      with:
+        go-version: 1.22.4
+
+    - name: Install dependencies
+      env:
+        GOPATH: /home/runner/.go
+      run: |
+        mkdir /home/runner/.go
+        make setup
+        go env
+        ls -lar $GOPATH
+
+    - name: Run Lint
+      env:
+        GOPATH: /home/runner/.go
+      run: /home/runner/.go/bin/golangci-lint run ./cli
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Install dependencies
+      run: |
+       go mod download
+       sudo apt-get install -y unzip
+    
+    - name: Download blockchain data
+      run: |
+        curl -o data/deneb_holesky_beacon_state_2227472.ssz.zip https://dviu8zszosyat.cloudfront.net/deneb_holesky_beacon_state_2227472.ssz.zip
+        (cd data && unzip deneb_holesky_beacon_state_2227472.ssz.zip)
+
+    - name: Run tests
+      run: |
+        go test -v ./...
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Run GoReleaser (tagged release)
+        uses: goreleaser/goreleaser-action@v6
+        if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+          workdir: cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run GoReleaser (branch)
+        uses: goreleaser/goreleaser-action@v6
+        if: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot
+          workdir: cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
