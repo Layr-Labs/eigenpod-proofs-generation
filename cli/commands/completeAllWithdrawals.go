@@ -72,7 +72,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 
 	eligibleWithdrawals := lo.Map(queuedWithdrawals.Withdrawals, func(withdrawal IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		isBeaconWithdrawal := len(withdrawal.Strategies) == 1 && withdrawal.Strategies[0].Cmp(core.BeaconStrategy()) == 0
-		isExecutable := curBlockNumber <= uint64(withdrawal.StartBlock+minDelay)
+		isExecutable := curBlockNumber >= uint64(withdrawal.StartBlock+minDelay)
 		if isBeaconWithdrawal && isExecutable {
 			return &withdrawal
 		}
