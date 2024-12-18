@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"math/big"
 
+	lo "github.com/samber/lo"
+
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -58,9 +61,25 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 
 	reg := new(big.Int).SetUint64(_reg)
 
+	sumQueuedWithdrawalsGwei := func() *big.Float {
+		queuedWithdrawals, err := dm.GetQueuedWithdrawals(nil, podOwner)
+		core.PanicOnError("failed to fetch queued withdrawals", err)
+
+		// calculate the 2d-sum of the `shares` array
+		return core.WeiToGwei(utils.BigSum(lo.Map(queuedWithdrawals.Shares, func(values []*big.Int, i int) *big.Int {
+			// return a sum of values.
+			return lo.Reduce(values, func(accum *big.Int, val *big.Int, idx int) *big.Int {
+				return new(big.Int).Add(accum, val)
+			}, big.NewInt(0))
+		})))
+	}()
+
+	// maximumWithdrawalSizeGwei = reg - gwei(sumQueuedWithdrawals)
+	maximumWithdrawalSizeGwei := new(big.Float).Sub(new(big.Float).SetInt(reg), sumQueuedWithdrawalsGwei)
+
 	requestedWithdrawalSizeWei := func() *big.Int {
 		if args.AmountWei == 0 {
-			// if AmountWei isn't specified, we withdraw all the shares in the beacon strategy.
+			// if AmountWei isn't specified, we withdraw: all the shares in the beacon strategy
 			return res.WithdrawableShares[0]
 		}
 
@@ -72,6 +91,10 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	if requestedWithdrawalSizeGwei.Cmp(new(big.Float).SetInt(res.WithdrawableShares[0])) > 0 {
 		// requested to withdraw too many shares.
 		return errors.New("the amount to withdraw is larger than the amount of withdrawable shares in the beacon strategy")
+	}
+
+	if requestedWithdrawalSizeGwei.Cmp(maximumWithdrawalSizeGwei) > 0 {
+		return errors.New("the amount to withdraw is larger than the total withdrawable amount")
 	}
 
 	_depositShares, err := dm.ConvertToDepositShares(nil, podOwner, []common.Address{core.BeaconStrategy()}, []*big.Int{requestedWithdrawalSizeWei})
