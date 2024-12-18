@@ -116,7 +116,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	}
 
 	fmt.Printf("Your podOwner(%s) has %d withdrawals that can be completed right now.\n", podOwner.Hex(), len(affordedWithdrawals))
-	fmt.Printf("Total ETH: %sETH\n", core.GweiToEther(core.WeiToGwei(new(big.Int).SetUint64(runningSum))).String())
+	fmt.Printf("Total ETH: %sETH\n", core.GweiToEther(core.WeiToGwei(new(big.Int).SetUint64(runningSumWei))).String())
 
 	if !isSimulation {
 		core.PanicIfNoConsent("Would you like to continue?")
