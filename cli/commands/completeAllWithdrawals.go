@@ -11,8 +11,10 @@ import (
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fatih/color"
 )
 
 type TCompleteWithdrawalArgs struct {
@@ -81,7 +83,11 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return nil
 	})
 
-	if len(eligibleWithdrawals) == 0 {
+	readyWithdrawalCount := len(lo.Filter(eligibleWithdrawals, func(withdrawal *IDelegationManager.IDelegationManagerTypesWithdrawal, index int) bool {
+		return withdrawal != nil
+	}))
+
+	if readyWithdrawalCount == 0 {
 		fmt.Printf("Your pod has no eligible withdrawals.\n")
 		return nil
 	}
@@ -100,7 +106,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 				new(big.Float).SetInt(withdrawalShares),
 			),
 		) > 0 {
-			runningSumWei = runningSumWei.Add(runningSumWei, new(big.Float).SetInt(withdrawalShares))
+			runningSumWei = new(big.Float).Add(runningSumWei, new(big.Float).SetInt(withdrawalShares))
 			return withdrawal
 		}
 		return nil
@@ -110,15 +116,15 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 		return withdrawal != nil
 	})
 
-	if len(affordedWithdrawals) == 0 && len(eligibleWithdrawals) > 0 {
-		fmt.Printf("WARN: Your pod has %d withdrawal(s) available, but your pod does not have enough funding to proceed.\n", len(eligibleWithdrawals))
-		fmt.Printf("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
+	if len(affordedWithdrawals) == 0 && readyWithdrawalCount > 0 {
+		color.Yellow("WARN: Your pod has %d withdrawal(s) available, but your pod does not have enough funding to proceed.\n", readyWithdrawalCount)
+		color.Yellow("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
 		return errors.New("Insufficient funds")
 	}
 
-	if len(affordedWithdrawals) != len(eligibleWithdrawals) {
-		fmt.Printf("WARN: Your pod has %d withdrawal(s) available, but you only have enough balance to satisfy %d of them.\n", len(eligibleWithdrawals), len(affordedWithdrawals))
-		fmt.Printf("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
+	if len(affordedWithdrawals) != readyWithdrawalCount {
+		color.Yellow("WARN: Your pod has %d withdrawal(s) available, but you only have enough balance to satisfy %d of them.\n", readyWithdrawalCount, len(affordedWithdrawals))
+		color.Yellow("Consider checkpointing to claim beacon rewards, or depositing ETH and checkpointing to complete these withdrawals.\n\n")
 	}
 
 	fmt.Printf("Your podOwner(%s) has %d withdrawal(s) that can be completed right now.\n", podOwner.Hex(), len(affordedWithdrawals))
@@ -128,7 +134,7 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	if !isSimulation {
 		core.PanicIfNoConsent("Would you like to continue?")
 	} else {
-		fmt.Printf("THIS IS A SIMULATION. No transaction will be recorded onchain.\n")
+		color.Yellow("THIS IS A SIMULATION. No transaction will be recorded onchain.\n")
 	}
 
 	withdrawals := lo.Map(affordedWithdrawals, func(w *IDelegationManager.IDelegationManagerTypesWithdrawal, i int) IDelegationManager.IDelegationManagerTypesWithdrawal {
@@ -147,7 +153,10 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	core.PanicOnError("CompleteQueuedWithdrawals failed.", err)
 
 	if !isSimulation {
-		fmt.Printf("%s\n", txn.Hash().Hex())
+		_, err := bind.WaitMined(ctx, eth, txn)
+		core.PanicOnError("waitMined failed", err)
+
+		color.Green("%s\n", txn.Hash().Hex())
 	} else {
 		printAsJSON(Transaction{
 			Type:     "complete-withdrawals",

@@ -9,6 +9,7 @@ import (
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/fatih/color"
@@ -104,7 +105,9 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	})
 	core.PanicOnError("failed to queue withdrawal", err)
 	if !isSimulation {
-		fmt.Printf("%s\n", txn.Hash().Hex())
+		txnReceipt, err := bind.WaitMined(ctx, eth, txn)
+		core.PanicOnError("failed to wait for txn", err)
+		color.Green("%s\n", txnReceipt.TxHash.Hex())
 	} else {
 		printAsJSON(Transaction{
 			Type:     "queue-withdrawal",
