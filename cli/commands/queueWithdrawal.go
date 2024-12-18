@@ -54,44 +54,26 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	podOwner, err := pod.PodOwner(nil)
 	core.PanicOnError("failed to read podOwner", err)
 
-	res, err := dm.GetWithdrawableShares(nil, podOwner, []common.Address{core.BeaconStrategy()})
-	core.PanicOnError("failed to read beacon strategy withdrawable shares", err)
-
 	reg := new(big.Int).SetUint64(_reg)
 
 	// TODO: maximumWithdrawalSizeGwei = reg - gwei(sumQueuedWithdrawals)
-	maximumWithdrawalSizeGwei := new(big.Float).SetInt(reg)
-
-	requestedWithdrawalSizeWei := func() *big.Int {
-		if args.AmountWei == 0 {
-			// default to the number of withdrawable shares in the beacon strategy
-			return res.WithdrawableShares[0]
-		}
-
+	maximumWithdrawalSizeWei := core.IGweiToWei(reg)
+	var requestedWithdrawalSizeWei *big.Int
+	if args.AmountWei == 0 {
+		// default to the number of withdrawable shares in the beacon strategy
+		requestedWithdrawalSizeWei = maximumWithdrawalSizeWei
+	} else {
 		// if it is specified, we withdraw the specific amount.
-		return new(big.Int).SetUint64(args.AmountWei)
-	}()
-	requestedWithdrawalSizeGwei := core.WeiToGwei(requestedWithdrawalSizeWei)
-
-	if requestedWithdrawalSizeGwei.Cmp(new(big.Float).SetInt(res.WithdrawableShares[0])) > 0 {
-		// requested to withdraw too many shares.
-		color.Yellow(
-			"Warning: the amount to withdraw from the beacon strategy (%sETH) is larger than the amount of withdrawable shares (%sETH) in the beacon strategy\n",
-			core.GweiToEther(requestedWithdrawalSizeGwei).String(),
-			core.GweiToEther(maximumWithdrawalSizeGwei).String(),
-		)
-		requestedWithdrawalSizeWei, _ = core.GweiToWei(maximumWithdrawalSizeGwei).Int(nil)
-		*requestedWithdrawalSizeGwei = *maximumWithdrawalSizeGwei
+		requestedWithdrawalSizeWei = new(big.Int).SetUint64(args.AmountWei)
 	}
 
-	if requestedWithdrawalSizeGwei.Cmp(maximumWithdrawalSizeGwei) > 0 {
-		color.Yellow(
-			"Warning: the amount to withdraw from the native ETH strategy (%sETH) is larger than the total withdrawable amount from the pod (%sETH). Will attempt a smaller withdrawal.\n",
-			core.GweiToEther(requestedWithdrawalSizeGwei).String(),
-			core.GweiToEther(maximumWithdrawalSizeGwei).String(),
+	if requestedWithdrawalSizeWei.Cmp(maximumWithdrawalSizeWei) > 0 {
+		color.Red(
+			"Error: the amount to withdraw from the native ETH strategy (%sETH) is larger than the total withdrawable amount from the pod (%sETH). Will attempt a smaller withdrawal.\n",
+			core.IweiToEther(requestedWithdrawalSizeWei).String(),
+			core.IweiToEther(maximumWithdrawalSizeWei).String(),
 		)
-		requestedWithdrawalSizeWei, _ = core.GweiToWei(maximumWithdrawalSizeGwei).Int(nil)
-		*requestedWithdrawalSizeGwei = *maximumWithdrawalSizeGwei
+		return errors.New("requested to withdraw too many shares")
 	}
 
 	_depositShares, err := dm.ConvertToDepositShares(nil, podOwner, []common.Address{core.BeaconStrategy()}, []*big.Int{requestedWithdrawalSizeWei})
@@ -104,24 +86,19 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	curBlock, err := eth.BlockNumber(ctx)
 	core.PanicOnError("failed to load current block number", err)
 
-	depositSharesGwei := core.IGweiToWei(depositShares)
-
-	var amountToWithdrawDepositSharesGwei *big.Int = new(big.Int)
-	*amountToWithdrawDepositSharesGwei = *depositSharesGwei
-
 	requestedWithdrawalSizeEth := core.GweiToEther(core.WeiToGwei(requestedWithdrawalSizeWei))
 	color.Blue("Withdrawing: %sETH.\n", requestedWithdrawalSizeEth.String())
 	color.Yellow("NOTE: If you were or become slashed on EigenLayer during the withdrawal period, the total amount received will be less any slashed amount.\n")
 
 	if !isSimulation {
-		core.PanicIfNoConsent(fmt.Sprintf("Would you like to queue a withdrawal %sETH from the Native ETH strategy? This will be withdrawable after approximately block #%d (current block: %d)\n", core.GweiToEther(new(big.Float).SetInt(amountToWithdrawDepositSharesGwei)), curBlock+uint64(minWithdrawalDelay), curBlock))
+		core.PanicIfNoConsent(fmt.Sprintf("Would you like to queue a withdrawal %sETH from the Native ETH strategy? This will be withdrawable after approximately block #%d (current block: %d)\n", requestedWithdrawalSizeEth.String(), curBlock+uint64(minWithdrawalDelay), curBlock))
 	} else {
 		fmt.Printf("THIS IS A SIMULATION. No transaction will be recorded onchain.\n")
 	}
 	txn, err := dm.QueueWithdrawals(acc.TransactionOptions, []IDelegationManager.IDelegationManagerTypesQueuedWithdrawalParams{
 		{
 			Strategies:    []common.Address{core.BeaconStrategy()},
-			DepositShares: []*big.Int{core.IGweiToWei(amountToWithdrawDepositSharesGwei)},
+			DepositShares: []*big.Int{depositShares},
 			Withdrawer:    podOwner,
 		},
 	})
