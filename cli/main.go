@@ -15,6 +15,7 @@ var useJSON = false
 var specificValidator uint64 = math.MaxUint64
 var estimateGas = false
 var slashedValidatorIndex uint64
+var amountWei uint64
 
 const DefaultHealthcheckTolerance = float64(5.0)
 
@@ -224,6 +225,7 @@ func main() {
 					PodAddressFlag,
 					SenderPkFlag,
 					EstimateGasFlag,
+					AmountWeiFlag,
 				},
 				Action: func(_ *cli.Context) error {
 					return commands.QueueWithdrawalCommand(commands.TQueueWithdrawallArgs{
@@ -231,6 +233,7 @@ func main() {
 						EigenPod:    eigenpodAddress,
 						Sender:      sender,
 						EstimateGas: estimateGas,
+						AmountWei:   amountWei,
 					})
 				},
 			},

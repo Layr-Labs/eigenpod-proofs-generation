@@ -60,6 +60,14 @@ var EstimateGasFlag = &cli.BoolFlag{
 	Destination: &estimateGas,
 }
 
+var AmountWeiFlag = &cli.Uint64Flag{
+	Name:        "amountWei",
+	Aliases:     []string{},
+	Value:       0,
+	Usage:       "The amount, in Wei.",
+	Destination: &amountWei,
+}
+
 // Optional use for commands that support JSON output
 var PrintJSONFlag = &cli.BoolFlag{
 	Name:        "json",
