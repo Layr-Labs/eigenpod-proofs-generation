@@ -26,9 +26,8 @@ type TCompleteWithdrawalArgs struct {
 
 func DelegationManager(chainId *big.Int) common.Address {
 	data := map[uint64]string{
-		// TODO(zeus) - make this runnable via zeus.
 		1:     "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A", // mainnet
-		17000: "0x75dfE5B44C2E530568001400D3f704bC8AE350CC", // holesky preprod
+		17000: "0xA44151489861Fe9e3055d95adC98FbD462B948e7", // holesky testnet
 	}
 	contract, ok := data[chainId.Uint64()]
 	if !ok {
