@@ -194,7 +194,7 @@ func ComputeBalanceDeviationSync(ctx context.Context, eth *ethclient.Client, sta
 	})
 	PanicOnError("failed to load owner shares", err)
 
-	var sharesPendingWithdrawal *big.Int
+	var sharesPendingWithdrawal *big.Int = new(big.Int).SetUint64(0)
 	withdrawalInfo, err := delegationManager.GetQueuedWithdrawals(nil, podOwner)
 	PanicOnError("failed to load queued withdrawals", err)
 
