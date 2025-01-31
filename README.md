@@ -1,10 +1,20 @@
-WARNING: Please note that this repository is a work in progress and is currently unaudited. Use it with caution as it may contain unfinished features or bugs."
+> [!IMPORTANT] 
+> This repository is a work in progress and is currently unaudited. Use it with caution as it may contain unfinished features or bugs.
+
+# Supported Versions
+
+At all times, refer to the `mainnet`, `testnet`, and `preprod` git tags to understand which versions of this codebase are compatible with the corresponding EigenLayer environment.
+
+
+| Environment    |     Version   |
+| -------------- | ------------- |
+| Mainnet        |       [0.3.6](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/0.3.6) |
+| Testnet        |       [1.2.0](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/1.2.0) |
+| Preprod        |       [1.2.0](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/1.2.0) |
 
 # Introduction
 
 PEPE Changes how we prove balances to EigenLayer. For more information, check out some of the links below.
-
-WARNING: You should only use this software with Holesky Testnet. When PePe goes to production, we will update this tool to support further networks. Thanks!
 
 ## Links
 
