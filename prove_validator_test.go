@@ -91,7 +91,7 @@ func verifyValidatorBalancesRootAgainstBlockHeader(t *testing.T, epp *eigenpodpr
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	/// TODO: update for pectra
 	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beacon.BEACON_STATE_TREE_HEIGHT_DENEB|beacon.BALANCES_INDEX)
 }
 
