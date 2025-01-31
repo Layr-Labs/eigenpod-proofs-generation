@@ -92,7 +92,7 @@ func verifyValidatorBalancesRootAgainstBlockHeader(t *testing.T, epp *eigenpodpr
 		t.Fatal(err)
 	}
 
-	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beacon.BEACON_STATE_TREE_HEIGHT|beacon.BALANCES_INDEX)
+	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beacon.BEACON_STATE_TREE_HEIGHT_DENEB|beacon.BALANCES_INDEX)
 }
 
 func verifyValidatorBalanceAgainstValidatorBalancesRoot(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, validatorBalancesRoot phase0.Root, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {

@@ -4,15 +4,15 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/altair"
-	"github.com/attestantio/go-eth2-client/spec/deneb"
+	"github.com/attestantio/go-eth2-client/spec/electra"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	ssz "github.com/ferranbt/fastssz"
 )
 
-// taken from https://github.com/attestantio/go-eth2-client/blob/21f7dd480fed933d8e0b1c88cee67da721c80eb2/spec/deneb/beaconstate_ssz.go#L640
-func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*VersionedBeaconStateTopLevelRoots, error) {
+// taken from https://github.com/attestantio/go-eth2-client/blob/4ee14baa752e16d5868d83fa559f1f7c7ffc198f/spec/electra/beaconstate_ssz.go#L780
+func ComputeBeaconStateTopLevelRootsElectra(b *electra.BeaconState) (*VersionedBeaconStateTopLevelRoots, error) {
 	var err error
-	beaconStateTopLevelRoots := &BeaconStateTopLevelRootsDeneb{}
+	beaconStateTopLevelRoots := &BeaconStateTopLevelRootsElectra{}
 
 	hh := ssz.NewHasher()
 
@@ -410,8 +410,101 @@ func ComputeBeaconStateTopLevelRootsDeneb(b *deneb.BeaconState) (*VersionedBeaco
 		hh.Reset()
 	}
 
+	// Field (28) 'DepositRequestsStartIndex'
+	hh.PutUint64(uint64(b.DepositRequestsStartIndex))
+	tmp28 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+	beaconStateTopLevelRoots.DepositRequestsStartIndexRoot = &tmp28
+	hh.Reset()
+
+	// Field (29) 'DepositBalanceToConsume'
+	hh.PutUint64(uint64(b.DepositBalanceToConsume))
+	tmp29 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+	beaconStateTopLevelRoots.DepositBalanceToConsumeRoot = &tmp29
+	hh.Reset()
+
+	// Field (30) 'ExitBalanceToConsume'
+	hh.PutUint64(uint64(b.ExitBalanceToConsume))
+	tmp30 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+	beaconStateTopLevelRoots.ExitBalanceToConsumeRoot = &tmp30
+	hh.Reset()
+
+	// Field (31) 'EarliestExitEpoch'
+	hh.PutUint64(uint64(b.EarliestExitEpoch))
+	tmp31 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+	beaconStateTopLevelRoots.EarliestExitEpochRoot = &tmp31
+	hh.Reset()
+
+	// Field (32) 'ConsolidationBalanceToConsume'
+	hh.PutUint64(uint64(b.ConsolidationBalanceToConsume))
+	tmp32 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+	beaconStateTopLevelRoots.ConsolidationBalanceToConsumeRoot = &tmp32
+	hh.Reset()
+
+	// Field (33) 'EarliestConsolidationEpoch'
+	hh.PutUint64(uint64(b.EarliestConsolidationEpoch))
+	tmp33 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+	beaconStateTopLevelRoots.EarliestConsolidationEpochRoot = &tmp33
+	hh.Reset()
+
+	// Field (34) 'PendingDeposits'
+	{
+		subIndx := hh.Index()
+		num := uint64(len(b.PendingDeposits))
+		if num > 134217728 {
+			err = ssz.ErrIncorrectListSize
+			return nil, err
+		}
+		for _, elem := range b.PendingDeposits {
+			if err = elem.HashTreeRootWith(hh); err != nil {
+				return nil, err
+			}
+		}
+		hh.MerkleizeWithMixin(subIndx, num, 134217728)
+		tmp34 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+		beaconStateTopLevelRoots.PendingDepositsRoot = &tmp34
+		hh.Reset()
+	}
+
+	// Field (35) 'PendingPartialWithdrawals'
+	{
+		subIndx := hh.Index()
+		num := uint64(len(b.PendingPartialWithdrawals))
+		if num > 134217728 {
+			err = ssz.ErrIncorrectListSize
+			return nil, err
+		}
+		for _, elem := range b.PendingPartialWithdrawals {
+			if err = elem.HashTreeRootWith(hh); err != nil {
+				return nil, err
+			}
+		}
+		hh.MerkleizeWithMixin(subIndx, num, 134217728)
+		tmp35 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+		beaconStateTopLevelRoots.PendingPartialWithdrawalsRoot = &tmp35
+		hh.Reset()
+	}
+
+	// Field (36) 'PendingConsolidations'
+	{
+		subIndx := hh.Index()
+		num := uint64(len(b.PendingConsolidations))
+		if num > 262144 {
+			err = ssz.ErrIncorrectListSize
+			return nil, err
+		}
+		for _, elem := range b.PendingConsolidations {
+			if err = elem.HashTreeRootWith(hh); err != nil {
+				return nil, err
+			}
+		}
+		hh.MerkleizeWithMixin(subIndx, num, 262144)
+		tmp36 := phase0.Root(common.ConvertTo32ByteArray(hh.Hash()))
+		beaconStateTopLevelRoots.PendingConsolidationsRoot = &tmp36
+		hh.Reset()
+	}
+
 	return &VersionedBeaconStateTopLevelRoots{
-		Version: spec.DataVersionDeneb,
-		Deneb:   beaconStateTopLevelRoots,
+		Version: spec.DataVersionElectra,
+		Electra: beaconStateTopLevelRoots,
 	}, nil
 }
