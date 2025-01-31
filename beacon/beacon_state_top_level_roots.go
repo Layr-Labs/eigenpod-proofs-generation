@@ -99,11 +99,14 @@ type BeaconStateTopLevelRootsElectra struct {
 
 func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *VersionedBeaconStateTopLevelRoots, index uint64) (common.Proof, error) {
 	var v reflect.Value
+	var treeHeight uint64
 	switch beaconTopLevelRoots.Version {
 	case spec.DataVersionDeneb:
 		v = reflect.ValueOf(*beaconTopLevelRoots.Deneb)
+		treeHeight = BEACON_STATE_TREE_HEIGHT_DENEB
 	case spec.DataVersionElectra:
 		v = reflect.ValueOf(*beaconTopLevelRoots.Electra)
+		treeHeight = BEACON_STATE_TREE_HEIGHT_ELECTRA
 	default:
 		return nil, errors.New("unsupported beacon state version")
 	}
@@ -120,5 +123,5 @@ func ProveBeaconTopLevelRootAgainstBeaconState(beaconTopLevelRoots *VersionedBea
 		roots[i] = v.(phase0.Root)
 	}
 
-	return common.GetProof(roots, index, BEACON_STATE_TREE_HEIGHT_DENEB)
+	return common.GetProof(roots, index, treeHeight)
 }
