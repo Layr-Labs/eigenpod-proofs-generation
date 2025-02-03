@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package contractBeaconChainProofsWrapper
+package BeaconChainProofsWrapper
 
 import (
 	"errors"
@@ -48,23 +48,23 @@ type BeaconChainProofsStateRootProof struct {
 	Proof           []byte
 }
 
-// ContractBeaconChainProofsWrapperMetaData contains all meta data concerning the ContractBeaconChainProofsWrapper contract.
-var ContractBeaconChainProofsWrapperMetaData = &bind.MetaData{
-	ABI: "[{\"type\":\"function\",\"name\":\"verifyBalanceContainer\",\"inputs\":[{\"name\":\"beaconBlockRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"tuple\",\"internalType\":\"structBeaconChainProofs.BalanceContainerProof\",\"components\":[{\"name\":\"balanceContainerRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"verifyStateRoot\",\"inputs\":[{\"name\":\"beaconBlockRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"tuple\",\"internalType\":\"structBeaconChainProofs.StateRootProof\",\"components\":[{\"name\":\"beaconStateRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"verifyValidatorBalance\",\"inputs\":[{\"name\":\"balanceContainerRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validatorIndex\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"proof\",\"type\":\"tuple\",\"internalType\":\"structBeaconChainProofs.BalanceProof\",\"components\":[{\"name\":\"pubkeyHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"balanceRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"verifyValidatorFields\",\"inputs\":[{\"name\":\"beaconStateRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"},{\"name\":\"validatorFieldsProof\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"validatorIndex\",\"type\":\"uint40\",\"internalType\":\"uint40\"}],\"outputs\":[],\"stateMutability\":\"view\"}]",
-	Bin: "0x608060405234801561001057600080fd5b50611006806100206000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80630d361f3a14610051578063256f222b1461006657806331f60d4c146100795780639030a9bb1461008c575b600080fd5b61006461005f366004610c0c565b61009f565b005b610064610074366004610cb6565b6100ad565b610064610087366004610d70565b6100c3565b61006461009a366004610c0c565b6100d4565b6100a982826100de565b5050565b6100bb868686868686610264565b505050505050565b6100ce83838361047b565b50505050565b6100a982826105f0565b6100ea60056003610de4565b6100f5906020610dfc565b6101026020830183610e1b565b90501461018a5760405162461bcd60e51b8152602060048201526044602482018190527f426561636f6e436861696e50726f6f66732e76657269667942616c616e636543908201527f6f6e7461696e65723a2050726f6f662068617320696e636f7272656374206c656064820152630dccee8d60e31b608482015260a4015b60405180910390fd5b606c6101db61019c6020840184610e1b565b8080601f01602080910402602001604051908101604052809392919081815260200183838082843760009201919091525087925050853590508461074b565b61025f5760405162461bcd60e51b815260206004820152604960248201527f426561636f6e436861696e50726f6f66732e76657269667942616c616e63654360448201527f6f6e7461696e65723a20696e76616c69642062616c616e636520636f6e7461696064820152683732b910383937b7b360b91b608482015260a401610181565b505050565b600884146102df5760405162461bcd60e51b815260206004820152604e6024820152600080516020610fb183398151915260448201527f724669656c64733a2056616c696461746f72206669656c64732068617320696e60648201526d0c6dee4e4cac6e840d8cadccee8d60931b608482015260a401610181565b60056102ed60286001610de4565b6102f79190610de4565b610302906020610dfc565b82146103705760405162461bcd60e51b81526020600482015260436024820152600080516020610fb183398151915260448201527f724669656c64733a2050726f6f662068617320696e636f7272656374206c656e6064820152620cee8d60eb1b608482015260a401610181565b60006103ae86868080602002602001604051908101604052809392919081815260200183836020028082843760009201919091525061076392505050565b9050600064ffffffffff83166103c660286001610de4565b600b901b17905061041185858080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920191909152508c925086915085905061074b565b6104715760405162461bcd60e51b815260206004820152603d6024820152600080516020610fb183398151915260448201527f724669656c64733a20496e76616c6964206d65726b6c652070726f6f660000006064820152608401610181565b5050505050505050565b600061048960266001610de4565b610494906020610dfc565b6104a16040840184610e1b565b9050146105125760405162461bcd60e51b815260206004820152604460248201819052600080516020610fb1833981519152908201527f7242616c616e63653a2050726f6f662068617320696e636f7272656374206c656064820152630dccee8d60e31b608482015260a401610181565b600061051f600485610e78565b64ffffffffff1690506105796105386040850185610e1b565b8080601f016020809104026020016040519081016040528093929190818152602001838380828437600092019190915250899250505060208601358461074b565b6105d95760405162461bcd60e51b815260206004820152603e6024820152600080516020610fb183398151915260448201527f7242616c616e63653a20496e76616c6964206d65726b6c652070726f6f6600006064820152608401610181565b6105e7836020013585610a11565b95945050505050565b6105fc60036020610dfc565b6106096020830183610e1b565b90501461067e5760405162461bcd60e51b815260206004820152603d60248201527f426561636f6e436861696e50726f6f66732e7665726966795374617465526f6f60448201527f743a2050726f6f662068617320696e636f7272656374206c656e6774680000006064820152608401610181565b6106ce61068e6020830183610e1b565b8080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920191909152508692505084359050600361074b565b6100a95760405162461bcd60e51b815260206004820152604260248201527f426561636f6e436861696e50726f6f66732e7665726966795374617465526f6f60448201527f743a20496e76616c696420737461746520726f6f74206d65726b6c652070726f60648201526137b360f11b608482015260a401610181565b600083610759868585610aa8565b1495945050505050565b600080600283516107749190610e9c565b905060008167ffffffffffffffff81111561079157610791610eb0565b6040519080825280602002602001820160405280156107ba578160200160208202803683370190505b50905060005b828110156108c1576002856107d58383610dfc565b815181106107e5576107e5610ec6565b6020026020010151868360026107fb9190610dfc565b610806906001610de4565b8151811061081657610816610ec6565b6020026020010151604051602001610838929190918252602082015260400190565b60408051601f198184030181529082905261085291610edc565b602060405180830381855afa15801561086f573d6000803e3d6000fd5b5050506040513d601f19601f820116820180604052508101906108929190610f17565b8282815181106108a4576108a4610ec6565b6020908102919091010152806108b981610f30565b9150506107c0565b506108cd600283610e9c565b91505b81156109ed5760005b828110156109da576002826108ee8383610dfc565b815181106108fe576108fe610ec6565b6020026020010151838360026109149190610dfc565b61091f906001610de4565b8151811061092f5761092f610ec6565b6020026020010151604051602001610951929190918252602082015260400190565b60408051601f198184030181529082905261096b91610edc565b602060405180830381855afa158015610988573d6000803e3d6000fd5b5050506040513d601f19601f820116820180604052508101906109ab9190610f17565b8282815181106109bd576109bd610ec6565b6020908102919091010152806109d281610f30565b9150506108d9565b506109e6600283610e9c565b91506108d0565b80600081518110610a0057610a00610ec6565b602002602001015192505050919050565b600080610a1f600484610f4b565b610a2a906040610f6f565b64ffffffffff169050610aa084821b60f881901c60e882901c61ff00161760d882901c62ff0000161760c882901c63ff000000161764ff0000000060b883901c161765ff000000000060a883901c161766ff000000000000609883901c161767ff0000000000000060889290921c919091161790565b949350505050565b60008351600014158015610ac7575060208451610ac59190610f9c565b155b610b565760405162461bcd60e51b815260206004820152605460248201527f4d65726b6c652e70726f63657373496e636c7573696f6e50726f6f665368613260448201527f35363a2070726f6f66206c656e6774682073686f756c642062652061206e6f6e60648201527316bd32b9379036bab63a34b836329037b310199960611b608482015260a401610181565b604080516020808201909252848152905b85518111610bea57610b7a600285610f9c565b610bad578151600052808601516020526020826040600060026107d05a03fa610ba257600080fd5b600284049350610bd8565b8086015160005281516020526020826040600060026107d05a03fa610bd157600080fd5b6002840493505b610be3602082610de4565b9050610b67565b5051949350505050565b600060408284031215610c0657600080fd5b50919050565b60008060408385031215610c1f57600080fd5b82359150602083013567ffffffffffffffff811115610c3d57600080fd5b610c4985828601610bf4565b9150509250929050565b60008083601f840112610c6557600080fd5b50813567ffffffffffffffff811115610c7d57600080fd5b602083019150836020828501011115610c9557600080fd5b9250929050565b803564ffffffffff81168114610cb157600080fd5b919050565b60008060008060008060808789031215610ccf57600080fd5b86359550602087013567ffffffffffffffff80821115610cee57600080fd5b818901915089601f830112610d0257600080fd5b813581811115610d1157600080fd5b8a60208260051b8501011115610d2657600080fd5b602083019750809650506040890135915080821115610d4457600080fd5b50610d5189828a01610c53565b9094509250610d64905060608801610c9c565b90509295509295509295565b600080600060608486031215610d8557600080fd5b83359250610d9560208501610c9c565b9150604084013567ffffffffffffffff811115610db157600080fd5b840160608187031215610dc357600080fd5b809150509250925092565b634e487b7160e01b600052601160045260246000fd5b60008219821115610df757610df7610dce565b500190565b6000816000190483118215151615610e1657610e16610dce565b500290565b6000808335601e19843603018112610e3257600080fd5b83018035915067ffffffffffffffff821115610e4d57600080fd5b602001915036819003821315610c9557600080fd5b634e487b7160e01b600052601260045260246000fd5b600064ffffffffff80841680610e9057610e90610e62565b92169190910492915050565b600082610eab57610eab610e62565b500490565b634e487b7160e01b600052604160045260246000fd5b634e487b7160e01b600052603260045260246000fd5b6000825160005b81811015610efd5760208186018101518583015201610ee3565b81811115610f0c576000828501525b509190910192915050565b600060208284031215610f2957600080fd5b5051919050565b6000600019821415610f4457610f44610dce565b5060010190565b600064ffffffffff80841680610f6357610f63610e62565b92169190910692915050565b600064ffffffffff80831681851681830481118215151615610f9357610f93610dce565b02949350505050565b600082610fab57610fab610e62565b50069056fe426561636f6e436861696e50726f6f66732e76657269667956616c696461746fa26469706673582212205da3570ae5f836192d8a7d9f6b33b02a0c8db469459648fccff73b9b51138a3164736f6c634300080c0033",
+// BeaconChainProofsWrapperMetaData contains all meta data concerning the BeaconChainProofsWrapper contract.
+var BeaconChainProofsWrapperMetaData = &bind.MetaData{
+	ABI: "[{\"type\":\"function\",\"name\":\"BALANCE_CONTAINER_INDEX\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"BALANCE_TREE_HEIGHT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"BEACON_BLOCK_HEADER_TREE_HEIGHT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"DENEB_BEACON_STATE_TREE_HEIGHT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"FAR_FUTURE_EPOCH\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"PECTRA_BEACON_STATE_TREE_HEIGHT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"PECTRA_FORK_TIMESTAMP\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"SECONDS_PER_EPOCH\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"SECONDS_PER_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"SLOTS_PER_EPOCH\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"STATE_ROOT_INDEX\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"VALIDATOR_CONTAINER_INDEX\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"VALIDATOR_FIELDS_LENGTH\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"VALIDATOR_TREE_HEIGHT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getActivationEpoch\",\"inputs\":[{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getBalanceAtIndex\",\"inputs\":[{\"name\":\"balanceRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validatorIndex\",\"type\":\"uint40\",\"internalType\":\"uint40\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getBeaconStateTreeHeight\",\"inputs\":[{\"name\":\"proofTimestamp\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getEffectiveBalanceGwei\",\"inputs\":[{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getExitEpoch\",\"inputs\":[{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getPubkeyHash\",\"inputs\":[{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"getWithdrawalCredentials\",\"inputs\":[{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"isValidatorSlashed\",\"inputs\":[{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"}],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"verifyBalanceContainer\",\"inputs\":[{\"name\":\"proofTimestamp\",\"type\":\"uint64\",\"internalType\":\"uint64\"},{\"name\":\"beaconBlockRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"tuple\",\"internalType\":\"structBeaconChainProofs.BalanceContainerProof\",\"components\":[{\"name\":\"balanceContainerRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"verifyStateRoot\",\"inputs\":[{\"name\":\"beaconBlockRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"tuple\",\"internalType\":\"structBeaconChainProofs.StateRootProof\",\"components\":[{\"name\":\"beaconStateRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"verifyValidatorBalance\",\"inputs\":[{\"name\":\"balanceContainerRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validatorIndex\",\"type\":\"uint40\",\"internalType\":\"uint40\"},{\"name\":\"proof\",\"type\":\"tuple\",\"internalType\":\"structBeaconChainProofs.BalanceProof\",\"components\":[{\"name\":\"pubkeyHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"balanceRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"proof\",\"type\":\"bytes\",\"internalType\":\"bytes\"}]}],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"verifyValidatorFields\",\"inputs\":[{\"name\":\"proofTimestamp\",\"type\":\"uint64\",\"internalType\":\"uint64\"},{\"name\":\"beaconStateRoot\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"validatorFields\",\"type\":\"bytes32[]\",\"internalType\":\"bytes32[]\"},{\"name\":\"validatorFieldsProof\",\"type\":\"bytes\",\"internalType\":\"bytes\"},{\"name\":\"validatorIndex\",\"type\":\"uint40\",\"internalType\":\"uint40\"}],\"outputs\":[],\"stateMutability\":\"view\"},{\"type\":\"error\",\"name\":\"InvalidProof\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InvalidProofLength\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InvalidProofLength\",\"inputs\":[]},{\"type\":\"error\",\"name\":\"InvalidValidatorFieldsLength\",\"inputs\":[]}]",
+	Bin: "0x6080604052348015600e575f5ffd5b5061114b8061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610187575f3560e01c806366efbf4e116100d9578063a9ccd48711610093578063bf7836461161006e578063bf783646146102e7578063da30e279146102ee578063ec158777146102f5578063f17e9b4014610302575f5ffd5b8063a9ccd487146102c1578063aaa645a6146102d4578063b100b899146101e0575f5ffd5b806366efbf4e1461027e5780638ad5b4ff146102855780639030a9bb1461028c57806399ca22101461029f578063a38f2e7e146102b2578063a4cc5882146102b9575f5ffd5b8063304b9071116101445780634027da191161011f5780634027da191461023b578063423fe16f146102455780634534711b1461025857806360249fda1461026b575f5ffd5b8063304b9071146101fa57806331f60d4c146102155780633d6c9e1814610228575f5ffd5b8063043c35d31461018b5780630b9448ce146101a157806310c6e4c3146101c457806319312e29146101cb5780631d5c7b1c146101e05780632e808427146101e7575b5f5ffd5b60265b6040519081526020015b60405180910390f35b6101b46101af366004610c39565b610309565b6040519015158152602001610198565b602861018e565b6101de6101d9366004610d2f565b610319565b005b600361018e565b61018e6101f5366004610c39565b610329565b600c5b6040516001600160401b039091168152602001610198565b6101fd610223366004610d95565b610333565b61018e610236366004610ded565b610347565b63672a41006101fd565b6101fd610253366004610c39565b610351565b6101fd610266366004610c39565b61035b565b6101fd610279366004610e06565b610365565b600561018e565b600b61018e565b6101de61029a366004610e30565b610377565b61018e6102ad366004610c39565b610385565b600861018e565b6101fd61038f565b6101fd6102cf366004610c39565b6103a1565b6101de6102e2366004610eb7565b6103ab565b600661018e565b60206101fd565b6001600160401b036101fd565b600c61018e565b5f610313826103c3565b92915050565b6103248383836103eb565b505050565b5f610313826104b3565b5f61033f8484846104d5565b949350505050565b5f610313826105b3565b5f610313826105d8565b5f610313826105fc565b5f6103708383610613565b9392505050565b610381828261063f565b5050565b5f610313826106e4565b5f61039c600c6020610f93565b905090565b5f610313826106f8565b6103ba8787878787878761070f565b50505050505050565b5f816003815181106103d7576103d7610fbc565b60200260200101515f5f1b14159050919050565b5f6103f5846105b3565b9050610402816003610fd0565b61040d906020610fe3565b61041a6020840184610ffa565b90501461043a576040516313717da960e21b815260040160405180910390fd5b6003811b600c1761048f6104516020850185610ffa565b8080601f0160208091040260200160405190810160405280939291908181526020018383808284375f92019190915250889250508635905084610843565b6104ac576040516309bde33960e01b815260040160405180910390fd5b5050505050565b5f815f815181106104c6576104c6610fbc565b60200260200101519050919050565b5f6104e260266001610fd0565b6104ed906020610fe3565b6104fa6040840184610ffa565b90501461051a576040516313717da960e21b815260040160405180910390fd5b5f610526600485611050565b64ffffffffff16905061057f61053f6040850185610ffa565b8080601f0160208091040260200160405190810160405280939291908181526020018383808284375f920191909152508992505050602086013584610843565b61059c576040516309bde33960e01b815260040160405180910390fd5b6105aa836020013585610613565b95945050505050565b5f63672a41006001600160401b03831611156105d0576006610313565b600592915050565b5f610313826006815181106105ef576105ef610fbc565b602002602001015161085a565b5f610313826002815181106105ef576105ef610fbc565b5f80610620600484611079565b61062b9060406110a2565b64ffffffffff16905061033f84821b61085a565b61064b60036020610fe3565b6106586020830183610ffa565b905014610678576040516313717da960e21b815260040160405180910390fd5b6106c76106886020830183610ffa565b8080601f0160208091040260200160405190810160405280939291908181526020018383808284375f9201919091525086925050843590506003610843565b610381576040516309bde33960e01b815260040160405180910390fd5b5f816001815181106104c6576104c6610fbc565b5f610313826005815181106105ef576105ef610fbc565b600884146107305760405163200591bd60e01b815260040160405180910390fd5b5f61073a886105b3565b90508061074960286001610fd0565b6107539190610fd0565b61075e906020610fe3565b831461077d576040516313717da960e21b815260040160405180910390fd5b5f6107b98787808060200260200160405190810160405280939291908181526020018383602002808284375f920191909152506108c192505050565b90505f64ffffffffff84166107d060286001610fd0565b600b901b17905061081a86868080601f0160208091040260200160405190810160405280939291908181526020018383808284375f920191909152508d9250869150859050610843565b610837576040516309bde33960e01b815260040160405180910390fd5b50505050505050505050565b5f83610850868585610b51565b1495945050505050565b60f881901c60e882901c61ff00161760d882901c62ff0000161760c882901c63ff000000161764ff0000000060b883901c161765ff000000000060a883901c161766ff000000000000609883901c161767ff0000000000000060889290921c919091161790565b5f5f600283516108d191906110c2565b90505f816001600160401b038111156108ec576108ec610c25565b604051908082528060200260200182016040528015610915578160200160208202803683370190505b5090505f5b82811015610a0f5760028561092f8383610fe3565b8151811061093f5761093f610fbc565b6020026020010151868360026109559190610fe3565b610960906001610fd0565b8151811061097057610970610fbc565b6020026020010151604051602001610992929190918252602082015260400190565b60408051601f19818403018152908290526109ac916110d5565b602060405180830381855afa1580156109c7573d5f5f3e3d5ffd5b5050506040513d601f19601f820116820180604052508101906109ea91906110eb565b8282815181106109fc576109fc610fbc565b602090810291909101015260010161091a565b50610a1b6002836110c2565b91505b8115610b2e575f5b82811015610b1b57600282610a3b8383610fe3565b81518110610a4b57610a4b610fbc565b602002602001015183836002610a619190610fe3565b610a6c906001610fd0565b81518110610a7c57610a7c610fbc565b6020026020010151604051602001610a9e929190918252602082015260400190565b60408051601f1981840301815290829052610ab8916110d5565b602060405180830381855afa158015610ad3573d5f5f3e3d5ffd5b5050506040513d601f19601f82011682018060405250810190610af691906110eb565b828281518110610b0857610b08610fbc565b6020908102919091010152600101610a26565b50610b276002836110c2565b9150610a1e565b805f81518110610b4057610b40610fbc565b602002602001015192505050919050565b5f83515f14158015610b6e575060208451610b6c9190611102565b155b610b8b576040516313717da960e21b815260040160405180910390fd5b604080516020808201909252848152905b85518111610c1b57610baf600285611102565b5f03610be15781515f528086015160205260208260405f60026107d05a03fa610bd6575f5ffd5b600284049350610c09565b808601515f52815160205260208260405f60026107d05a03fa610c02575f5ffd5b6002840493505b610c14602082610fd0565b9050610b9c565b5051949350505050565b634e487b7160e01b5f52604160045260245ffd5b5f60208284031215610c49575f5ffd5b81356001600160401b03811115610c5e575f5ffd5b8201601f81018413610c6e575f5ffd5b80356001600160401b03811115610c8757610c87610c25565b8060051b604051601f19603f83011681018181106001600160401b0382111715610cb357610cb3610c25565b604052918252602081840181019290810187841115610cd0575f5ffd5b6020850194505b83851015610cf357843580825260209586019590935001610cd7565b509695505050505050565b80356001600160401b0381168114610d14575f5ffd5b919050565b5f60408284031215610d29575f5ffd5b50919050565b5f5f5f60608486031215610d41575f5ffd5b610d4a84610cfe565b92506020840135915060408401356001600160401b03811115610d6b575f5ffd5b610d7786828701610d19565b9150509250925092565b803564ffffffffff81168114610d14575f5ffd5b5f5f5f60608486031215610da7575f5ffd5b83359250610db760208501610d81565b915060408401356001600160401b03811115610dd1575f5ffd5b840160608187031215610de2575f5ffd5b809150509250925092565b5f60208284031215610dfd575f5ffd5b61037082610cfe565b5f5f60408385031215610e17575f5ffd5b82359150610e2760208401610d81565b90509250929050565b5f5f60408385031215610e41575f5ffd5b8235915060208301356001600160401b03811115610e5d575f5ffd5b610e6985828601610d19565b9150509250929050565b5f5f83601f840112610e83575f5ffd5b5081356001600160401b03811115610e99575f5ffd5b602083019150836020828501011115610eb0575f5ffd5b9250929050565b5f5f5f5f5f5f5f60a0888a031215610ecd575f5ffd5b610ed688610cfe565b96506020880135955060408801356001600160401b03811115610ef7575f5ffd5b8801601f81018a13610f07575f5ffd5b80356001600160401b03811115610f1c575f5ffd5b8a60208260051b8401011115610f30575f5ffd5b6020919091019550935060608801356001600160401b03811115610f52575f5ffd5b610f5e8a828b01610e73565b9094509250610f71905060808901610d81565b905092959891949750929550565b634e487b7160e01b5f52601160045260245ffd5b6001600160401b038181168382160290811690818114610fb557610fb5610f7f565b5092915050565b634e487b7160e01b5f52603260045260245ffd5b8082018082111561031357610313610f7f565b808202811582820484141761031357610313610f7f565b5f5f8335601e1984360301811261100f575f5ffd5b8301803591506001600160401b03821115611028575f5ffd5b602001915036819003821315610eb0575f5ffd5b634e487b7160e01b5f52601260045260245ffd5b5f64ffffffffff8316806110665761106661103c565b8064ffffffffff84160491505092915050565b5f64ffffffffff83168061108f5761108f61103c565b8064ffffffffff84160691505092915050565b64ffffffffff8181168382160290811690818114610fb557610fb5610f7f565b5f826110d0576110d061103c565b500490565b5f82518060208501845e5f920191825250919050565b5f602082840312156110fb575f5ffd5b5051919050565b5f826111105761111061103c565b50069056fea264697066735822122066cd9d3d9ad06b6e337f65402707ca8e4f78ad100191893801f4ab77cca969a064736f6c634300081b0033",
 }
 
-// ContractBeaconChainProofsWrapperABI is the input ABI used to generate the binding from.
-// Deprecated: Use ContractBeaconChainProofsWrapperMetaData.ABI instead.
-var ContractBeaconChainProofsWrapperABI = ContractBeaconChainProofsWrapperMetaData.ABI
+// BeaconChainProofsWrapperABI is the input ABI used to generate the binding from.
+// Deprecated: Use BeaconChainProofsWrapperMetaData.ABI instead.
+var BeaconChainProofsWrapperABI = BeaconChainProofsWrapperMetaData.ABI
 
-// ContractBeaconChainProofsWrapperBin is the compiled bytecode used for deploying new contracts.
-// Deprecated: Use ContractBeaconChainProofsWrapperMetaData.Bin instead.
-var ContractBeaconChainProofsWrapperBin = ContractBeaconChainProofsWrapperMetaData.Bin
+// BeaconChainProofsWrapperBin is the compiled bytecode used for deploying new contracts.
+// Deprecated: Use BeaconChainProofsWrapperMetaData.Bin instead.
+var BeaconChainProofsWrapperBin = BeaconChainProofsWrapperMetaData.Bin
 
-// DeployContractBeaconChainProofsWrapper deploys a new Ethereum contract, binding an instance of ContractBeaconChainProofsWrapper to it.
-func DeployContractBeaconChainProofsWrapper(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *ContractBeaconChainProofsWrapper, error) {
-	parsed, err := ContractBeaconChainProofsWrapperMetaData.GetAbi()
+// DeployBeaconChainProofsWrapper deploys a new Ethereum contract, binding an instance of BeaconChainProofsWrapper to it.
+func DeployBeaconChainProofsWrapper(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *BeaconChainProofsWrapper, error) {
+	parsed, err := BeaconChainProofsWrapperMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -72,111 +72,111 @@ func DeployContractBeaconChainProofsWrapper(auth *bind.TransactOpts, backend bin
 		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
 	}
 
-	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(ContractBeaconChainProofsWrapperBin), backend)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(BeaconChainProofsWrapperBin), backend)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
-	return address, tx, &ContractBeaconChainProofsWrapper{ContractBeaconChainProofsWrapperCaller: ContractBeaconChainProofsWrapperCaller{contract: contract}, ContractBeaconChainProofsWrapperTransactor: ContractBeaconChainProofsWrapperTransactor{contract: contract}, ContractBeaconChainProofsWrapperFilterer: ContractBeaconChainProofsWrapperFilterer{contract: contract}}, nil
+	return address, tx, &BeaconChainProofsWrapper{BeaconChainProofsWrapperCaller: BeaconChainProofsWrapperCaller{contract: contract}, BeaconChainProofsWrapperTransactor: BeaconChainProofsWrapperTransactor{contract: contract}, BeaconChainProofsWrapperFilterer: BeaconChainProofsWrapperFilterer{contract: contract}}, nil
 }
 
-// ContractBeaconChainProofsWrapper is an auto generated Go binding around an Ethereum contract.
-type ContractBeaconChainProofsWrapper struct {
-	ContractBeaconChainProofsWrapperCaller     // Read-only binding to the contract
-	ContractBeaconChainProofsWrapperTransactor // Write-only binding to the contract
-	ContractBeaconChainProofsWrapperFilterer   // Log filterer for contract events
+// BeaconChainProofsWrapper is an auto generated Go binding around an Ethereum contract.
+type BeaconChainProofsWrapper struct {
+	BeaconChainProofsWrapperCaller     // Read-only binding to the contract
+	BeaconChainProofsWrapperTransactor // Write-only binding to the contract
+	BeaconChainProofsWrapperFilterer   // Log filterer for contract events
 }
 
-// ContractBeaconChainProofsWrapperCaller is an auto generated read-only Go binding around an Ethereum contract.
-type ContractBeaconChainProofsWrapperCaller struct {
+// BeaconChainProofsWrapperCaller is an auto generated read-only Go binding around an Ethereum contract.
+type BeaconChainProofsWrapperCaller struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// ContractBeaconChainProofsWrapperTransactor is an auto generated write-only Go binding around an Ethereum contract.
-type ContractBeaconChainProofsWrapperTransactor struct {
+// BeaconChainProofsWrapperTransactor is an auto generated write-only Go binding around an Ethereum contract.
+type BeaconChainProofsWrapperTransactor struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// ContractBeaconChainProofsWrapperFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
-type ContractBeaconChainProofsWrapperFilterer struct {
+// BeaconChainProofsWrapperFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type BeaconChainProofsWrapperFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
-// ContractBeaconChainProofsWrapperSession is an auto generated Go binding around an Ethereum contract,
+// BeaconChainProofsWrapperSession is an auto generated Go binding around an Ethereum contract,
 // with pre-set call and transact options.
-type ContractBeaconChainProofsWrapperSession struct {
-	Contract     *ContractBeaconChainProofsWrapper // Generic contract binding to set the session for
-	CallOpts     bind.CallOpts                     // Call options to use throughout this session
-	TransactOpts bind.TransactOpts                 // Transaction auth options to use throughout this session
+type BeaconChainProofsWrapperSession struct {
+	Contract     *BeaconChainProofsWrapper // Generic contract binding to set the session for
+	CallOpts     bind.CallOpts             // Call options to use throughout this session
+	TransactOpts bind.TransactOpts         // Transaction auth options to use throughout this session
 }
 
-// ContractBeaconChainProofsWrapperCallerSession is an auto generated read-only Go binding around an Ethereum contract,
+// BeaconChainProofsWrapperCallerSession is an auto generated read-only Go binding around an Ethereum contract,
 // with pre-set call options.
-type ContractBeaconChainProofsWrapperCallerSession struct {
-	Contract *ContractBeaconChainProofsWrapperCaller // Generic contract caller binding to set the session for
-	CallOpts bind.CallOpts                           // Call options to use throughout this session
+type BeaconChainProofsWrapperCallerSession struct {
+	Contract *BeaconChainProofsWrapperCaller // Generic contract caller binding to set the session for
+	CallOpts bind.CallOpts                   // Call options to use throughout this session
 }
 
-// ContractBeaconChainProofsWrapperTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
+// BeaconChainProofsWrapperTransactorSession is an auto generated write-only Go binding around an Ethereum contract,
 // with pre-set transact options.
-type ContractBeaconChainProofsWrapperTransactorSession struct {
-	Contract     *ContractBeaconChainProofsWrapperTransactor // Generic contract transactor binding to set the session for
-	TransactOpts bind.TransactOpts                           // Transaction auth options to use throughout this session
+type BeaconChainProofsWrapperTransactorSession struct {
+	Contract     *BeaconChainProofsWrapperTransactor // Generic contract transactor binding to set the session for
+	TransactOpts bind.TransactOpts                   // Transaction auth options to use throughout this session
 }
 
-// ContractBeaconChainProofsWrapperRaw is an auto generated low-level Go binding around an Ethereum contract.
-type ContractBeaconChainProofsWrapperRaw struct {
-	Contract *ContractBeaconChainProofsWrapper // Generic contract binding to access the raw methods on
+// BeaconChainProofsWrapperRaw is an auto generated low-level Go binding around an Ethereum contract.
+type BeaconChainProofsWrapperRaw struct {
+	Contract *BeaconChainProofsWrapper // Generic contract binding to access the raw methods on
 }
 
-// ContractBeaconChainProofsWrapperCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
-type ContractBeaconChainProofsWrapperCallerRaw struct {
-	Contract *ContractBeaconChainProofsWrapperCaller // Generic read-only contract binding to access the raw methods on
+// BeaconChainProofsWrapperCallerRaw is an auto generated low-level read-only Go binding around an Ethereum contract.
+type BeaconChainProofsWrapperCallerRaw struct {
+	Contract *BeaconChainProofsWrapperCaller // Generic read-only contract binding to access the raw methods on
 }
 
-// ContractBeaconChainProofsWrapperTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
-type ContractBeaconChainProofsWrapperTransactorRaw struct {
-	Contract *ContractBeaconChainProofsWrapperTransactor // Generic write-only contract binding to access the raw methods on
+// BeaconChainProofsWrapperTransactorRaw is an auto generated low-level write-only Go binding around an Ethereum contract.
+type BeaconChainProofsWrapperTransactorRaw struct {
+	Contract *BeaconChainProofsWrapperTransactor // Generic write-only contract binding to access the raw methods on
 }
 
-// NewContractBeaconChainProofsWrapper creates a new instance of ContractBeaconChainProofsWrapper, bound to a specific deployed contract.
-func NewContractBeaconChainProofsWrapper(address common.Address, backend bind.ContractBackend) (*ContractBeaconChainProofsWrapper, error) {
-	contract, err := bindContractBeaconChainProofsWrapper(address, backend, backend, backend)
+// NewBeaconChainProofsWrapper creates a new instance of BeaconChainProofsWrapper, bound to a specific deployed contract.
+func NewBeaconChainProofsWrapper(address common.Address, backend bind.ContractBackend) (*BeaconChainProofsWrapper, error) {
+	contract, err := bindBeaconChainProofsWrapper(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractBeaconChainProofsWrapper{ContractBeaconChainProofsWrapperCaller: ContractBeaconChainProofsWrapperCaller{contract: contract}, ContractBeaconChainProofsWrapperTransactor: ContractBeaconChainProofsWrapperTransactor{contract: contract}, ContractBeaconChainProofsWrapperFilterer: ContractBeaconChainProofsWrapperFilterer{contract: contract}}, nil
+	return &BeaconChainProofsWrapper{BeaconChainProofsWrapperCaller: BeaconChainProofsWrapperCaller{contract: contract}, BeaconChainProofsWrapperTransactor: BeaconChainProofsWrapperTransactor{contract: contract}, BeaconChainProofsWrapperFilterer: BeaconChainProofsWrapperFilterer{contract: contract}}, nil
 }
 
-// NewContractBeaconChainProofsWrapperCaller creates a new read-only instance of ContractBeaconChainProofsWrapper, bound to a specific deployed contract.
-func NewContractBeaconChainProofsWrapperCaller(address common.Address, caller bind.ContractCaller) (*ContractBeaconChainProofsWrapperCaller, error) {
-	contract, err := bindContractBeaconChainProofsWrapper(address, caller, nil, nil)
+// NewBeaconChainProofsWrapperCaller creates a new read-only instance of BeaconChainProofsWrapper, bound to a specific deployed contract.
+func NewBeaconChainProofsWrapperCaller(address common.Address, caller bind.ContractCaller) (*BeaconChainProofsWrapperCaller, error) {
+	contract, err := bindBeaconChainProofsWrapper(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractBeaconChainProofsWrapperCaller{contract: contract}, nil
+	return &BeaconChainProofsWrapperCaller{contract: contract}, nil
 }
 
-// NewContractBeaconChainProofsWrapperTransactor creates a new write-only instance of ContractBeaconChainProofsWrapper, bound to a specific deployed contract.
-func NewContractBeaconChainProofsWrapperTransactor(address common.Address, transactor bind.ContractTransactor) (*ContractBeaconChainProofsWrapperTransactor, error) {
-	contract, err := bindContractBeaconChainProofsWrapper(address, nil, transactor, nil)
+// NewBeaconChainProofsWrapperTransactor creates a new write-only instance of BeaconChainProofsWrapper, bound to a specific deployed contract.
+func NewBeaconChainProofsWrapperTransactor(address common.Address, transactor bind.ContractTransactor) (*BeaconChainProofsWrapperTransactor, error) {
+	contract, err := bindBeaconChainProofsWrapper(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractBeaconChainProofsWrapperTransactor{contract: contract}, nil
+	return &BeaconChainProofsWrapperTransactor{contract: contract}, nil
 }
 
-// NewContractBeaconChainProofsWrapperFilterer creates a new log filterer instance of ContractBeaconChainProofsWrapper, bound to a specific deployed contract.
-func NewContractBeaconChainProofsWrapperFilterer(address common.Address, filterer bind.ContractFilterer) (*ContractBeaconChainProofsWrapperFilterer, error) {
-	contract, err := bindContractBeaconChainProofsWrapper(address, nil, nil, filterer)
+// NewBeaconChainProofsWrapperFilterer creates a new log filterer instance of BeaconChainProofsWrapper, bound to a specific deployed contract.
+func NewBeaconChainProofsWrapperFilterer(address common.Address, filterer bind.ContractFilterer) (*BeaconChainProofsWrapperFilterer, error) {
+	contract, err := bindBeaconChainProofsWrapper(address, nil, nil, filterer)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractBeaconChainProofsWrapperFilterer{contract: contract}, nil
+	return &BeaconChainProofsWrapperFilterer{contract: contract}, nil
 }
 
-// bindContractBeaconChainProofsWrapper binds a generic wrapper to an already deployed contract.
-func bindContractBeaconChainProofsWrapper(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := ContractBeaconChainProofsWrapperMetaData.GetAbi()
+// bindBeaconChainProofsWrapper binds a generic wrapper to an already deployed contract.
+func bindBeaconChainProofsWrapper(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
+	parsed, err := BeaconChainProofsWrapperMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
@@ -187,46 +187,728 @@ func bindContractBeaconChainProofsWrapper(address common.Address, caller bind.Co
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _ContractBeaconChainProofsWrapper.Contract.ContractBeaconChainProofsWrapperCaller.contract.Call(opts, result, method, params...)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _BeaconChainProofsWrapper.Contract.BeaconChainProofsWrapperCaller.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _ContractBeaconChainProofsWrapper.Contract.ContractBeaconChainProofsWrapperTransactor.contract.Transfer(opts)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _BeaconChainProofsWrapper.Contract.BeaconChainProofsWrapperTransactor.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _ContractBeaconChainProofsWrapper.Contract.ContractBeaconChainProofsWrapperTransactor.contract.Transact(opts, method, params...)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _BeaconChainProofsWrapper.Contract.BeaconChainProofsWrapperTransactor.contract.Transact(opts, method, params...)
 }
 
 // Call invokes the (constant) contract method with params as input values and
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
-	return _ContractBeaconChainProofsWrapper.Contract.contract.Call(opts, result, method, params...)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
+	return _BeaconChainProofsWrapper.Contract.contract.Call(opts, result, method, params...)
 }
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
-	return _ContractBeaconChainProofsWrapper.Contract.contract.Transfer(opts)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperTransactorRaw) Transfer(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _BeaconChainProofsWrapper.Contract.contract.Transfer(opts)
 }
 
 // Transact invokes the (paid) contract method with params as input values.
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
-	return _ContractBeaconChainProofsWrapper.Contract.contract.Transact(opts, method, params...)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperTransactorRaw) Transact(opts *bind.TransactOpts, method string, params ...interface{}) (*types.Transaction, error) {
+	return _BeaconChainProofsWrapper.Contract.contract.Transact(opts, method, params...)
 }
 
-// VerifyBalanceContainer is a free data retrieval call binding the contract method 0x0d361f3a.
+// BALANCECONTAINERINDEX is a free data retrieval call binding the contract method 0xf17e9b40.
 //
-// Solidity: function verifyBalanceContainer(bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller) VerifyBalanceContainer(opts *bind.CallOpts, beaconBlockRoot [32]byte, proof BeaconChainProofsBalanceContainerProof) error {
+// Solidity: function BALANCE_CONTAINER_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) BALANCECONTAINERINDEX(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
-	err := _ContractBeaconChainProofsWrapper.contract.Call(opts, &out, "verifyBalanceContainer", beaconBlockRoot, proof)
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "BALANCE_CONTAINER_INDEX")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// BALANCECONTAINERINDEX is a free data retrieval call binding the contract method 0xf17e9b40.
+//
+// Solidity: function BALANCE_CONTAINER_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) BALANCECONTAINERINDEX() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.BALANCECONTAINERINDEX(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// BALANCECONTAINERINDEX is a free data retrieval call binding the contract method 0xf17e9b40.
+//
+// Solidity: function BALANCE_CONTAINER_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) BALANCECONTAINERINDEX() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.BALANCECONTAINERINDEX(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// BALANCETREEHEIGHT is a free data retrieval call binding the contract method 0x043c35d3.
+//
+// Solidity: function BALANCE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) BALANCETREEHEIGHT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "BALANCE_TREE_HEIGHT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// BALANCETREEHEIGHT is a free data retrieval call binding the contract method 0x043c35d3.
+//
+// Solidity: function BALANCE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) BALANCETREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.BALANCETREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// BALANCETREEHEIGHT is a free data retrieval call binding the contract method 0x043c35d3.
+//
+// Solidity: function BALANCE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) BALANCETREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.BALANCETREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// BEACONBLOCKHEADERTREEHEIGHT is a free data retrieval call binding the contract method 0x1d5c7b1c.
+//
+// Solidity: function BEACON_BLOCK_HEADER_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) BEACONBLOCKHEADERTREEHEIGHT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "BEACON_BLOCK_HEADER_TREE_HEIGHT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// BEACONBLOCKHEADERTREEHEIGHT is a free data retrieval call binding the contract method 0x1d5c7b1c.
+//
+// Solidity: function BEACON_BLOCK_HEADER_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) BEACONBLOCKHEADERTREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.BEACONBLOCKHEADERTREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// BEACONBLOCKHEADERTREEHEIGHT is a free data retrieval call binding the contract method 0x1d5c7b1c.
+//
+// Solidity: function BEACON_BLOCK_HEADER_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) BEACONBLOCKHEADERTREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.BEACONBLOCKHEADERTREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// DENEBBEACONSTATETREEHEIGHT is a free data retrieval call binding the contract method 0x66efbf4e.
+//
+// Solidity: function DENEB_BEACON_STATE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) DENEBBEACONSTATETREEHEIGHT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "DENEB_BEACON_STATE_TREE_HEIGHT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// DENEBBEACONSTATETREEHEIGHT is a free data retrieval call binding the contract method 0x66efbf4e.
+//
+// Solidity: function DENEB_BEACON_STATE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) DENEBBEACONSTATETREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.DENEBBEACONSTATETREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// DENEBBEACONSTATETREEHEIGHT is a free data retrieval call binding the contract method 0x66efbf4e.
+//
+// Solidity: function DENEB_BEACON_STATE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) DENEBBEACONSTATETREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.DENEBBEACONSTATETREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// FARFUTUREEPOCH is a free data retrieval call binding the contract method 0xec158777.
+//
+// Solidity: function FAR_FUTURE_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) FARFUTUREEPOCH(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "FAR_FUTURE_EPOCH")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// FARFUTUREEPOCH is a free data retrieval call binding the contract method 0xec158777.
+//
+// Solidity: function FAR_FUTURE_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) FARFUTUREEPOCH() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.FARFUTUREEPOCH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// FARFUTUREEPOCH is a free data retrieval call binding the contract method 0xec158777.
+//
+// Solidity: function FAR_FUTURE_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) FARFUTUREEPOCH() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.FARFUTUREEPOCH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// PECTRABEACONSTATETREEHEIGHT is a free data retrieval call binding the contract method 0xbf783646.
+//
+// Solidity: function PECTRA_BEACON_STATE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) PECTRABEACONSTATETREEHEIGHT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "PECTRA_BEACON_STATE_TREE_HEIGHT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// PECTRABEACONSTATETREEHEIGHT is a free data retrieval call binding the contract method 0xbf783646.
+//
+// Solidity: function PECTRA_BEACON_STATE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) PECTRABEACONSTATETREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.PECTRABEACONSTATETREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// PECTRABEACONSTATETREEHEIGHT is a free data retrieval call binding the contract method 0xbf783646.
+//
+// Solidity: function PECTRA_BEACON_STATE_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) PECTRABEACONSTATETREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.PECTRABEACONSTATETREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// PECTRAFORKTIMESTAMP is a free data retrieval call binding the contract method 0x4027da19.
+//
+// Solidity: function PECTRA_FORK_TIMESTAMP() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) PECTRAFORKTIMESTAMP(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "PECTRA_FORK_TIMESTAMP")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// PECTRAFORKTIMESTAMP is a free data retrieval call binding the contract method 0x4027da19.
+//
+// Solidity: function PECTRA_FORK_TIMESTAMP() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) PECTRAFORKTIMESTAMP() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.PECTRAFORKTIMESTAMP(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// PECTRAFORKTIMESTAMP is a free data retrieval call binding the contract method 0x4027da19.
+//
+// Solidity: function PECTRA_FORK_TIMESTAMP() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) PECTRAFORKTIMESTAMP() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.PECTRAFORKTIMESTAMP(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// SECONDSPEREPOCH is a free data retrieval call binding the contract method 0xa4cc5882.
+//
+// Solidity: function SECONDS_PER_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) SECONDSPEREPOCH(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "SECONDS_PER_EPOCH")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// SECONDSPEREPOCH is a free data retrieval call binding the contract method 0xa4cc5882.
+//
+// Solidity: function SECONDS_PER_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) SECONDSPEREPOCH() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.SECONDSPEREPOCH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// SECONDSPEREPOCH is a free data retrieval call binding the contract method 0xa4cc5882.
+//
+// Solidity: function SECONDS_PER_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) SECONDSPEREPOCH() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.SECONDSPEREPOCH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// SECONDSPERSLOT is a free data retrieval call binding the contract method 0x304b9071.
+//
+// Solidity: function SECONDS_PER_SLOT() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) SECONDSPERSLOT(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "SECONDS_PER_SLOT")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// SECONDSPERSLOT is a free data retrieval call binding the contract method 0x304b9071.
+//
+// Solidity: function SECONDS_PER_SLOT() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) SECONDSPERSLOT() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.SECONDSPERSLOT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// SECONDSPERSLOT is a free data retrieval call binding the contract method 0x304b9071.
+//
+// Solidity: function SECONDS_PER_SLOT() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) SECONDSPERSLOT() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.SECONDSPERSLOT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// SLOTSPEREPOCH is a free data retrieval call binding the contract method 0xda30e279.
+//
+// Solidity: function SLOTS_PER_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) SLOTSPEREPOCH(opts *bind.CallOpts) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "SLOTS_PER_EPOCH")
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// SLOTSPEREPOCH is a free data retrieval call binding the contract method 0xda30e279.
+//
+// Solidity: function SLOTS_PER_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) SLOTSPEREPOCH() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.SLOTSPEREPOCH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// SLOTSPEREPOCH is a free data retrieval call binding the contract method 0xda30e279.
+//
+// Solidity: function SLOTS_PER_EPOCH() pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) SLOTSPEREPOCH() (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.SLOTSPEREPOCH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// STATEROOTINDEX is a free data retrieval call binding the contract method 0xb100b899.
+//
+// Solidity: function STATE_ROOT_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) STATEROOTINDEX(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "STATE_ROOT_INDEX")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// STATEROOTINDEX is a free data retrieval call binding the contract method 0xb100b899.
+//
+// Solidity: function STATE_ROOT_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) STATEROOTINDEX() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.STATEROOTINDEX(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// STATEROOTINDEX is a free data retrieval call binding the contract method 0xb100b899.
+//
+// Solidity: function STATE_ROOT_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) STATEROOTINDEX() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.STATEROOTINDEX(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// VALIDATORCONTAINERINDEX is a free data retrieval call binding the contract method 0x8ad5b4ff.
+//
+// Solidity: function VALIDATOR_CONTAINER_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VALIDATORCONTAINERINDEX(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "VALIDATOR_CONTAINER_INDEX")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// VALIDATORCONTAINERINDEX is a free data retrieval call binding the contract method 0x8ad5b4ff.
+//
+// Solidity: function VALIDATOR_CONTAINER_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VALIDATORCONTAINERINDEX() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.VALIDATORCONTAINERINDEX(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// VALIDATORCONTAINERINDEX is a free data retrieval call binding the contract method 0x8ad5b4ff.
+//
+// Solidity: function VALIDATOR_CONTAINER_INDEX() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VALIDATORCONTAINERINDEX() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.VALIDATORCONTAINERINDEX(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// VALIDATORFIELDSLENGTH is a free data retrieval call binding the contract method 0xa38f2e7e.
+//
+// Solidity: function VALIDATOR_FIELDS_LENGTH() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VALIDATORFIELDSLENGTH(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "VALIDATOR_FIELDS_LENGTH")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// VALIDATORFIELDSLENGTH is a free data retrieval call binding the contract method 0xa38f2e7e.
+//
+// Solidity: function VALIDATOR_FIELDS_LENGTH() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VALIDATORFIELDSLENGTH() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.VALIDATORFIELDSLENGTH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// VALIDATORFIELDSLENGTH is a free data retrieval call binding the contract method 0xa38f2e7e.
+//
+// Solidity: function VALIDATOR_FIELDS_LENGTH() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VALIDATORFIELDSLENGTH() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.VALIDATORFIELDSLENGTH(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// VALIDATORTREEHEIGHT is a free data retrieval call binding the contract method 0x10c6e4c3.
+//
+// Solidity: function VALIDATOR_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VALIDATORTREEHEIGHT(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "VALIDATOR_TREE_HEIGHT")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// VALIDATORTREEHEIGHT is a free data retrieval call binding the contract method 0x10c6e4c3.
+//
+// Solidity: function VALIDATOR_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VALIDATORTREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.VALIDATORTREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// VALIDATORTREEHEIGHT is a free data retrieval call binding the contract method 0x10c6e4c3.
+//
+// Solidity: function VALIDATOR_TREE_HEIGHT() pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VALIDATORTREEHEIGHT() (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.VALIDATORTREEHEIGHT(&_BeaconChainProofsWrapper.CallOpts)
+}
+
+// GetActivationEpoch is a free data retrieval call binding the contract method 0xa9ccd487.
+//
+// Solidity: function getActivationEpoch(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetActivationEpoch(opts *bind.CallOpts, validatorFields [][32]byte) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getActivationEpoch", validatorFields)
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// GetActivationEpoch is a free data retrieval call binding the contract method 0xa9ccd487.
+//
+// Solidity: function getActivationEpoch(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetActivationEpoch(validatorFields [][32]byte) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetActivationEpoch(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetActivationEpoch is a free data retrieval call binding the contract method 0xa9ccd487.
+//
+// Solidity: function getActivationEpoch(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetActivationEpoch(validatorFields [][32]byte) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetActivationEpoch(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetBalanceAtIndex is a free data retrieval call binding the contract method 0x60249fda.
+//
+// Solidity: function getBalanceAtIndex(bytes32 balanceRoot, uint40 validatorIndex) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetBalanceAtIndex(opts *bind.CallOpts, balanceRoot [32]byte, validatorIndex *big.Int) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getBalanceAtIndex", balanceRoot, validatorIndex)
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// GetBalanceAtIndex is a free data retrieval call binding the contract method 0x60249fda.
+//
+// Solidity: function getBalanceAtIndex(bytes32 balanceRoot, uint40 validatorIndex) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetBalanceAtIndex(balanceRoot [32]byte, validatorIndex *big.Int) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetBalanceAtIndex(&_BeaconChainProofsWrapper.CallOpts, balanceRoot, validatorIndex)
+}
+
+// GetBalanceAtIndex is a free data retrieval call binding the contract method 0x60249fda.
+//
+// Solidity: function getBalanceAtIndex(bytes32 balanceRoot, uint40 validatorIndex) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetBalanceAtIndex(balanceRoot [32]byte, validatorIndex *big.Int) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetBalanceAtIndex(&_BeaconChainProofsWrapper.CallOpts, balanceRoot, validatorIndex)
+}
+
+// GetBeaconStateTreeHeight is a free data retrieval call binding the contract method 0x3d6c9e18.
+//
+// Solidity: function getBeaconStateTreeHeight(uint64 proofTimestamp) pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetBeaconStateTreeHeight(opts *bind.CallOpts, proofTimestamp uint64) (*big.Int, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getBeaconStateTreeHeight", proofTimestamp)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetBeaconStateTreeHeight is a free data retrieval call binding the contract method 0x3d6c9e18.
+//
+// Solidity: function getBeaconStateTreeHeight(uint64 proofTimestamp) pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetBeaconStateTreeHeight(proofTimestamp uint64) (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.GetBeaconStateTreeHeight(&_BeaconChainProofsWrapper.CallOpts, proofTimestamp)
+}
+
+// GetBeaconStateTreeHeight is a free data retrieval call binding the contract method 0x3d6c9e18.
+//
+// Solidity: function getBeaconStateTreeHeight(uint64 proofTimestamp) pure returns(uint256)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetBeaconStateTreeHeight(proofTimestamp uint64) (*big.Int, error) {
+	return _BeaconChainProofsWrapper.Contract.GetBeaconStateTreeHeight(&_BeaconChainProofsWrapper.CallOpts, proofTimestamp)
+}
+
+// GetEffectiveBalanceGwei is a free data retrieval call binding the contract method 0x4534711b.
+//
+// Solidity: function getEffectiveBalanceGwei(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetEffectiveBalanceGwei(opts *bind.CallOpts, validatorFields [][32]byte) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getEffectiveBalanceGwei", validatorFields)
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// GetEffectiveBalanceGwei is a free data retrieval call binding the contract method 0x4534711b.
+//
+// Solidity: function getEffectiveBalanceGwei(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetEffectiveBalanceGwei(validatorFields [][32]byte) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetEffectiveBalanceGwei(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetEffectiveBalanceGwei is a free data retrieval call binding the contract method 0x4534711b.
+//
+// Solidity: function getEffectiveBalanceGwei(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetEffectiveBalanceGwei(validatorFields [][32]byte) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetEffectiveBalanceGwei(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetExitEpoch is a free data retrieval call binding the contract method 0x423fe16f.
+//
+// Solidity: function getExitEpoch(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetExitEpoch(opts *bind.CallOpts, validatorFields [][32]byte) (uint64, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getExitEpoch", validatorFields)
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// GetExitEpoch is a free data retrieval call binding the contract method 0x423fe16f.
+//
+// Solidity: function getExitEpoch(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetExitEpoch(validatorFields [][32]byte) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetExitEpoch(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetExitEpoch is a free data retrieval call binding the contract method 0x423fe16f.
+//
+// Solidity: function getExitEpoch(bytes32[] validatorFields) pure returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetExitEpoch(validatorFields [][32]byte) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.GetExitEpoch(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetPubkeyHash is a free data retrieval call binding the contract method 0x2e808427.
+//
+// Solidity: function getPubkeyHash(bytes32[] validatorFields) pure returns(bytes32)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetPubkeyHash(opts *bind.CallOpts, validatorFields [][32]byte) ([32]byte, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getPubkeyHash", validatorFields)
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// GetPubkeyHash is a free data retrieval call binding the contract method 0x2e808427.
+//
+// Solidity: function getPubkeyHash(bytes32[] validatorFields) pure returns(bytes32)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetPubkeyHash(validatorFields [][32]byte) ([32]byte, error) {
+	return _BeaconChainProofsWrapper.Contract.GetPubkeyHash(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetPubkeyHash is a free data retrieval call binding the contract method 0x2e808427.
+//
+// Solidity: function getPubkeyHash(bytes32[] validatorFields) pure returns(bytes32)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetPubkeyHash(validatorFields [][32]byte) ([32]byte, error) {
+	return _BeaconChainProofsWrapper.Contract.GetPubkeyHash(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetWithdrawalCredentials is a free data retrieval call binding the contract method 0x99ca2210.
+//
+// Solidity: function getWithdrawalCredentials(bytes32[] validatorFields) pure returns(bytes32)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) GetWithdrawalCredentials(opts *bind.CallOpts, validatorFields [][32]byte) ([32]byte, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "getWithdrawalCredentials", validatorFields)
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// GetWithdrawalCredentials is a free data retrieval call binding the contract method 0x99ca2210.
+//
+// Solidity: function getWithdrawalCredentials(bytes32[] validatorFields) pure returns(bytes32)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) GetWithdrawalCredentials(validatorFields [][32]byte) ([32]byte, error) {
+	return _BeaconChainProofsWrapper.Contract.GetWithdrawalCredentials(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// GetWithdrawalCredentials is a free data retrieval call binding the contract method 0x99ca2210.
+//
+// Solidity: function getWithdrawalCredentials(bytes32[] validatorFields) pure returns(bytes32)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) GetWithdrawalCredentials(validatorFields [][32]byte) ([32]byte, error) {
+	return _BeaconChainProofsWrapper.Contract.GetWithdrawalCredentials(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// IsValidatorSlashed is a free data retrieval call binding the contract method 0x0b9448ce.
+//
+// Solidity: function isValidatorSlashed(bytes32[] validatorFields) pure returns(bool)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) IsValidatorSlashed(opts *bind.CallOpts, validatorFields [][32]byte) (bool, error) {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "isValidatorSlashed", validatorFields)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// IsValidatorSlashed is a free data retrieval call binding the contract method 0x0b9448ce.
+//
+// Solidity: function isValidatorSlashed(bytes32[] validatorFields) pure returns(bool)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) IsValidatorSlashed(validatorFields [][32]byte) (bool, error) {
+	return _BeaconChainProofsWrapper.Contract.IsValidatorSlashed(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// IsValidatorSlashed is a free data retrieval call binding the contract method 0x0b9448ce.
+//
+// Solidity: function isValidatorSlashed(bytes32[] validatorFields) pure returns(bool)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) IsValidatorSlashed(validatorFields [][32]byte) (bool, error) {
+	return _BeaconChainProofsWrapper.Contract.IsValidatorSlashed(&_BeaconChainProofsWrapper.CallOpts, validatorFields)
+}
+
+// VerifyBalanceContainer is a free data retrieval call binding the contract method 0x19312e29.
+//
+// Solidity: function verifyBalanceContainer(uint64 proofTimestamp, bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VerifyBalanceContainer(opts *bind.CallOpts, proofTimestamp uint64, beaconBlockRoot [32]byte, proof BeaconChainProofsBalanceContainerProof) error {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "verifyBalanceContainer", proofTimestamp, beaconBlockRoot, proof)
 
 	if err != nil {
 		return err
@@ -236,26 +918,26 @@ func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller)
 
 }
 
-// VerifyBalanceContainer is a free data retrieval call binding the contract method 0x0d361f3a.
+// VerifyBalanceContainer is a free data retrieval call binding the contract method 0x19312e29.
 //
-// Solidity: function verifyBalanceContainer(bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperSession) VerifyBalanceContainer(beaconBlockRoot [32]byte, proof BeaconChainProofsBalanceContainerProof) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyBalanceContainer(&_ContractBeaconChainProofsWrapper.CallOpts, beaconBlockRoot, proof)
+// Solidity: function verifyBalanceContainer(uint64 proofTimestamp, bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VerifyBalanceContainer(proofTimestamp uint64, beaconBlockRoot [32]byte, proof BeaconChainProofsBalanceContainerProof) error {
+	return _BeaconChainProofsWrapper.Contract.VerifyBalanceContainer(&_BeaconChainProofsWrapper.CallOpts, proofTimestamp, beaconBlockRoot, proof)
 }
 
-// VerifyBalanceContainer is a free data retrieval call binding the contract method 0x0d361f3a.
+// VerifyBalanceContainer is a free data retrieval call binding the contract method 0x19312e29.
 //
-// Solidity: function verifyBalanceContainer(bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCallerSession) VerifyBalanceContainer(beaconBlockRoot [32]byte, proof BeaconChainProofsBalanceContainerProof) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyBalanceContainer(&_ContractBeaconChainProofsWrapper.CallOpts, beaconBlockRoot, proof)
+// Solidity: function verifyBalanceContainer(uint64 proofTimestamp, bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VerifyBalanceContainer(proofTimestamp uint64, beaconBlockRoot [32]byte, proof BeaconChainProofsBalanceContainerProof) error {
+	return _BeaconChainProofsWrapper.Contract.VerifyBalanceContainer(&_BeaconChainProofsWrapper.CallOpts, proofTimestamp, beaconBlockRoot, proof)
 }
 
 // VerifyStateRoot is a free data retrieval call binding the contract method 0x9030a9bb.
 //
 // Solidity: function verifyStateRoot(bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller) VerifyStateRoot(opts *bind.CallOpts, beaconBlockRoot [32]byte, proof BeaconChainProofsStateRootProof) error {
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VerifyStateRoot(opts *bind.CallOpts, beaconBlockRoot [32]byte, proof BeaconChainProofsStateRootProof) error {
 	var out []interface{}
-	err := _ContractBeaconChainProofsWrapper.contract.Call(opts, &out, "verifyStateRoot", beaconBlockRoot, proof)
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "verifyStateRoot", beaconBlockRoot, proof)
 
 	if err != nil {
 		return err
@@ -268,23 +950,54 @@ func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller)
 // VerifyStateRoot is a free data retrieval call binding the contract method 0x9030a9bb.
 //
 // Solidity: function verifyStateRoot(bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperSession) VerifyStateRoot(beaconBlockRoot [32]byte, proof BeaconChainProofsStateRootProof) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyStateRoot(&_ContractBeaconChainProofsWrapper.CallOpts, beaconBlockRoot, proof)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VerifyStateRoot(beaconBlockRoot [32]byte, proof BeaconChainProofsStateRootProof) error {
+	return _BeaconChainProofsWrapper.Contract.VerifyStateRoot(&_BeaconChainProofsWrapper.CallOpts, beaconBlockRoot, proof)
 }
 
 // VerifyStateRoot is a free data retrieval call binding the contract method 0x9030a9bb.
 //
 // Solidity: function verifyStateRoot(bytes32 beaconBlockRoot, (bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCallerSession) VerifyStateRoot(beaconBlockRoot [32]byte, proof BeaconChainProofsStateRootProof) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyStateRoot(&_ContractBeaconChainProofsWrapper.CallOpts, beaconBlockRoot, proof)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VerifyStateRoot(beaconBlockRoot [32]byte, proof BeaconChainProofsStateRootProof) error {
+	return _BeaconChainProofsWrapper.Contract.VerifyStateRoot(&_BeaconChainProofsWrapper.CallOpts, beaconBlockRoot, proof)
 }
 
 // VerifyValidatorBalance is a free data retrieval call binding the contract method 0x31f60d4c.
 //
-// Solidity: function verifyValidatorBalance(bytes32 balanceContainerRoot, uint40 validatorIndex, (bytes32,bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller) VerifyValidatorBalance(opts *bind.CallOpts, balanceContainerRoot [32]byte, validatorIndex *big.Int, proof BeaconChainProofsBalanceProof) error {
+// Solidity: function verifyValidatorBalance(bytes32 balanceContainerRoot, uint40 validatorIndex, (bytes32,bytes32,bytes) proof) view returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VerifyValidatorBalance(opts *bind.CallOpts, balanceContainerRoot [32]byte, validatorIndex *big.Int, proof BeaconChainProofsBalanceProof) (uint64, error) {
 	var out []interface{}
-	err := _ContractBeaconChainProofsWrapper.contract.Call(opts, &out, "verifyValidatorBalance", balanceContainerRoot, validatorIndex, proof)
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "verifyValidatorBalance", balanceContainerRoot, validatorIndex, proof)
+
+	if err != nil {
+		return *new(uint64), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint64)).(*uint64)
+
+	return out0, err
+
+}
+
+// VerifyValidatorBalance is a free data retrieval call binding the contract method 0x31f60d4c.
+//
+// Solidity: function verifyValidatorBalance(bytes32 balanceContainerRoot, uint40 validatorIndex, (bytes32,bytes32,bytes) proof) view returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VerifyValidatorBalance(balanceContainerRoot [32]byte, validatorIndex *big.Int, proof BeaconChainProofsBalanceProof) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.VerifyValidatorBalance(&_BeaconChainProofsWrapper.CallOpts, balanceContainerRoot, validatorIndex, proof)
+}
+
+// VerifyValidatorBalance is a free data retrieval call binding the contract method 0x31f60d4c.
+//
+// Solidity: function verifyValidatorBalance(bytes32 balanceContainerRoot, uint40 validatorIndex, (bytes32,bytes32,bytes) proof) view returns(uint64)
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VerifyValidatorBalance(balanceContainerRoot [32]byte, validatorIndex *big.Int, proof BeaconChainProofsBalanceProof) (uint64, error) {
+	return _BeaconChainProofsWrapper.Contract.VerifyValidatorBalance(&_BeaconChainProofsWrapper.CallOpts, balanceContainerRoot, validatorIndex, proof)
+}
+
+// VerifyValidatorFields is a free data retrieval call binding the contract method 0xaaa645a6.
+//
+// Solidity: function verifyValidatorFields(uint64 proofTimestamp, bytes32 beaconStateRoot, bytes32[] validatorFields, bytes validatorFieldsProof, uint40 validatorIndex) view returns()
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCaller) VerifyValidatorFields(opts *bind.CallOpts, proofTimestamp uint64, beaconStateRoot [32]byte, validatorFields [][32]byte, validatorFieldsProof []byte, validatorIndex *big.Int) error {
+	var out []interface{}
+	err := _BeaconChainProofsWrapper.contract.Call(opts, &out, "verifyValidatorFields", proofTimestamp, beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
 
 	if err != nil {
 		return err
@@ -294,45 +1007,16 @@ func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller)
 
 }
 
-// VerifyValidatorBalance is a free data retrieval call binding the contract method 0x31f60d4c.
+// VerifyValidatorFields is a free data retrieval call binding the contract method 0xaaa645a6.
 //
-// Solidity: function verifyValidatorBalance(bytes32 balanceContainerRoot, uint40 validatorIndex, (bytes32,bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperSession) VerifyValidatorBalance(balanceContainerRoot [32]byte, validatorIndex *big.Int, proof BeaconChainProofsBalanceProof) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyValidatorBalance(&_ContractBeaconChainProofsWrapper.CallOpts, balanceContainerRoot, validatorIndex, proof)
+// Solidity: function verifyValidatorFields(uint64 proofTimestamp, bytes32 beaconStateRoot, bytes32[] validatorFields, bytes validatorFieldsProof, uint40 validatorIndex) view returns()
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperSession) VerifyValidatorFields(proofTimestamp uint64, beaconStateRoot [32]byte, validatorFields [][32]byte, validatorFieldsProof []byte, validatorIndex *big.Int) error {
+	return _BeaconChainProofsWrapper.Contract.VerifyValidatorFields(&_BeaconChainProofsWrapper.CallOpts, proofTimestamp, beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
 }
 
-// VerifyValidatorBalance is a free data retrieval call binding the contract method 0x31f60d4c.
+// VerifyValidatorFields is a free data retrieval call binding the contract method 0xaaa645a6.
 //
-// Solidity: function verifyValidatorBalance(bytes32 balanceContainerRoot, uint40 validatorIndex, (bytes32,bytes32,bytes) proof) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCallerSession) VerifyValidatorBalance(balanceContainerRoot [32]byte, validatorIndex *big.Int, proof BeaconChainProofsBalanceProof) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyValidatorBalance(&_ContractBeaconChainProofsWrapper.CallOpts, balanceContainerRoot, validatorIndex, proof)
-}
-
-// VerifyValidatorFields is a free data retrieval call binding the contract method 0x256f222b.
-//
-// Solidity: function verifyValidatorFields(bytes32 beaconStateRoot, bytes32[] validatorFields, bytes validatorFieldsProof, uint40 validatorIndex) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCaller) VerifyValidatorFields(opts *bind.CallOpts, beaconStateRoot [32]byte, validatorFields [][32]byte, validatorFieldsProof []byte, validatorIndex *big.Int) error {
-	var out []interface{}
-	err := _ContractBeaconChainProofsWrapper.contract.Call(opts, &out, "verifyValidatorFields", beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
-
-	if err != nil {
-		return err
-	}
-
-	return err
-
-}
-
-// VerifyValidatorFields is a free data retrieval call binding the contract method 0x256f222b.
-//
-// Solidity: function verifyValidatorFields(bytes32 beaconStateRoot, bytes32[] validatorFields, bytes validatorFieldsProof, uint40 validatorIndex) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperSession) VerifyValidatorFields(beaconStateRoot [32]byte, validatorFields [][32]byte, validatorFieldsProof []byte, validatorIndex *big.Int) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyValidatorFields(&_ContractBeaconChainProofsWrapper.CallOpts, beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
-}
-
-// VerifyValidatorFields is a free data retrieval call binding the contract method 0x256f222b.
-//
-// Solidity: function verifyValidatorFields(bytes32 beaconStateRoot, bytes32[] validatorFields, bytes validatorFieldsProof, uint40 validatorIndex) view returns()
-func (_ContractBeaconChainProofsWrapper *ContractBeaconChainProofsWrapperCallerSession) VerifyValidatorFields(beaconStateRoot [32]byte, validatorFields [][32]byte, validatorFieldsProof []byte, validatorIndex *big.Int) error {
-	return _ContractBeaconChainProofsWrapper.Contract.VerifyValidatorFields(&_ContractBeaconChainProofsWrapper.CallOpts, beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
+// Solidity: function verifyValidatorFields(uint64 proofTimestamp, bytes32 beaconStateRoot, bytes32[] validatorFields, bytes validatorFieldsProof, uint40 validatorIndex) view returns()
+func (_BeaconChainProofsWrapper *BeaconChainProofsWrapperCallerSession) VerifyValidatorFields(proofTimestamp uint64, beaconStateRoot [32]byte, validatorFields [][32]byte, validatorFieldsProof []byte, validatorIndex *big.Int) error {
+	return _BeaconChainProofsWrapper.Contract.VerifyValidatorFields(&_BeaconChainProofsWrapper.CallOpts, proofTimestamp, beaconStateRoot, validatorFields, validatorFieldsProof, validatorIndex)
 }
