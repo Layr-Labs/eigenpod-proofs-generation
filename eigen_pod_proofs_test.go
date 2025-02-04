@@ -1,6 +1,7 @@
 package eigenpodproofs_test
 
 import (
+	"os"
 	"testing"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
@@ -11,9 +12,8 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/joho/godotenv"
 )
-
-const RPC_URL = "https://rpc.mekong.ethpandaops.io"
 
 var BEACON_CHAIN_PROOFS_WRAPPER_ADDRESS = gethcommon.HexToAddress("0x874Be4b0CaC8D3F6286Eee6E6196553aabA8Cb85")
 
@@ -49,8 +49,17 @@ func loadBeaconState(headerPath, statePath string, chainID uint64) error {
 }
 
 func TestMain(m *testing.M) {
-	var err error
-	ethClient, err := ethclient.Dial(RPC_URL)
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		panic("Error loading .env file")
+	}
+
+	rpcURL := os.Getenv("RPC_URL")
+	if rpcURL == "" {
+		panic("RPC_URL must be set in .env file")
+	}
+
+	ethClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +69,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	// Run tests twice - once for each network
+	// Run tests for each hard fork type
 	if err := loadBeaconState(
 		"data/electra_mekong_beacon_headers_654719.json",
 		"data/electra_mekong_beacon_state_654719.ssz",

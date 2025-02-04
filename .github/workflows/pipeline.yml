@@ -58,10 +58,17 @@ jobs:
     
     - name: Download blockchain data
       run: |
+        # Download Deneb state
         curl -o data/deneb_holesky_beacon_state_2227472.ssz.zip https://dviu8zszosyat.cloudfront.net/deneb_holesky_beacon_state_2227472.ssz.zip
         (cd data && unzip deneb_holesky_beacon_state_2227472.ssz.zip)
 
+        # Download Electra State
+        curl -o data/electra_mekong_beacon_state_654719.ssz.zip https://d1w8rcimizlk6a.cloudfront.net/electra_mekong_beacon_state_654719.ssz.zip
+        (cd data && unzip electra_mekong_beacon_state_654719.ssz.zip)
+
     - name: Run tests
+      env:
+        RPC_URL: ${{ secrets.RPC_URL }}
       run: |
         go test -v ./...
   goreleaser:
