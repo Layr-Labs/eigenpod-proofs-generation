@@ -1,7 +1,6 @@
 package eigenpodproofs_test
 
 import (
-	"os"
 	"testing"
 
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
@@ -18,38 +17,39 @@ const RPC_URL = "https://rpc.mekong.ethpandaops.io"
 
 var BEACON_CHAIN_PROOFS_WRAPPER_ADDRESS = gethcommon.HexToAddress("0x874Be4b0CaC8D3F6286Eee6E6196553aabA8Cb85")
 
-var beaconHeader *phase0.BeaconBlockHeader
-var beaconState *spec.VersionedBeaconState
-var beaconChainProofsWrapper *BeaconChainProofsWrapper.BeaconChainProofsWrapper
-var epp *eigenpodproofs.EigenPodProofs
+var (
+	beaconHeader             *phase0.BeaconBlockHeader
+	beaconState              *spec.VersionedBeaconState
+	beaconChainProofsWrapper *BeaconChainProofsWrapper.BeaconChainProofsWrapper
+	epp                      *eigenpodproofs.EigenPodProofs
+)
 
-// before all
-func TestMain(m *testing.M) {
-	var err error
-
-	// beaconHeaderBytes, err := common.ReadFile("data/deneb_holesky_beacon_headers_2227472.json")
-	beaconHeaderBytes, err := common.ReadFile("data/electra_mekong_beacon_headers_654719.json")
+func loadBeaconState(headerPath, statePath string, chainID uint64) error {
+	headerBytes, err := common.ReadFile(headerPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
-
-	// beaconStateBytes, err := common.ReadFile("data/deneb_holesky_beacon_state_2227472.ssz")
-	beaconStateBytes, err := common.ReadFile("data/electra_mekong_beacon_state_654719.ssz")
+	stateBytes, err := common.ReadFile(statePath)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	beaconHeader = &phase0.BeaconBlockHeader{}
-	err = beaconHeader.UnmarshalJSON(beaconHeaderBytes)
-	if err != nil {
-		panic(err)
+	if err := beaconHeader.UnmarshalJSON(headerBytes); err != nil {
+		return err
 	}
 
-	beaconState, err = beacon.UnmarshalSSZVersionedBeaconState(beaconStateBytes)
+	beaconState, err = beacon.UnmarshalSSZVersionedBeaconState(stateBytes)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
+	epp, err = eigenpodproofs.NewEigenPodProofs(chainID, 600)
+	return err
+}
+
+func TestMain(m *testing.M) {
+	var err error
 	ethClient, err := ethclient.Dial(RPC_URL)
 	if err != nil {
 		panic(err)
@@ -60,10 +60,22 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	epp, err = eigenpodproofs.NewEigenPodProofs(17000, 600)
-	if err != nil {
+	// Run tests twice - once for each network
+	if err := loadBeaconState(
+		"data/electra_mekong_beacon_headers_654719.json",
+		"data/electra_mekong_beacon_state_654719.ssz",
+		17000, // Use 17000 for Mekong, this check isn't relevant for Electra
+	); err != nil {
 		panic(err)
 	}
+	m.Run()
 
-	os.Exit(m.Run())
+	if err := loadBeaconState(
+		"data/deneb_holesky_beacon_headers_2227472.json",
+		"data/deneb_holesky_beacon_state_2227472.ssz",
+		17000,
+	); err != nil {
+		panic(err)
+	}
+	m.Run()
 }
