@@ -2,10 +2,10 @@ package eigenpodproofs
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/spec"
-	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	expirable "github.com/hashicorp/golang-lru/v2/expirable"
 
@@ -64,7 +64,7 @@ func (epp *EigenPodProofs) PrecomputeCache(state *spec.VersionedBeaconState) err
 		return err
 	}
 
-	epp.ComputeBeaconStateRoot(state.Deneb)
+	epp.ComputeBeaconStateRoot(state)
 	epp.ComputeBeaconStateTopLevelRoots(state)
 	epp.ComputeVersionedBeaconStateTopLevelRoots(state)
 	epp.ComputeValidatorTree(slot, validators)
@@ -72,19 +72,41 @@ func (epp *EigenPodProofs) PrecomputeCache(state *spec.VersionedBeaconState) err
 	return nil
 }
 
-func (epp *EigenPodProofs) ComputeBeaconStateRoot(beaconState *deneb.BeaconState) (phase0.Root, error) {
-	beaconStateRoot, err := epp.loadOrComputeBeaconStateRoot(
-		beaconState.Slot,
-		func() (phase0.Root, error) {
-			stateRoot, err := beaconState.HashTreeRoot()
-			if err != nil {
-				return phase0.Root{}, err
-			}
-			return stateRoot, nil
-		},
-	)
+func (epp *EigenPodProofs) ComputeBeaconStateRoot(state *spec.VersionedBeaconState) (phase0.Root, error) {
+
+	var beaconStateRoot phase0.Root
+	var err error
+	switch state.Version {
+	case spec.DataVersionElectra:
+		beaconState := state.Electra
+		beaconStateRoot, err = epp.loadOrComputeBeaconStateRoot(
+			beaconState.Slot,
+			func() (phase0.Root, error) {
+				stateRoot, err := beaconState.HashTreeRoot()
+				if err != nil {
+					return phase0.Root{}, err
+				}
+				return stateRoot, nil
+			},
+		)
+	case spec.DataVersionDeneb:
+		beaconState := state.Deneb
+		beaconStateRoot, err = epp.loadOrComputeBeaconStateRoot(
+			beaconState.Slot,
+			func() (phase0.Root, error) {
+				stateRoot, err := beaconState.HashTreeRoot()
+				if err != nil {
+					return phase0.Root{}, err
+				}
+				return stateRoot, nil
+			},
+		)
+	default:
+		return phase0.Root{}, errors.New("unsupported beacon state version")
+	}
+
 	if err != nil {
-		return phase0.Root{}, err
+		return phase0.Root{}, fmt.Errorf("failed to compute beacon state root: %w", err)
 	}
 
 	return beaconStateRoot, nil

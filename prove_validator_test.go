@@ -6,6 +6,7 @@ import (
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/stretchr/testify/assert"
@@ -27,10 +28,10 @@ func TestProveValidatorContainers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	assert.True(t, verifyStateRootAgainstBlockHeader(t, epp, beaconHeader, beaconState.Deneb, verifyValidatorFieldsCallParams.StateRootProof.Proof))
+	assert.True(t, verifyStateRootAgainstBlockHeader(t, epp, beaconHeader, beaconState, verifyValidatorFieldsCallParams.StateRootProof.Proof))
 
 	for i := 0; i < len(verifyValidatorFieldsCallParams.ValidatorFields); i++ {
-		assert.True(t, verifyValidatorAgainstBeaconState(t, epp, beaconState.Deneb, verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], validatorIndices[i]))
+		assert.True(t, verifyValidatorAgainstBeaconState(t, epp, beaconState, verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i], validatorIndices[i]))
 	}
 }
 
@@ -57,7 +58,7 @@ func TestProveValidatorBalances(t *testing.T) {
 	}
 }
 
-func verifyStateRootAgainstBlockHeader(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleState *deneb.BeaconState, proof common.Proof) bool {
+func verifyStateRootAgainstBlockHeader(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleBlockHeader *phase0.BeaconBlockHeader, oracleState *spec.VersionedBeaconState, proof common.Proof) bool {
 	root, err := oracleBlockHeader.HashTreeRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -71,8 +72,18 @@ func verifyStateRootAgainstBlockHeader(t *testing.T, epp *eigenpodproofs.EigenPo
 	return common.ValidateProof(root, proof, leaf, beacon.STATE_ROOT_INDEX)
 }
 
-func verifyValidatorAgainstBeaconState(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, proof common.Proof, validatorIndex uint64) bool {
-	leaf, err := oracleState.Validators[validatorIndex].HashTreeRoot()
+func verifyValidatorAgainstBeaconState(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *spec.VersionedBeaconState, proof common.Proof, validatorIndex uint64) bool {
+	var leaf phase0.Root
+	var err error
+	switch oracleState.Version {
+	case spec.DataVersionElectra:
+		leaf, err = oracleState.Electra.Validators[validatorIndex].HashTreeRoot()
+	case spec.DataVersionDeneb:
+		leaf, err = oracleState.Deneb.Validators[validatorIndex].HashTreeRoot()
+	default:
+		t.Fatal("unsupported beacon state version")
+	}
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,8 +102,18 @@ func verifyValidatorBalancesRootAgainstBlockHeader(t *testing.T, epp *eigenpodpr
 	if err != nil {
 		t.Fatal(err)
 	}
-	/// TODO: update for pectra
-	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beacon.BEACON_STATE_TREE_HEIGHT_DENEB|beacon.BALANCES_INDEX)
+
+	var beaconStateTreeHeight uint64
+	switch beaconState.Version {
+	case spec.DataVersionElectra:
+		beaconStateTreeHeight = beacon.BEACON_STATE_TREE_HEIGHT_ELECTRA
+	case spec.DataVersionDeneb:
+		beaconStateTreeHeight = beacon.BEACON_STATE_TREE_HEIGHT_DENEB
+	default:
+		t.Fatal("unsupported beacon state version")
+	}
+
+	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beaconStateTreeHeight|beacon.BALANCES_INDEX)
 }
 
 func verifyValidatorBalanceAgainstValidatorBalancesRoot(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, validatorBalancesRoot phase0.Root, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {

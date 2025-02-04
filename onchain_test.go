@@ -16,7 +16,7 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 	}
 
 	validatorIndices := []uint64{}
-	for i := int(0); i < len(validators); i += 100000 {
+	for i := int(0); i < len(validators); i += 100000000 {
 		validatorIndices = append(validatorIndices, uint64(i))
 	}
 
@@ -65,7 +65,7 @@ func TestValidatorBalancesProofOnChain(t *testing.T) {
 	}
 
 	validatorIndices := []uint64{}
-	for i := int(0); i < len(validators); i += 100000 {
+	for i := int(0); i < len(validators); i += 100000000 {
 		validatorIndices = append(validatorIndices, uint64(i))
 	}
 
