@@ -7,7 +7,6 @@ import (
 	"github.com/Layr-Labs/eigenpod-proofs-generation/beacon"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/common"
 	"github.com/attestantio/go-eth2-client/spec"
-	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 	"github.com/stretchr/testify/assert"
 )
@@ -54,7 +53,7 @@ func TestProveValidatorBalances(t *testing.T) {
 	assert.True(t, verifyValidatorBalancesRootAgainstBlockHeader(t, epp, beaconHeader, verifyCheckpointProofsCallParams.ValidatorBalancesRootProof))
 
 	for i := 0; i < len(verifyCheckpointProofsCallParams.BalanceProofs); i++ {
-		assert.True(t, verifyValidatorBalanceAgainstValidatorBalancesRoot(t, epp, beaconState.Deneb, verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot, verifyCheckpointProofsCallParams.BalanceProofs[i], validatorIndices[i]))
+		assert.True(t, verifyValidatorBalanceAgainstValidatorBalancesRoot(t, epp, beaconState, verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot, verifyCheckpointProofsCallParams.BalanceProofs[i], validatorIndices[i]))
 	}
 }
 
@@ -116,8 +115,16 @@ func verifyValidatorBalancesRootAgainstBlockHeader(t *testing.T, epp *eigenpodpr
 	return common.ValidateProof(root, proof.Proof, proof.ValidatorBalancesRoot, beacon.STATE_ROOT_INDEX<<beaconStateTreeHeight|beacon.BALANCES_INDEX)
 }
 
-func verifyValidatorBalanceAgainstValidatorBalancesRoot(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *deneb.BeaconState, validatorBalancesRoot phase0.Root, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {
-	index := beacon.BALANCES_INDEX<<(beacon.GetValidatorBalancesProofDepth(len(oracleState.Balances))+1) | (validatorIndex / 4)
+func verifyValidatorBalanceAgainstValidatorBalancesRoot(t *testing.T, epp *eigenpodproofs.EigenPodProofs, oracleState *spec.VersionedBeaconState, validatorBalancesRoot phase0.Root, proof *eigenpodproofs.BalanceProof, validatorIndex uint64) bool {
+	var index uint64
+	switch oracleState.Version {
+	case spec.DataVersionElectra:
+		index = beacon.BALANCES_INDEX<<(beacon.GetValidatorBalancesProofDepth(len(oracleState.Electra.Balances))+1) | (validatorIndex / 4)
+	case spec.DataVersionDeneb:
+		index = beacon.BALANCES_INDEX<<(beacon.GetValidatorBalancesProofDepth(len(oracleState.Deneb.Balances))+1) | (validatorIndex / 4)
+	default:
+		t.Fatal("unsupported beacon state version")
+	}
 
 	return common.ValidateProof(validatorBalancesRoot, proof.Proof, proof.BalanceRoot, index)
 }
