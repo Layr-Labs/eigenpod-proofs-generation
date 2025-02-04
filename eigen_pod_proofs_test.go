@@ -50,9 +50,7 @@ func loadBeaconState(headerPath, statePath string, chainID uint64) error {
 
 func TestMain(m *testing.M) {
 	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		panic("Error loading .env file")
-	}
+	godotenv.Load()
 
 	rpcURL := os.Getenv("RPC_URL")
 	if rpcURL == "" {
