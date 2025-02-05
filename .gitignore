@@ -20,3 +20,5 @@ test
 **/.DS_Store
 
 *.ssz
+
+.env

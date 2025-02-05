@@ -4,7 +4,8 @@ import (
 	"math/big"
 	"testing"
 
-	contractBeaconChainProofsWrapper "github.com/Layr-Labs/eigenpod-proofs-generation/bindings/BeaconChainProofsWrapper"
+	BeaconChainProofsWrapper "github.com/Layr-Labs/eigenpod-proofs-generation/bindings/BeaconChainProofsWrapper"
+	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,12 +34,20 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 	err = beaconChainProofsWrapper.VerifyStateRoot(
 		&bind.CallOpts{},
 		blockRoot,
-		contractBeaconChainProofsWrapper.BeaconChainProofsStateRootProof{
+		BeaconChainProofsWrapper.BeaconChainProofsStateRootProof{
 			BeaconStateRoot: verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
 			Proof:           verifyValidatorFieldsCallParams.StateRootProof.Proof.ToByteSlice(),
 		},
 	)
 	assert.Nil(t, err)
+
+	// Update the proof timestamp depending on the beacon state version
+	var proofTimestamp uint64
+	if beaconState.Version == spec.DataVersionElectra {
+		proofTimestamp = uint64(1730822401) // 1 second after mekong genesis
+	} else {
+		proofTimestamp = uint64(0)
+	}
 
 	for i := 0; i < len(verifyValidatorFieldsCallParams.ValidatorFields); i++ {
 		validatorFields := [][32]byte{}
@@ -48,6 +57,7 @@ func TestValidatorContainersProofOnChain(t *testing.T) {
 
 		err = beaconChainProofsWrapper.VerifyValidatorFields(
 			&bind.CallOpts{},
+			proofTimestamp,
 			verifyValidatorFieldsCallParams.StateRootProof.BeaconStateRoot,
 			validatorFields,
 			verifyValidatorFieldsCallParams.ValidatorFieldsProofs[i].ToByteSlice(),
@@ -78,10 +88,19 @@ func TestValidatorBalancesProofOnChain(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Update the proof timestamp depending on the beacon state version
+	var proofTimestamp uint64
+	if beaconState.Version == spec.DataVersionElectra {
+		proofTimestamp = uint64(1730822401) // 1 second after mekong genesis
+	} else {
+		proofTimestamp = uint64(0)
+	}
+
 	err = beaconChainProofsWrapper.VerifyBalanceContainer(
 		&bind.CallOpts{},
+		proofTimestamp,
 		blockRoot,
-		contractBeaconChainProofsWrapper.BeaconChainProofsBalanceContainerProof{
+		BeaconChainProofsWrapper.BeaconChainProofsBalanceContainerProof{
 			BalanceContainerRoot: verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot,
 			Proof:                verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.Proof.ToByteSlice(),
 		},
@@ -89,11 +108,11 @@ func TestValidatorBalancesProofOnChain(t *testing.T) {
 	assert.Nil(t, err)
 
 	for i := 0; i < len(verifyCheckpointProofsCallParams.BalanceProofs); i++ {
-		err = beaconChainProofsWrapper.VerifyValidatorBalance(
+		_, err = beaconChainProofsWrapper.VerifyValidatorBalance(
 			&bind.CallOpts{},
 			verifyCheckpointProofsCallParams.ValidatorBalancesRootProof.ValidatorBalancesRoot,
 			new(big.Int).SetUint64(validatorIndices[i]),
-			contractBeaconChainProofsWrapper.BeaconChainProofsBalanceProof{
+			BeaconChainProofsWrapper.BeaconChainProofsBalanceProof{
 				PubkeyHash:  verifyCheckpointProofsCallParams.BalanceProofs[i].PubkeyHash,
 				BalanceRoot: verifyCheckpointProofsCallParams.BalanceProofs[i].BalanceRoot,
 				Proof:       verifyCheckpointProofsCallParams.BalanceProofs[i].Proof.ToByteSlice(),
