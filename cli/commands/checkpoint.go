@@ -1,11 +1,10 @@
-package prepectra
+package commands
 
 import (
 	"context"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/prepectra"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -62,7 +61,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 				color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 			} else {
 				gas := txn.Gas()
-				commands.PrintAsJSON([]commands.Transaction{
+				PrintAsJSON([]Transaction{
 					{
 						Type:     "checkpoint_start",
 						To:       txn.To().Hex(),
@@ -92,19 +91,19 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 		color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
 	}
 
-	proof, err := prepectra.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, isVerbose)
+	proof, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, isVerbose)
 	utils.PanicOnError("failed to generate checkpoint proof", err)
 
-	txns, err := prepectra.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction, args.Verbose)
+	txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction, args.Verbose)
 	if args.SimulateTransaction {
-		printableTxns := lo.Map(txns, func(txn *types.Transaction, _ int) commands.Transaction {
-			return commands.Transaction{
+		printableTxns := lo.Map(txns, func(txn *types.Transaction, _ int) Transaction {
+			return Transaction{
 				To:       txn.To().Hex(),
 				CallData: common.Bytes2Hex(txn.Data()),
 				Type:     "checkpoint_proof",
 			}
 		})
-		commands.PrintAsJSON(printableTxns)
+		PrintAsJSON(printableTxns)
 	} else {
 		for i, txn := range txns {
 			color.Green("transaction(%d): %s", i, txn.Hash().Hex())

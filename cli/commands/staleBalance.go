@@ -7,7 +7,7 @@ import (
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/prepectra"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -69,10 +69,10 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 			utils.PanicIfNoConsent(fmt.Sprintf("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing. This will invoke `EigenPod.verifyCheckpointProofs()`, which will end the checkpoint. This may be expensive.", currentCheckpointTimestamp))
 		}
 
-		proofs, err := prepectra.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon, args.Verbose)
+		proofs, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon, args.Verbose)
 		utils.PanicOnError("failed to generate checkpoint proofs", err)
 
-		txns, err := prepectra.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proofs, eth, args.CheckpointBatchSize, args.NoPrompt, false /* noSend */, args.Verbose)
+		txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proofs, eth, args.CheckpointBatchSize, args.NoPrompt, false /* noSend */, args.Verbose)
 		utils.PanicOnError("failed to submit checkpoint proofs", err)
 
 		for i, txn := range txns {
@@ -84,7 +84,7 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 		}
 	}
 
-	proof, oracleBeaconTimesetamp, err := prepectra.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(args.SlashedValidatorIndex), args.Verbose)
+	proof, oracleBeaconTimesetamp, err := core.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(args.SlashedValidatorIndex), args.Verbose)
 	utils.PanicOnError("failed to generate credential proof for slashed validator", err)
 
 	if !args.NoPrompt {

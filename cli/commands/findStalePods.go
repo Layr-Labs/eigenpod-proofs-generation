@@ -1,10 +1,9 @@
-package prepectra
+package commands
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/fatih/color"
@@ -26,7 +25,7 @@ func FindStalePodsCommand(args TFindStalePodsCommandArgs) error {
 	utils.PanicOnError("failed to find stale eigenpods", err)
 
 	if !args.Verbose {
-		commands.PrintAsJSON(results)
+		PrintAsJSON(results)
 		return nil
 	}
 

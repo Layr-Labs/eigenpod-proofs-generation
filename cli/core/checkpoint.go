@@ -1,4 +1,4 @@
-package prepectra
+package core
 
 import (
 	"context"

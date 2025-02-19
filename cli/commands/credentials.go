@@ -1,4 +1,4 @@
-package prepectra
+package commands
 
 import (
 	"context"
@@ -6,8 +6,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/prepectra"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -50,7 +49,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 		}
 	}
 
-	validatorProofs, oracleBeaconTimestamp, err := prepectra.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex, isVerbose)
+	validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex, isVerbose)
 
 	if err != nil || validatorProofs == nil {
 		utils.PanicOnError("Failed to generate validator proof", err)
@@ -58,7 +57,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 	}
 
 	if len(args.Sender) != 0 || args.SimulateTransaction {
-		txns, indices, err := prepectra.SubmitValidatorProof(ctx, args.Sender, args.EigenpodAddress, chainId, eth, args.BatchSize, validatorProofs, oracleBeaconTimestamp, args.NoPrompt, args.SimulateTransaction, isVerbose)
+		txns, indices, err := core.SubmitValidatorProof(ctx, args.Sender, args.EigenpodAddress, chainId, eth, args.BatchSize, validatorProofs, oracleBeaconTimestamp, args.NoPrompt, args.SimulateTransaction, isVerbose)
 		utils.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
 			if args.SimulateTransaction {
 				return "simulate"
@@ -68,10 +67,10 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 		}()), err)
 
 		if args.SimulateTransaction {
-			out := lo.Map(txns, func(txn *types.Transaction, _ int) commands.CredentialProofTransaction {
+			out := lo.Map(txns, func(txn *types.Transaction, _ int) CredentialProofTransaction {
 				gas := txn.Gas()
-				return commands.CredentialProofTransaction{
-					Transaction: commands.Transaction{
+				return CredentialProofTransaction{
+					Transaction: Transaction{
 						Type:     "credential_proof",
 						To:       txn.To().Hex(),
 						CallData: common.Bytes2Hex(txn.Data()),
@@ -87,7 +86,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 					}),
 				}
 			})
-			commands.PrintAsJSON(out)
+			PrintAsJSON(out)
 		} else {
 			for i, txn := range txns {
 				color.Green("transaction(%d): %s", i, txn.Hash().Hex())
