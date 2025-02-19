@@ -35,7 +35,9 @@ func FracMul(a *big.Int, x *big.Int, y *big.Int) *big.Int {
 }
 
 func executionWithdrawalAddress(withdrawalCredentials []byte) *string {
-	if withdrawalCredentials[0] != 1 {
+	// after the pectra upgrade, eigenpods may be found at:
+	// 	- `0x1` or `0x2` prefixed withdrawal addresses
+	if withdrawalCredentials[0] != 1 && withdrawalCredentials[0] != 2 {
 		return nil
 	}
 	addr := common.Bytes2Hex(withdrawalCredentials[12:])
@@ -265,7 +267,7 @@ func FindStaleEigenpods(ctx context.Context, eth *ethclient.Client, nodeUrl stri
 		if !v.Validator.Slashed {
 			return false // we only care about slashed validators.
 		}
-		if v.Validator.WithdrawalCredentials[0] != 1 {
+		if v.Validator.WithdrawalCredentials[0] != 1 && v.Validator.WithdrawalCredentials[0] != 2 {
 			return false // not an execution withdrawal address
 		}
 		return true

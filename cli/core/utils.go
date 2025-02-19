@@ -274,7 +274,7 @@ func FindAllValidatorsForEigenpod(eigenpodAddress string, beaconState *spec.Vers
 	maxValidators := uint64(len(allValidators))
 	for i = 0; i < maxValidators; i++ {
 		validator := allValidators[i]
-		if validator == nil || validator.WithdrawalCredentials[0] != 1 { // withdrawalCredentials _need_ their first byte set to 1 to withdraw to execution layer.
+		if validator == nil || (validator.WithdrawalCredentials[0] != 1 && validator.WithdrawalCredentials[0] != 2) { // withdrawalCredentials _need_ their first byte set to 1 or 2 to withdraw to an eigenpod on the execution layer.
 			continue
 		}
 		// we check that the last 20 bytes of expectedCredentials matches validatorCredentials.
