@@ -7,7 +7,7 @@ toolchain go1.22.4
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.1.0-testnet.0.20250219143349-7a05fa397d3d
 	github.com/attestantio/go-eth2-client v0.24.0
-	github.com/ethereum/go-ethereum v1.14.9
+	github.com/ethereum/go-ethereum v1.14.13
 	github.com/fatih/color v1.18.0
 	github.com/ferranbt/fastssz v0.1.4
 	github.com/hashicorp/golang-lru/v2 v2.0.7
@@ -25,7 +25,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.14.3 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/consensys/bavard v0.1.16 // indirect
 	github.com/consensys/gnark-crypto v0.14.0 // indirect
@@ -76,7 +75,6 @@ require (
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
