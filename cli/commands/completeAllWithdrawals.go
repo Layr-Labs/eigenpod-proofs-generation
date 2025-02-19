@@ -11,6 +11,7 @@ import (
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IDelegationManager"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -43,35 +44,35 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	isSimulation := args.EstimateGas
 
 	eth, err := ethclient.DialContext(ctx, args.EthNode)
-	core.PanicOnError("failed to reach eth node", err)
+	utils.PanicOnError("failed to reach eth node", err)
 
 	chainId, err := eth.ChainID(ctx)
-	core.PanicOnError("failed to load chainId", err)
+	utils.PanicOnError("failed to load chainId", err)
 
-	acc, err := core.PrepareAccount(&args.Sender, chainId, isSimulation)
-	core.PanicOnError("failed to parse private key", err)
+	acc, err := utils.PrepareAccount(&args.Sender, chainId, isSimulation)
+	utils.PanicOnError("failed to parse private key", err)
 
 	curBlockNumber, err := eth.BlockNumber(ctx)
-	core.PanicOnError("failed to load current block number", err)
+	utils.PanicOnError("failed to load current block number", err)
 
 	pod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenPod), eth)
-	core.PanicOnError("failed to reach eigenpod", err)
+	utils.PanicOnError("failed to reach eigenpod", err)
 
 	reg, err := pod.WithdrawableRestakedExecutionLayerGwei(nil)
-	core.PanicOnError("failed to fetch REG", err)
-	rew := core.GweiToWei(new(big.Float).SetUint64(reg))
+	utils.PanicOnError("failed to fetch REG", err)
+	rew := utils.GweiToWei(new(big.Float).SetUint64(reg))
 
 	podOwner, err := pod.PodOwner(nil)
-	core.PanicOnError("failed to read podOwner", err)
+	utils.PanicOnError("failed to read podOwner", err)
 
 	delegationManager, err := IDelegationManager.NewIDelegationManager(DelegationManager(chainId), eth)
-	core.PanicOnError("failed to reach delegation manager", err)
+	utils.PanicOnError("failed to reach delegation manager", err)
 
 	minDelay, err := delegationManager.MinWithdrawalDelayBlocks(nil)
-	core.PanicOnError("failed to read MinWithdrawalDelayBlocks", err)
+	utils.PanicOnError("failed to read MinWithdrawalDelayBlocks", err)
 
 	queuedWithdrawals, err := delegationManager.GetQueuedWithdrawals(nil, podOwner)
-	core.PanicOnError("failed to read queuedWithdrawals", err)
+	utils.PanicOnError("failed to read queuedWithdrawals", err)
 
 	eligibleWithdrawals := lo.Map(queuedWithdrawals.Withdrawals, func(withdrawal IDelegationManager.IDelegationManagerTypesWithdrawal, index int) *IDelegationManager.IDelegationManagerTypesWithdrawal {
 		isBeaconWithdrawal := len(withdrawal.Strategies) == 1 && withdrawal.Strategies[0].Cmp(core.BeaconStrategy()) == 0
@@ -128,10 +129,10 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 
 	fmt.Printf("Your podOwner(%s) has %d withdrawal(s) that can be completed right now.\n", podOwner.Hex(), len(affordedWithdrawals))
 	runningSumWeiInt, _ := runningSumWei.Int(nil)
-	fmt.Printf("Total ETH on all withdrawals: %sETH\n", core.GweiToEther(core.WeiToGwei(runningSumWeiInt)).String())
+	fmt.Printf("Total ETH on all withdrawals: %sETH\n", utils.GweiToEther(utils.WeiToGwei(runningSumWeiInt)).String())
 
 	if !isSimulation {
-		core.PanicIfNoConsent("Would you like to continue?")
+		utils.PanicIfNoConsent("Would you like to continue?")
 	} else {
 		color.Yellow("THIS IS A SIMULATION. No transaction will be recorded onchain.\n")
 	}
@@ -149,15 +150,15 @@ func CompleteAllWithdrawalsCommand(args TCompleteWithdrawalArgs) error {
 	})
 
 	txn, err := delegationManager.CompleteQueuedWithdrawals(acc.TransactionOptions, withdrawals, tokens, receiveAsTokens)
-	core.PanicOnError("CompleteQueuedWithdrawals failed.", err)
+	utils.PanicOnError("CompleteQueuedWithdrawals failed.", err)
 
 	if !isSimulation {
 		_, err := bind.WaitMined(ctx, eth, txn)
-		core.PanicOnError("waitMined failed", err)
+		utils.PanicOnError("waitMined failed", err)
 
 		color.Green("%s\n", txn.Hash().Hex())
 	} else {
-		printAsJSON(Transaction{
+		PrintAsJSON(Transaction{
 			Type:     "complete-withdrawals",
 			To:       txn.To().Hex(),
 			CallData: common.Bytes2Hex(txn.Data()),

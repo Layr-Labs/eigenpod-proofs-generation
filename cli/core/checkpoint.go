@@ -11,6 +11,7 @@ import (
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,9 +22,9 @@ import (
 )
 
 func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.VerifyCheckpointProofsCallParams, eth *ethclient.Client, batchSize uint64, noPrompt bool, noSend bool, verbose bool) ([]*types.Transaction, error) {
-	tracing := GetContextTracingCallbacks(ctx)
+	tracing := utils.GetContextTracingCallbacks(ctx)
 
-	allProofChunks := chunk(proof.BalanceProofs, batchSize)
+	allProofChunks := utils.Chunk(proof.BalanceProofs, batchSize)
 	transactions := []*types.Transaction{}
 	if verbose {
 		color.Green("calling EigenPod.VerifyCheckpointProofs() (using %d txn(s), max(%d) proofs per txn)", len(allProofChunks), batchSize)
@@ -68,9 +69,9 @@ func SubmitCheckpointProof(ctx context.Context, owner, eigenpodAddress string, c
 }
 
 func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, proof *eigenpodproofs.ValidatorBalancesRootProof, balanceProofs []*eigenpodproofs.BalanceProof, eth *ethclient.Client, noSend bool, verbose bool) (*types.Transaction, error) {
-	tracing := GetContextTracingCallbacks(ctx)
+	tracing := utils.GetContextTracingCallbacks(ctx)
 
-	ownerAccount, err := PrepareAccount(&owner, chainId, noSend)
+	ownerAccount, err := utils.PrepareAccount(&owner, chainId, noSend)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func SubmitCheckpointProofBatch(ctx context.Context, owner, eigenpodAddress stri
 			BalanceContainerRoot: proof.ValidatorBalancesRoot,
 			Proof:                proof.Proof.ToByteSlice(),
 		},
-		CastBalanceProofs(balanceProofs),
+		utils.CastBalanceProofs(balanceProofs),
 	)
 	tracing.OnEndSection()
 	if err != nil {
@@ -124,18 +125,18 @@ func asJSON(obj interface{}) string {
 	return string(bytes)
 }
 
-func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, verbose bool) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
-	tracing := GetContextTracingCallbacks(ctx)
+func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient utils.BeaconClient, verbose bool) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
+	tracing := utils.GetContextTracingCallbacks(ctx)
 
 	tracing.OnStartSection("GetCurrentCheckpoint", map[string]string{})
-	currentCheckpoint, err := GetCurrentCheckpoint(eigenpodAddress, eth)
+	currentCheckpoint, err := utils.GetCurrentCheckpoint(eigenpodAddress, eth)
 	if err != nil {
 		return nil, err
 	}
 	tracing.OnEndSection()
 
 	tracing.OnStartSection("GetCurrentCheckpointBlockRoot", map[string]string{})
-	blockRoot, err := GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
+	blockRoot, err := utils.GetCurrentCheckpointBlockRoot(eigenpodAddress, eth)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch last checkpoint: %w", err)
 	}
@@ -145,7 +146,7 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 	tracing.OnEndSection()
 
 	rootBytes := *blockRoot
-	if AllZero(rootBytes[:]) {
+	if utils.AllZero(rootBytes[:]) {
 		return nil, fmt.Errorf("no checkpoint active. Are you sure you started a checkpoint?")
 	}
 
@@ -173,11 +174,11 @@ func GenerateCheckpointProof(ctx context.Context, eigenpodAddress string, eth *e
 }
 
 func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string, beaconState *spec.VersionedBeaconState, header *v1.BeaconBlockHeader, eth *ethclient.Client, currentCheckpointTimestamp uint64, proofs *eigenpodproofs.EigenPodProofs, verbose bool) (*eigenpodproofs.VerifyCheckpointProofsCallParams, error) {
-	tracing := GetContextTracingCallbacks(ctx)
+	tracing := utils.GetContextTracingCallbacks(ctx)
 
 	// filter through the beaconState's validators, and select only ones that have withdrawal address set to `eigenpod`.
 	tracing.OnStartSection("FindAllValidatorsForEigenpod", map[string]string{})
-	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	allValidators, err := utils.FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, err
 	}
@@ -187,13 +188,13 @@ func GenerateCheckpointProofForState(ctx context.Context, eigenpodAddress string
 		color.Yellow("You have a total of %d validators pointed to this pod.", len(allValidators))
 	}
 
-	allValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidators)
+	allValidatorsWithInfo, err := utils.FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidators)
 	if err != nil {
 		return nil, err
 	}
 
 	tracing.OnStartSection("SelectCheckpointableValidators", map[string]string{})
-	checkpointValidators, err := SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfo, currentCheckpointTimestamp)
+	checkpointValidators, err := utils.SelectCheckpointableValidators(eth, eigenpodAddress, allValidatorsWithInfo, currentCheckpointTimestamp)
 	if err != nil {
 		return nil, err
 	}

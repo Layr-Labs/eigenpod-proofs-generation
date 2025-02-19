@@ -7,10 +7,11 @@ import (
 	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
+	lo "github.com/samber/lo"
 )
 
 type TCredentialCommandArgs struct {
@@ -37,8 +38,8 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 	isGasEstimate := args.SimulateTransaction && args.Sender != ""
 	isVerbose := (!args.UseJSON && !args.SimulateTransaction) || args.Verbose
 
-	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
-	core.PanicOnError("failed to reach ethereum clients", err)
+	eth, beaconClient, chainId, err := utils.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
+	utils.PanicOnError("failed to reach ethereum clients", err)
 
 	var specificValidatorIndex *big.Int = nil
 	if args.SpecificValidator != math.MaxUint64 && args.SpecificValidator != 0 {
@@ -51,13 +52,13 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 	validatorProofs, oracleBeaconTimestamp, err := core.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, specificValidatorIndex, isVerbose)
 
 	if err != nil || validatorProofs == nil {
-		core.PanicOnError("Failed to generate validator proof", err)
-		core.Panic("no inactive validators")
+		utils.PanicOnError("Failed to generate validator proof", err)
+		utils.Panic("no inactive validators")
 	}
 
 	if len(args.Sender) != 0 || args.SimulateTransaction {
 		txns, indices, err := core.SubmitValidatorProof(ctx, args.Sender, args.EigenpodAddress, chainId, eth, args.BatchSize, validatorProofs, oracleBeaconTimestamp, args.NoPrompt, args.SimulateTransaction, isVerbose)
-		core.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
+		utils.PanicOnError(fmt.Sprintf("failed to %s validator proof", func() string {
 			if args.SimulateTransaction {
 				return "simulate"
 			} else {
@@ -66,7 +67,7 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 		}()), err)
 
 		if args.SimulateTransaction {
-			out := utils.Map(txns, func(txn *types.Transaction, _ uint64) CredentialProofTransaction {
+			out := lo.Map(txns, func(txn *types.Transaction, _ int) CredentialProofTransaction {
 				gas := txn.Gas()
 				return CredentialProofTransaction{
 					Transaction: Transaction{
@@ -80,12 +81,12 @@ func CredentialsCommand(args TCredentialCommandArgs) error {
 							return nil
 						}(),
 					},
-					ValidatorIndices: utils.Map(utils.Flatten(indices), func(index *big.Int, _ uint64) uint64 {
+					ValidatorIndices: lo.Map(lo.Flatten(indices), func(index *big.Int, _ int) uint64 {
 						return index.Uint64()
 					}),
 				}
 			})
-			printAsJSON(out)
+			PrintAsJSON(out)
 		} else {
 			for i, txn := range txns {
 				color.Green("transaction(%d): %s", i, txn.Hash().Hex())
