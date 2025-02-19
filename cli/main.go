@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands/prepectra"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	cli "github.com/urfave/cli/v2"
 )
@@ -50,7 +51,7 @@ func main() {
 					},
 				},
 				Action: func(_ *cli.Context) error {
-					return commands.FindStalePodsCommand(commands.TFindStalePodsCommandArgs{
+					return prepectra.FindStalePodsCommand(prepectra.TFindStalePodsCommandArgs{
 						EthNode:    node,
 						BeaconNode: beacon,
 						Verbose:    verbose,
@@ -150,7 +151,7 @@ func main() {
 					},
 				},
 				Action: func(_ *cli.Context) error {
-					return commands.CheckpointCommand(commands.TCheckpointCommandArgs{
+					return prepectra.CheckpointCommand(prepectra.TCheckpointCommandArgs{
 						DisableColor:        disableColor,
 						NoPrompt:            noPrompt,
 						SimulateTransaction: sender == "" || estimateGas,
@@ -182,7 +183,7 @@ func main() {
 					},
 				},
 				Action: func(_ *cli.Context) error {
-					return commands.CredentialsCommand(commands.TCredentialCommandArgs{
+					return prepectra.CredentialsCommand(prepectra.TCredentialCommandArgs{
 						EigenpodAddress:     eigenpodAddress,
 						DisableColor:        disableColor,
 						UseJSON:             useJSON,

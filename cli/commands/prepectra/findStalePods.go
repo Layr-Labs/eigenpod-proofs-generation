@@ -1,10 +1,12 @@
-package commands
+package prepectra
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/fatih/color"
 )
 
@@ -17,14 +19,14 @@ type TFindStalePodsCommandArgs struct {
 
 func FindStalePodsCommand(args TFindStalePodsCommandArgs) error {
 	ctx := context.Background()
-	eth, beacon, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode /* verbose */, args.Verbose)
-	core.PanicOnError("failed to dial clients", err)
+	eth, beacon, chainId, err := utils.GetClients(ctx, args.EthNode, args.BeaconNode /* verbose */, args.Verbose)
+	utils.PanicOnError("failed to dial clients", err)
 
 	results, err := core.FindStaleEigenpods(ctx, eth, args.EthNode, beacon, chainId, args.Verbose, args.Tolerance)
-	core.PanicOnError("failed to find stale eigenpods", err)
+	utils.PanicOnError("failed to find stale eigenpods", err)
 
 	if !args.Verbose {
-		printAsJSON(results)
+		commands.PrintAsJSON(results)
 		return nil
 	}
 

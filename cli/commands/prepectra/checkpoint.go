@@ -1,16 +1,18 @@
-package commands
+package prepectra
 
 import (
 	"context"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/commands"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/prepectra"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
+	lo "github.com/samber/lo"
 )
 
 type TCheckpointCommandArgs struct {
@@ -36,23 +38,23 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 	isGasEstimate := args.SimulateTransaction && args.Sender != ""
 	isVerbose := !args.SimulateTransaction || args.Verbose
 
-	eth, beaconClient, chainId, err := core.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
-	core.PanicOnError("failed to reach ethereum clients", err)
+	eth, beaconClient, chainId, err := utils.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
+	utils.PanicOnError("failed to reach ethereum clients", err)
 
-	currentCheckpoint, err := core.GetCurrentCheckpoint(args.EigenpodAddress, eth)
-	core.PanicOnError("failed to load checkpoint", err)
+	currentCheckpoint, err := utils.GetCurrentCheckpoint(args.EigenpodAddress, eth)
+	utils.PanicOnError("failed to load checkpoint", err)
 
 	eigenpod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
-	core.PanicOnError("failed to connect to eigenpod", err)
+	utils.PanicOnError("failed to connect to eigenpod", err)
 
 	if currentCheckpoint == 0 {
 		if len(args.Sender) > 0 || args.SimulateTransaction {
 			if !args.NoPrompt && !args.SimulateTransaction {
-				core.PanicIfNoConsent(core.StartCheckpointProofConsent())
+				utils.PanicIfNoConsent(utils.StartCheckpointProofConsent())
 			}
 
-			txn, err := core.StartCheckpoint(ctx, args.EigenpodAddress, args.Sender, chainId, eth, args.ForceCheckpoint, args.SimulateTransaction)
-			core.PanicOnError("failed to start checkpoint", err)
+			txn, err := utils.StartCheckpoint(ctx, args.EigenpodAddress, args.Sender, chainId, eth, args.ForceCheckpoint, args.SimulateTransaction)
+			utils.PanicOnError("failed to start checkpoint", err)
 
 			if !args.SimulateTransaction {
 				color.Green("starting checkpoint: %s.. (waiting for txn to be mined)", txn.Hash().Hex())
@@ -60,7 +62,7 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 				color.Green("started checkpoint! txn: %s", txn.Hash().Hex())
 			} else {
 				gas := txn.Gas()
-				printAsJSON([]Transaction{
+				commands.PrintAsJSON([]commands.Transaction{
 					{
 						Type:     "checkpoint_start",
 						To:       txn.To().Hex(),
@@ -78,11 +80,11 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 			}
 
 			newCheckpoint, err := eigenpod.CurrentCheckpointTimestamp(nil)
-			core.PanicOnError("failed to fetch current checkpoint", err)
+			utils.PanicOnError("failed to fetch current checkpoint", err)
 
 			currentCheckpoint = newCheckpoint
 		} else {
-			core.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
+			utils.PanicOnError("no checkpoint active and no private key provided to start one", errors.New("no checkpoint"))
 		}
 	}
 
@@ -90,25 +92,25 @@ func CheckpointCommand(args TCheckpointCommandArgs) error {
 		color.Green("pod has active checkpoint! checkpoint timestamp: %d", currentCheckpoint)
 	}
 
-	proof, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, isVerbose)
-	core.PanicOnError("failed to generate checkpoint proof", err)
+	proof, err := prepectra.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beaconClient, isVerbose)
+	utils.PanicOnError("failed to generate checkpoint proof", err)
 
-	txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction, args.Verbose)
+	txns, err := prepectra.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proof, eth, args.BatchSize, args.NoPrompt, args.SimulateTransaction, args.Verbose)
 	if args.SimulateTransaction {
-		printableTxns := utils.Map(txns, func(txn *types.Transaction, _ uint64) Transaction {
-			return Transaction{
+		printableTxns := lo.Map(txns, func(txn *types.Transaction, _ int) commands.Transaction {
+			return commands.Transaction{
 				To:       txn.To().Hex(),
 				CallData: common.Bytes2Hex(txn.Data()),
 				Type:     "checkpoint_proof",
 			}
 		})
-		printAsJSON(printableTxns)
+		commands.PrintAsJSON(printableTxns)
 	} else {
 		for i, txn := range txns {
 			color.Green("transaction(%d): %s", i, txn.Hash().Hex())
 		}
 	}
-	core.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
+	utils.PanicOnError("an error occurred while submitting your checkpoint proofs", err)
 
 	return nil
 }

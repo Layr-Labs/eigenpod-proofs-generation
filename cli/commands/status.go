@@ -9,7 +9,8 @@ import (
 	"time"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
+	cliutils "github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
 	"github.com/fatih/color"
 )
 
@@ -30,14 +31,14 @@ func StatusCommand(args TStatusArgs) error {
 
 	isVerbose := !args.UseJSON
 
-	eth, beaconClient, _, err := core.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
-	core.PanicOnError("failed to load ethereum clients", err)
+	eth, beaconClient, _, err := utils.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
+	utils.PanicOnError("failed to load ethereum clients", err)
 
 	status := core.GetStatus(ctx, args.EigenpodAddress, eth, beaconClient)
 
 	if args.UseJSON {
 		bytes, err := json.MarshalIndent(status, "", "      ")
-		core.PanicOnError("failed to get status", err)
+		utils.PanicOnError("failed to get status", err)
 		statusStr := string(bytes)
 		fmt.Println(statusStr)
 		return nil
@@ -55,7 +56,7 @@ func StatusCommand(args TStatusArgs) error {
 
 		// sort validators by status
 		awaitingActivationQueueValidators, inactiveValidators, activeValidators, withdrawnValidators :=
-			core.SortByStatus(status.Validators)
+			utils.SortByStatus(status.Validators)
 		var targetColor *color.Color
 
 		bold.Printf("Eigenpod validators:\n============\n")
@@ -74,7 +75,7 @@ func StatusCommand(args TStatusArgs) error {
 			for _, validator := range awaitingActivationQueueValidators {
 				publicKey := validator.PublicKey
 				if !isVerbose {
-					publicKey = utils.ShortenHex(publicKey)
+					publicKey = cliutils.ShortenHex(publicKey)
 				}
 
 				targetColor = color.New(color.FgHiRed)
@@ -97,7 +98,7 @@ func StatusCommand(args TStatusArgs) error {
 			for _, validator := range inactiveValidators {
 				publicKey := validator.PublicKey
 				if !isVerbose {
-					publicKey = utils.ShortenHex(publicKey)
+					publicKey = cliutils.ShortenHex(publicKey)
 				}
 
 				if validator.Slashed {
@@ -120,7 +121,7 @@ func StatusCommand(args TStatusArgs) error {
 			for _, validator := range activeValidators {
 				publicKey := validator.PublicKey
 				if !isVerbose {
-					publicKey = utils.ShortenHex(publicKey)
+					publicKey = cliutils.ShortenHex(publicKey)
 				}
 
 				if validator.Slashed {
@@ -143,7 +144,7 @@ func StatusCommand(args TStatusArgs) error {
 			for _, validator := range withdrawnValidators {
 				publicKey := validator.PublicKey
 				if !isVerbose {
-					publicKey = utils.ShortenHex(publicKey)
+					publicKey = cliutils.ShortenHex(publicKey)
 				}
 
 				if validator.Slashed {
@@ -175,8 +176,8 @@ func StatusCommand(args TStatusArgs) error {
 				ylw.Printf("\tNote: pod does not have checkpointable native ETH. To checkpoint anyway, run `checkpoint` with the `--force` flag.\n")
 			}
 
-			bold.Printf("Batching %d proofs per txn, this will require:\n\t", utils.DEFAULT_BATCH_CHECKPOINT)
-			ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(utils.DEFAULT_BATCH_CHECKPOINT))))
+			bold.Printf("Batching %d proofs per txn, this will require:\n\t", cliutils.DEFAULT_BATCH_CHECKPOINT)
+			ital.Printf("- 1x startCheckpoint() transaction, and \n\t- %dx EigenPod.verifyCheckpointProofs() transaction(s)\n\n", int(math.Ceil(float64(status.NumberValidatorsToCheckpoint)/float64(cliutils.DEFAULT_BATCH_CHECKPOINT))))
 		}
 	}
 	return nil

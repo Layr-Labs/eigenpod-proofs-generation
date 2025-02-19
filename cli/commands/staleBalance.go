@@ -7,7 +7,8 @@ import (
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/prepectra"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fatih/color"
@@ -43,36 +44,36 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 
 	sentTxns := []TransactionDescription{}
 
-	eth, beacon, chainId, err := core.GetClients(ctx, args.EthNode, args.BeaconNode, args.Verbose)
-	core.PanicOnError("failed to get clients", err)
+	eth, beacon, chainId, err := utils.GetClients(ctx, args.EthNode, args.BeaconNode, args.Verbose)
+	utils.PanicOnError("failed to get clients", err)
 
 	validator, err := beacon.GetValidator(ctx, args.SlashedValidatorIndex)
-	core.PanicOnError("failed to fetch validator state", err)
+	utils.PanicOnError("failed to fetch validator state", err)
 
 	if !validator.Validator.Slashed {
-		core.Panic("Provided validator was not slashed.")
+		utils.Panic("Provided validator was not slashed.")
 		return nil
 	}
 
-	ownerAccount, err := core.PrepareAccount(&args.Sender, chainId, false /* noSend */)
-	core.PanicOnError("failed to parse sender PK", err)
+	ownerAccount, err := utils.PrepareAccount(&args.Sender, chainId, false /* noSend */)
+	utils.PanicOnError("failed to parse sender PK", err)
 
 	eigenpod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
-	core.PanicOnError("failed to reach eigenpod", err)
+	utils.PanicOnError("failed to reach eigenpod", err)
 
 	currentCheckpointTimestamp, err := eigenpod.CurrentCheckpointTimestamp(nil)
-	core.PanicOnError("failed to fetch any existing checkpoint info", err)
+	utils.PanicOnError("failed to fetch any existing checkpoint info", err)
 
 	if currentCheckpointTimestamp > 0 {
 		if !args.NoPrompt {
-			core.PanicIfNoConsent(fmt.Sprintf("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing. This will invoke `EigenPod.verifyCheckpointProofs()`, which will end the checkpoint. This may be expensive.", currentCheckpointTimestamp))
+			utils.PanicIfNoConsent(fmt.Sprintf("This eigenpod has an outstanding checkpoint (since %d). You must complete it before continuing. This will invoke `EigenPod.verifyCheckpointProofs()`, which will end the checkpoint. This may be expensive.", currentCheckpointTimestamp))
 		}
 
-		proofs, err := core.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon, args.Verbose)
-		core.PanicOnError("failed to generate checkpoint proofs", err)
+		proofs, err := prepectra.GenerateCheckpointProof(ctx, args.EigenpodAddress, eth, chainId, beacon, args.Verbose)
+		utils.PanicOnError("failed to generate checkpoint proofs", err)
 
-		txns, err := core.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proofs, eth, args.CheckpointBatchSize, args.NoPrompt, false /* noSend */, args.Verbose)
-		core.PanicOnError("failed to submit checkpoint proofs", err)
+		txns, err := prepectra.SubmitCheckpointProof(ctx, args.Sender, args.EigenpodAddress, chainId, proofs, eth, args.CheckpointBatchSize, args.NoPrompt, false /* noSend */, args.Verbose)
+		utils.PanicOnError("failed to submit checkpoint proofs", err)
 
 		for i, txn := range txns {
 			if args.Verbose {
@@ -83,11 +84,11 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 		}
 	}
 
-	proof, oracleBeaconTimesetamp, err := core.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(args.SlashedValidatorIndex), args.Verbose)
-	core.PanicOnError("failed to generate credential proof for slashed validator", err)
+	proof, oracleBeaconTimesetamp, err := prepectra.GenerateValidatorProof(ctx, args.EigenpodAddress, eth, chainId, beacon, new(big.Int).SetUint64(args.SlashedValidatorIndex), args.Verbose)
+	utils.PanicOnError("failed to generate credential proof for slashed validator", err)
 
 	if !args.NoPrompt {
-		core.PanicIfNoConsent("This will invoke `EigenPod.verifyStaleBalance()` on the given eigenpod, which will start a checkpoint. Once started, this checkpoint must be completed.")
+		utils.PanicIfNoConsent("This will invoke `EigenPod.verifyStaleBalance()` on the given eigenpod, which will start a checkpoint. Once started, this checkpoint must be completed.")
 	}
 
 	if args.Verbose {
@@ -106,9 +107,9 @@ func FixStaleBalance(args TFixStaleBalanceArgs) error {
 			Proof:           proof.ValidatorFieldsProofs[0].ToByteSlice(),
 		},
 	)
-	core.PanicOnError("failed to call verifyStaleBalance()", err)
+	utils.PanicOnError("failed to call verifyStaleBalance()", err)
 	sentTxns = append(sentTxns, TransactionDescription{Type: "verify_stale_balance", Hash: txn.Hash().Hex()})
 
-	printAsJSON(sentTxns)
+	PrintAsJSON(sentTxns)
 	return nil
 }

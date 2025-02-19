@@ -1,4 +1,4 @@
-package core
+package prepectra
 
 import (
 	"context"
@@ -8,9 +8,11 @@ import (
 	"os"
 	"strconv"
 
+	lo "github.com/samber/lo"
+
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	eigenpodproofs "github.com/Layr-Labs/eigenpod-proofs-generation"
-	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/ethereum/go-ethereum/common"
@@ -40,23 +42,23 @@ func LoadValidatorProofFromFile(path string) (*SerializableCredentialProof, erro
 }
 
 func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, chainId *big.Int, eth *ethclient.Client, batchSize uint64, proofs *eigenpodproofs.VerifyValidatorFieldsCallParams, oracleBeaconTimesetamp uint64, noPrompt bool, noSend bool, verbose bool) ([]*types.Transaction, [][]*big.Int, error) {
-	ownerAccount, err := PrepareAccount(&owner, chainId, noSend)
+	ownerAccount, err := utils.PrepareAccount(&owner, chainId, noSend)
 	if err != nil {
 		return nil, [][]*big.Int{}, err
 	}
-	PanicOnError("failed to parse private key", err)
+	utils.PanicOnError("failed to parse private key", err)
 
 	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(eigenpodAddress), eth)
 	if err != nil {
 		return nil, [][]*big.Int{}, err
 	}
 
-	indices := Uint64ArrayToBigIntArray(proofs.ValidatorIndices)
-	validatorIndicesChunks := chunk(indices, batchSize)
-	validatorProofsChunks := chunk(proofs.ValidatorFieldsProofs, batchSize)
-	validatorFieldsChunks := chunk(proofs.ValidatorFields, batchSize)
+	indices := utils.Uint64ArrayToBigIntArray(proofs.ValidatorIndices)
+	validatorIndicesChunks := utils.Chunk(indices, batchSize)
+	validatorProofsChunks := utils.Chunk(proofs.ValidatorFieldsProofs, batchSize)
+	validatorFieldsChunks := utils.Chunk(proofs.ValidatorFields, batchSize)
 	if !noPrompt && !noSend {
-		PanicIfNoConsent(SubmitCredentialsProofConsent(len(validatorFieldsChunks)))
+		utils.PanicIfNoConsent(utils.SubmitCredentialsProofConsent(len(validatorFieldsChunks)))
 	}
 
 	transactions := []*types.Transaction{}
@@ -82,7 +84,7 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 			pr := curValidatorProofs[i].ToByteSlice()
 			validatorFieldsProofs = append(validatorFieldsProofs, pr)
 		}
-		var curValidatorFields [][][32]byte = CastValidatorFields(validatorFieldsChunks[i])
+		var curValidatorFields [][][32]byte = utils.CastValidatorFields(validatorFieldsChunks[i])
 
 		if verbose {
 			fmt.Printf("Submitted chunk %d/%d -- waiting for transaction...: ", i+1, numChunks)
@@ -98,7 +100,7 @@ func SubmitValidatorProof(ctx context.Context, owner, eigenpodAddress string, ch
 	return transactions, validatorIndicesChunks, err
 }
 
-func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPod *EigenPod.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64, verbose bool) (*types.Transaction, error) {
+func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *utils.Owner, eigenPod *EigenPod.EigenPod, chainId *big.Int, eth *ethclient.Client, indices []*big.Int, validatorFields [][][32]byte, stateRootProofs *eigenpodproofs.StateRootProof, validatorFieldsProofs [][]byte, oracleBeaconTimesetamp uint64, verbose bool) (*types.Transaction, error) {
 	if verbose {
 		color.Green("submitting...")
 	}
@@ -121,7 +123,7 @@ func SubmitValidatorProofChunk(ctx context.Context, ownerAccount *Owner, eigenPo
  * Generates a .ProveValidatorContainers() proof for all eligible validators on the pod. If `validatorIndex` is set, it will only generate  a proof
  * against that validator, regardless of the validator's state.
  */
-func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient BeaconClient, validatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
+func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *ethclient.Client, chainId *big.Int, beaconClient utils.BeaconClient, validatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, uint64, error) {
 	latestBlock, err := eth.BlockByNumber(ctx, nil)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to load latest block: %w", err)
@@ -157,18 +159,18 @@ func GenerateValidatorProof(ctx context.Context, eigenpodAddress string, eth *et
 }
 
 func GenerateValidatorProofAtState(ctx context.Context, proofs *eigenpodproofs.EigenPodProofs, eigenpodAddress string, beaconState *spec.VersionedBeaconState, eth *ethclient.Client, chainId *big.Int, header *v1.BeaconBlockHeader, blockTimestamp uint64, forSpecificValidatorIndex *big.Int, verbose bool) (*eigenpodproofs.VerifyValidatorFieldsCallParams, error) {
-	allValidators, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
+	allValidators, err := utils.FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find validators: %w", err)
 	}
 
-	var awaitingCredentialValidators []ValidatorWithIndex
+	var awaitingCredentialValidators []utils.ValidatorWithIndex
 
 	if forSpecificValidatorIndex != nil {
 		// prove a specific validator
 		for _, v := range allValidators {
 			if v.Index == forSpecificValidatorIndex.Uint64() {
-				awaitingCredentialValidators = []ValidatorWithIndex{v}
+				awaitingCredentialValidators = []utils.ValidatorWithIndex{v}
 				break
 			}
 		}
@@ -177,18 +179,18 @@ func GenerateValidatorProofAtState(ctx context.Context, proofs *eigenpodproofs.E
 		}
 	} else {
 		// default behavior -- load any validators that are inactive / need a credential proof
-		allValidatorsWithInfo, err := FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidators)
+		allValidatorsWithInfo, err := utils.FetchMultipleOnchainValidatorInfo(ctx, eth, eigenpodAddress, allValidators)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load validator information: %s", err.Error())
 		}
 
-		_awaitingCredentialValidators, err := SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidatorsWithInfo)
+		_awaitingCredentialValidators, err := utils.SelectAwaitingCredentialValidators(eth, eigenpodAddress, allValidatorsWithInfo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to select awaiting credential validators: %s", err.Error())
 		}
 
-		awaitingCredentialValidators = utils.Map(_awaitingCredentialValidators, func(validator ValidatorWithOnchainInfo, index uint64) ValidatorWithIndex {
-			return ValidatorWithIndex{Index: validator.Index, Validator: validator.Validator}
+		awaitingCredentialValidators = lo.Map(_awaitingCredentialValidators, func(validator utils.ValidatorWithOnchainInfo, index int) utils.ValidatorWithIndex {
+			return utils.ValidatorWithIndex{Index: validator.Index, Validator: validator.Validator}
 		})
 	}
 
