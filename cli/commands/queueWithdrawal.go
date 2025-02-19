@@ -99,9 +99,9 @@ func QueueWithdrawalCommand(args TQueueWithdrawallArgs) error {
 	}
 	txn, err := dm.QueueWithdrawals(acc.TransactionOptions, []IDelegationManager.IDelegationManagerTypesQueuedWithdrawalParams{
 		{
-			Strategies:    []common.Address{core.BeaconStrategy()},
-			DepositShares: []*big.Int{depositShares},
-			Withdrawer:    podOwner,
+			Strategies:           []common.Address{core.BeaconStrategy()},
+			DepositShares:        []*big.Int{depositShares},
+			DeprecatedWithdrawer: podOwner,
 		},
 	})
 	utils.PanicOnError("failed to queue withdrawal", err)
