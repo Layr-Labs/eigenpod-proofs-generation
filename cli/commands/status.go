@@ -60,7 +60,7 @@ func StatusCommand(args TStatusArgs) error {
 		var targetColor *color.Color
 
 		bold.Printf("Eigenpod validators:\n============\n")
-		ital.Printf("Format: #ValidatorIndex (pubkey) [effective balance] [current balance]\n")
+		ital.Printf("Format: #ValidatorIndex (withdrawal prefix) (pubkey) [effective balance] [current balance]\n")
 
 		// print info on validators who are not yet in the activation queue
 		//
@@ -70,20 +70,11 @@ func StatusCommand(args TStatusArgs) error {
 		// if these validators do NOT have 32 ETH effective balance yet, the
 		// staker needs to deposit more ETH.
 		if len(awaitingActivationQueueValidators) != 0 {
+			targetColor = color.New(color.FgHiRed)
 			color.New(color.Bold, color.FgHiRed).Printf("- [AWAITING ACTIVATION QUEUE] - These validators have deposited, but either do not meet the minimum balance to be activated, or are awaiting activation:\n")
 
 			for _, validator := range awaitingActivationQueueValidators {
-				publicKey := validator.PublicKey
-				if !isVerbose {
-					publicKey = cliutils.ShortenHex(publicKey)
-				}
-
-				targetColor = color.New(color.FgHiRed)
-				if validator.Slashed {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				} else {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				}
+				printValidator(validator, targetColor, isVerbose)
 			}
 
 			fmt.Println()
@@ -95,17 +86,9 @@ func StatusCommand(args TStatusArgs) error {
 		if len(inactiveValidators) != 0 {
 			targetColor = color.New(color.FgHiYellow)
 			color.New(color.Bold, color.FgHiYellow).Printf("- [INACTIVE] - Run `credentials` to verify these %d validators' withdrawal credentials:\n", len(inactiveValidators))
-			for _, validator := range inactiveValidators {
-				publicKey := validator.PublicKey
-				if !isVerbose {
-					publicKey = cliutils.ShortenHex(publicKey)
-				}
 
-				if validator.Slashed {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				} else {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				}
+			for _, validator := range inactiveValidators {
+				printValidator(validator, targetColor, isVerbose)
 			}
 
 			fmt.Println()
@@ -115,20 +98,10 @@ func StatusCommand(args TStatusArgs) error {
 		// these validators can be checkpointed using the `checkpoint` command
 		if len(activeValidators) != 0 {
 			targetColor = color.New(color.FgGreen)
-
 			color.New(color.Bold, color.FgGreen).Printf("- [ACTIVE] - Run `checkpoint` to update these %d validators' balances:\n", len(activeValidators))
 
 			for _, validator := range activeValidators {
-				publicKey := validator.PublicKey
-				if !isVerbose {
-					publicKey = cliutils.ShortenHex(publicKey)
-				}
-
-				if validator.Slashed {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				} else {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				}
+				printValidator(validator, targetColor, isVerbose)
 			}
 
 			fmt.Println()
@@ -138,20 +111,10 @@ func StatusCommand(args TStatusArgs) error {
 		// no further action is required to manage these validators in the pod
 		if len(withdrawnValidators) != 0 {
 			targetColor = color.New(color.FgHiRed)
-
 			color.New(color.Bold, color.FgHiRed).Printf("- [WITHDRAWN] - %d validators:\n", len(withdrawnValidators))
 
 			for _, validator := range withdrawnValidators {
-				publicKey := validator.PublicKey
-				if !isVerbose {
-					publicKey = cliutils.ShortenHex(publicKey)
-				}
-
-				if validator.Slashed {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				} else {
-					targetColor.Printf("\t- #%d (%s) [%d] [%d]\n", validator.Index, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
-				}
+				printValidator(validator, targetColor, isVerbose)
 			}
 
 			fmt.Println()
@@ -181,4 +144,17 @@ func StatusCommand(args TStatusArgs) error {
 		}
 	}
 	return nil
+}
+
+func printValidator(validator utils.Validator, targetColor *color.Color, isVerbose bool) {
+	publicKey := validator.PublicKey
+	if !isVerbose {
+		publicKey = cliutils.ShortenHex(publicKey)
+	}
+
+	if validator.Slashed {
+		targetColor.Printf("\t- #%d (%#02x) (%s) [%d] [%d] (slashed on beacon chain)\n", validator.Index, validator.WithdrawalPrefix, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+	} else {
+		targetColor.Printf("\t- #%d (%#02x) (%s) [%d] [%d]\n", validator.Index, validator.WithdrawalPrefix, publicKey, validator.EffectiveBalance, validator.CurrentBalance)
+	}
 }

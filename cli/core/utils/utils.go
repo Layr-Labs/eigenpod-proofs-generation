@@ -38,6 +38,12 @@ const (
 	ValidatorStatusWithdrawn = 2
 )
 
+const (
+	BLSWithdrawalPrefix         = 0
+	ETH1WithdrawalPrefix        = 1
+	CompoundingWithdrawalPrefix = 2
+)
+
 type Checkpoint struct {
 	ProofsRemaining uint64
 	StartedAt       uint64
@@ -52,6 +58,7 @@ type Validator struct {
 	IsAwaitingWithdrawalCredentialProof bool
 	EffectiveBalance                    uint64
 	CurrentBalance                      uint64
+	WithdrawalPrefix                    uint8
 }
 
 func Panic(message string) {

@@ -120,6 +120,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			IsAwaitingWithdrawalCredentialProof: utils.IsAwaitingWithdrawalCredentialProof(validator.Info, validator.Validator),
 			EffectiveBalance:                    uint64(validator.Validator.EffectiveBalance),
 			CurrentBalance:                      uint64(allBeaconBalancesGwei[validator.Index]),
+			WithdrawalPrefix:                    validator.Validator.WithdrawalCredentials[0],
 		}
 	}
 
