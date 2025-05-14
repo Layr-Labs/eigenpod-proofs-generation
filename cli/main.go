@@ -16,6 +16,7 @@ var specificValidator uint64 = math.MaxUint64
 var estimateGas = false
 var slashedValidatorIndex uint64
 var amountWei uint64
+var verbose = false
 
 const DefaultHealthcheckTolerance = float64(5.0)
 
@@ -23,7 +24,6 @@ func main() {
 	var batchSize uint64
 	var forceCheckpoint = false
 	var disableColor = false
-	var verbose = false
 	var noPrompt = false
 	var tolerance = DefaultHealthcheckTolerance
 
@@ -40,6 +40,7 @@ func main() {
 				Usage:     "Locate stale pods, whose balances have deviated by more than 5% due to beacon slashing.",
 				UsageText: "./cli find-stale-pods <args>",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					ExecNodeFlag,
 					BeaconNodeFlag,
 					&cli.Float64Flag{
@@ -64,6 +65,7 @@ func main() {
 				Usage:     "Correct a stale balance on an eigenpod, which has been slashed on the beacon chain.",
 				UsageText: "./cli correct-stale-pod [FLAGS] <validatorIndex>",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					PodAddressFlag,
 					ExecNodeFlag,
 					BeaconNodeFlag,
@@ -95,6 +97,7 @@ func main() {
 				Usage:     "Assign a different address to be able to submit your proofs. You'll always be able to submit from your EigenPod owner PK.",
 				UsageText: "./cli assign-submitter [FLAGS] <0xsubmitter>",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					PodAddressFlag,
 					ExecNodeFlag,
 					Require(SenderPkFlag),
@@ -114,6 +117,7 @@ func main() {
 				Name:  "status",
 				Usage: "Checks the status of your eigenpod.",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					PodAddressFlag,
 					BeaconNodeFlag,
 					ExecNodeFlag,
@@ -135,6 +139,7 @@ func main() {
 				Aliases: []string{"cp"},
 				Usage:   "Generates a proof for use with EigenPod.verifyCheckpointProofs().",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					PodAddressFlag,
 					BeaconNodeFlag,
 					ExecNodeFlag,
@@ -169,6 +174,7 @@ func main() {
 				Aliases: []string{"cr", "creds"},
 				Usage:   "Generates a proof for use with EigenPod.verifyWithdrawalCredentials()",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					PodAddressFlag,
 					BeaconNodeFlag,
 					ExecNodeFlag,
@@ -202,6 +208,7 @@ func main() {
 				Args:  true,
 				Usage: "Completes all withdrawals queued on the podOwner, for which Native ETH is the sole strategy in the withdrawal. Attempts to execute a group of withdrawals whose sum does not exceed Pod.withdrawableRestakedExecutionLayerGwei() in value.",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					ExecNodeFlag,
 					PodAddressFlag,
 					SenderPkFlag,
@@ -221,6 +228,7 @@ func main() {
 				Args:  true,
 				Usage: "Queues a withdrawal for shares associated with the native ETH strategy. Queues a withdrawal whose size does not exceed Pod.withdrawableRestakedExecutionLayerGwei() in value.",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					ExecNodeFlag,
 					PodAddressFlag,
 					SenderPkFlag,
@@ -242,6 +250,7 @@ func main() {
 				Args:  true,
 				Usage: "Shows all pending withdrawals for the podOwner.",
 				Flags: []cli.Flag{
+					VerboseFlag,
 					ExecNodeFlag,
 					PodAddressFlag,
 				},
@@ -265,13 +274,6 @@ func main() {
 				Value:       false,
 				Usage:       "Disables prompts to approve any transactions occurring (e.g in CI).",
 				Destination: &noPrompt,
-			},
-			&cli.BoolFlag{
-				Name:        "verbose",
-				Aliases:     []string{"v"},
-				Value:       false,
-				Usage:       "Enable verbose output.",
-				Destination: &verbose,
 			},
 		},
 	}

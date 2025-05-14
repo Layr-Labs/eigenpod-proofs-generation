@@ -29,9 +29,16 @@ func StatusCommand(args TStatusArgs) error {
 		color.NoColor = true
 	}
 
-	isVerbose := !args.UseJSON
+	// "verbosity" in this case refers to validator info printouts.
+	// As long as we don't have UseJSON enabled, we keep logs enabled.
+	isVerbose := args.Verbose
+	enableLogs := true
+	if args.UseJSON {
+		isVerbose = false
+		enableLogs = false
+	}
 
-	eth, beaconClient, _, err := utils.GetClients(ctx, args.Node, args.BeaconNode, isVerbose)
+	eth, beaconClient, _, err := utils.GetClients(ctx, args.Node, args.BeaconNode, enableLogs)
 	utils.PanicOnError("failed to load ethereum clients", err)
 
 	status := core.GetStatus(ctx, args.EigenpodAddress, eth, beaconClient)

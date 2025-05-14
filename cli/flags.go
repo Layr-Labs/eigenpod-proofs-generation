@@ -68,6 +68,14 @@ var AmountWeiFlag = &cli.Uint64Flag{
 	Destination: &amountWei,
 }
 
+var VerboseFlag = &cli.BoolFlag{
+	Name:        "verbose",
+	Aliases:     []string{"v"},
+	Value:       false,
+	Usage:       "Enable verbose output.",
+	Destination: &verbose,
+}
+
 // Optional use for commands that support JSON output
 var PrintJSONFlag = &cli.BoolFlag{
 	Name:        "json",
