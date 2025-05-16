@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 )
@@ -18,6 +19,11 @@ type TransactionList = []Transaction
 type CredentialProofTransaction struct {
 	Transaction
 	ValidatorIndices []uint64 `json:"validator_indices"`
+}
+
+type PredeployRequestTransaction struct {
+	Transaction
+	Value *big.Int
 }
 
 func PrintAsJSON(txns any) {

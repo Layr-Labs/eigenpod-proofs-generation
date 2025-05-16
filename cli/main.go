@@ -17,19 +17,21 @@ var estimateGas = false
 var slashedValidatorIndex uint64
 var amountWei uint64
 var verbose = false
+var checkFee = false
+var feeOverestimateFactor = float64(1.5)
+var batchSize uint64
 
 const DefaultHealthcheckTolerance = float64(5.0)
 
 func main() {
-	var batchSize uint64
 	var forceCheckpoint = false
 	var disableColor = false
 	var noPrompt = false
 	var tolerance = DefaultHealthcheckTolerance
 
 	app := &cli.App{
-		Name:                   "Eigenlayer Proofs CLi",
-		HelpName:               "eigenproofs",
+		Name:                   "Eigenlayer Proofs CLI",
+		HelpName:               "./cli",
 		Usage:                  "Generates proofs to (1) checkpoint your validators, or (2) verify the withdrawal credentials of an inactive validator. By default, the unsigned transactions will be printed to stdout as JSON. If you want to sign and broadcast these automatically, pass `--sender <pk>`.",
 		EnableBashCompletion:   true,
 		UseShortOptionHandling: true,
@@ -180,6 +182,7 @@ func main() {
 					ExecNodeFlag,
 					SenderPkFlag,
 					EstimateGasFlag,
+					PrintJSONFlag,
 					BatchBySize(&batchSize, utils.DEFAULT_BATCH_CREDENTIALS),
 					&cli.Uint64Flag{
 						Name:        "validatorIndex",
@@ -201,6 +204,82 @@ func main() {
 						NoPrompt:            noPrompt,
 						Verbose:             verbose,
 					})
+				},
+			},
+			{
+				Name:    "consolidate",
+				Aliases: []string{"con"},
+				Usage:   "Consolidates eligible validators via EigenPod.requestConsolidation()",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "switch-to-compounding",
+						Aliases: []string{"switch"},
+						Usage:   "Specify a list of validators to switch from 0x01 to 0x02 withdrawal prefix.",
+						Flags: append(
+							ConsolidationFlags,
+							&cli.Uint64SliceFlag{
+								Name:     "validators",
+								Required: true,
+								Usage:    "The list of validators to switch from 0x01 to 0x02 withdrawal credentials",
+							},
+						),
+						Action: func(ctx *cli.Context) error {
+							return commands.ConsolidateSwitchCommand(commands.TConsolidateSwitchCommandArgs{
+								ConsolidateBaseCommandArgs: commands.ConsolidateBaseCommandArgs{
+									EigenpodAddress:       eigenpodAddress,
+									DisableColor:          disableColor,
+									UseJSON:               useJSON,
+									SimulateTransaction:   sender == "" || estimateGas,
+									Node:                  node,
+									BeaconNode:            beacon,
+									Sender:                sender,
+									BatchSize:             batchSize,
+									NoPrompt:              noPrompt,
+									Verbose:               verbose,
+									CheckFee:              checkFee,
+									FeeOverestimateFactor: feeOverestimateFactor,
+								},
+								Validators: ctx.Uint64Slice("validators"),
+							})
+						},
+					},
+					{
+						Name:  "source-to-target",
+						Usage: "Specify a list of validators to switch from 0x01 to 0x02 withdrawal prefix.",
+						Flags: append(
+							ConsolidationFlags,
+							&cli.Uint64Flag{
+								Name:     "target",
+								Usage:    "Specify the target validator for a consolidation",
+								Required: true,
+							},
+							&cli.Uint64SliceFlag{
+								Name:     "sources",
+								Usage:    "Specify the source validators for a consolidation",
+								Required: true,
+							},
+						),
+						Action: func(ctx *cli.Context) error {
+							return commands.ConsolidateToTargetCommand(commands.TConsolidateToTargetCommandArgs{
+								ConsolidateBaseCommandArgs: commands.ConsolidateBaseCommandArgs{
+									EigenpodAddress:       eigenpodAddress,
+									DisableColor:          disableColor,
+									UseJSON:               useJSON,
+									SimulateTransaction:   sender == "" || estimateGas,
+									Node:                  node,
+									BeaconNode:            beacon,
+									Sender:                sender,
+									BatchSize:             batchSize,
+									NoPrompt:              noPrompt,
+									Verbose:               verbose,
+									CheckFee:              checkFee,
+									FeeOverestimateFactor: feeOverestimateFactor,
+								},
+								TargetValidator:  ctx.Uint64("target"),
+								SourceValidators: ctx.Uint64Slice("sources"),
+							})
+						},
+					},
 				},
 			},
 			{

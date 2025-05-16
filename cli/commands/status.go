@@ -31,6 +31,7 @@ func StatusCommand(args TStatusArgs) error {
 
 	// "verbosity" in this case refers to validator info printouts.
 	// As long as we don't have UseJSON enabled, we keep logs enabled.
+	// TODO - we should move to a -v vs -vv vs -vvv system
 	isVerbose := args.Verbose
 	enableLogs := true
 	if args.UseJSON {
