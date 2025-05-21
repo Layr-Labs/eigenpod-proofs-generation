@@ -109,11 +109,6 @@ var ConsolidationFlags = []cli.Flag{
 	EstimateGasFlag,
 	PrintJSONFlag,
 	BatchBySize(&batchSize, utils.DEFAULT_BATCH_CONSOLIDATE),
-	&cli.BoolFlag{
-		Name:        "check-fee",
-		Usage:       "Query the EIP 7521 predeploy to get the current block's consolidation request fee",
-		Destination: &checkFee,
-	},
 	// &cli.BoolFlag{
 	// 	Name: "no-warn",
 	// 	Usage: "Turn off warnings for various consolidation failure states. By default, this command will prompt you if a consolidation might fail because of:\n" +
@@ -127,7 +122,36 @@ var ConsolidationFlags = []cli.Flag{
 	&cli.Float64Flag{
 		Name:        "fee-overestimate-factor",
 		Aliases:     []string{"overestimate", "over"},
-		Usage:       "Specify how much to overestimate the consolidation request fee by when sending. Overestimating can help ensure your request succeeds even if the request fee changes before your transaction is included.",
+		Usage:       "Specify how much to overestimate the predeploy request fee by when sending. Overestimating can help ensure your request succeeds even if the request fee changes before your transaction is included.",
+		Value:       feeOverestimateFactor,
+		Destination: &feeOverestimateFactor,
+	},
+}
+
+// Flags for each consolidation subcommand
+var RequestWithdrawalFlags = []cli.Flag{
+	VerboseFlag,
+	PodAddressFlag,
+	BeaconNodeFlag,
+	ExecNodeFlag,
+	SenderPkFlag,
+	EstimateGasFlag,
+	PrintJSONFlag,
+	BatchBySize(&batchSize, utils.DEFAULT_BATCH_WITHDRAWREQUEST),
+	// &cli.BoolFlag{
+	// 	Name: "no-warn",
+	// 	Usage: "Turn off warnings for various consolidation failure states. By default, this command will prompt you if a consolidation might fail because of:\n" +
+	// 		"* invalid switch request (source already has 0x02 credentials)\n" +
+	// 		"* conflicting consolidation already in progress\n" +
+	// 		"* conflicting withdrawal requests already in progress\n" +
+	// 		"* invalid consolidation source/target\n" +
+	// 		"* ... and more.", // TODO
+	// 	Destination: &noWarn,
+	// },
+	&cli.Float64Flag{
+		Name:        "fee-overestimate-factor",
+		Aliases:     []string{"overestimate", "over"},
+		Usage:       "Specify how much to overestimate the predeploy request fee by when sending. Overestimating can help ensure your request succeeds even if the request fee changes before your transaction is included.",
 		Value:       feeOverestimateFactor,
 		Destination: &feeOverestimateFactor,
 	},

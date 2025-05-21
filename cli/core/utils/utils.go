@@ -45,6 +45,9 @@ const (
 	CompoundingWithdrawalPrefix = 2
 )
 
+// Constants defined in predeploy EIPs:
+// - EIP-7521: https://eips.ethereum.org/EIPS/eip-7251#constants
+// - EIP-7002: https://eips.ethereum.org/EIPS/eip-7002#configuration
 var (
 	CONSOLIDATION_PREDEPLOY = common.HexToAddress("0x0000BBdDc7CE488642fb579F8B00f3a590007251")
 	WITHDRAWAL_PREDEPLOY    = common.HexToAddress("0x00000961Ef480Eb55e80D19ad83579A64c007002")
@@ -56,12 +59,14 @@ var (
 	)
 
 	// Consolidation constants
-	TARGET_CONSOLIDATION_REQUESTS_PER_BLOCK   = 1
 	MAX_CONSOLIDATION_REQUESTS_PER_BLOCK      = big.NewInt(2)
 	MIN_CONSOLIDATION_REQUEST_FEE             = big.NewInt(1)
 	CONSOLIDATION_REQUEST_FEE_UPDATE_FRACTION = big.NewInt(17)
 
 	// Withdrawal constants
+	MAX_WITHDRAWAL_REQUESTS_PER_BLOCK      = big.NewInt(16)
+	MIN_WITHDRAWAL_REQUEST_FEE             = big.NewInt(1)
+	WITHDRAWAL_REQUEST_FEE_UPDATE_FRACTION = big.NewInt(17)
 )
 
 type Checkpoint struct {
@@ -301,38 +306,23 @@ func GetBeaconHeadState(ctx context.Context, beaconClient BeaconClient) (*spec.V
 	return headState, nil
 }
 
-// Given a pod address, resolve a list of validator indices to validator infos
-// Errors if:
-// - input validators contains duplicate indices
-// - a passed in validator does not have withdrawal credentials pointed at the pod
-func GetEigenPodValidatorsFromIndex(eigenpodAddress string, validators []uint64, beaconState *spec.VersionedBeaconState) ([]ValidatorWithIndex, error) {
+// GetEigenPodValidatorsByIndex looks up all validators for an eigenpod and returns a map
+// from validator index to validator info
+func GetEigenPodValidatorsByIndex(
+	eigenpodAddress string,
+	beaconState *spec.VersionedBeaconState,
+) (map[uint64]*phase0.Validator, error) {
 	allValidatorsForEigenPod, err := FindAllValidatorsForEigenpod(eigenpodAddress, beaconState)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch validators for eigenpod: %w", err)
 	}
 
-	eigenpodValidators := make([]ValidatorWithIndex, 0)
-	seen := make(map[uint64]bool)
-	for _, vIndex := range validators {
-
-		if seen[vIndex] {
-			return nil, fmt.Errorf("duplicate validator index %d", vIndex)
-		}
-		seen[vIndex] = true
-
-		for _, eigenPodValidator := range allValidatorsForEigenPod {
-			if eigenPodValidator.Index == vIndex {
-				eigenpodValidators = append(eigenpodValidators, eigenPodValidator)
-				break
-			}
-		}
+	allValidatorsMap := make(map[uint64]*phase0.Validator)
+	for _, v := range allValidatorsForEigenPod {
+		allValidatorsMap[v.Index] = v.Validator
 	}
 
-	if len(validators) != len(eigenpodValidators) {
-		return nil, fmt.Errorf("not all input validators are pointed at pod")
-	}
-
-	return eigenpodValidators, nil
+	return allValidatorsMap, nil
 }
 
 func SortByStatus(validators map[string]Validator) ([]Validator, []Validator, []Validator, []Validator) {
@@ -825,6 +815,35 @@ func CurrentConsolidationFee(client *ethclient.Client) (*big.Int, error) {
 	return new(big.Int).SetBytes(result), nil
 }
 
+// CurrentWithdrawalFee queries the EIP-7002 predeploy to get the current per-request fee in wei
+func CurrentWithdrawalFee(client *ethclient.Client) (*big.Int, error) {
+	ctx := context.Background()
+
+	predeploy := newPredeploy(WITHDRAWAL_PREDEPLOY, client)
+
+	blockNum, err := client.BlockNumber(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting latest block number: %w", err)
+	}
+
+	msg := ethereum.CallMsg{
+		From: WITHDRAWAL_PREDEPLOY,
+		To:   &WITHDRAWAL_PREDEPLOY,
+		Data: []byte{},
+	}
+
+	result, err := predeploy.Caller.CallContract(ctx, msg, new(big.Int).SetUint64(blockNum))
+	if err != nil {
+		return nil, fmt.Errorf("error calling withdrawal predeploy: %w", err)
+	}
+
+	if len(result) != 32 {
+		return nil, fmt.Errorf("predeploy error: expected 32 byte result, got %d bytes", len(result))
+	}
+
+	return new(big.Int).SetBytes(result), nil
+}
+
 // GetExcessConsolidationRequests reads EIP-7521 predeploy storage slot 0 to get the number of excess
 // requests currently in the queue.
 func GetExcessConsolidationRequests(client *ethclient.Client) (*big.Int, error) {
@@ -839,7 +858,21 @@ func GetExcessConsolidationRequests(client *ethclient.Client) (*big.Int, error) 
 	return new(big.Int).SetBytes(result), nil
 }
 
-type ConsolidationFeeInfo struct {
+// GetExcessConsolidationRequests reads EIP-7002 predeploy storage slot 0 to get the number of excess
+// requests currently in the queue.
+func GetExcessWithdrawalRequests(client *ethclient.Client) (*big.Int, error) {
+	ctx := context.Background()
+
+	// Excess requests are at storage slot 0
+	result, err := client.StorageAt(ctx, WITHDRAWAL_PREDEPLOY, common.Hash{}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error reading storage: %w", err)
+	}
+
+	return new(big.Int).SetBytes(result), nil
+}
+
+type PredeployFeeInfo struct {
 	CurrentQueueSize *big.Int
 	FeePerRequest    *big.Int
 	TotalFee         *big.Int
@@ -854,14 +887,14 @@ type ConsolidationFeeInfo struct {
 func EstimateConsolidationFeePerChunk(
 	client *ethclient.Client,
 	requestChunks [][]EigenPod.IEigenPodTypesConsolidationRequest,
-) ([]*ConsolidationFeeInfo, error) {
+) ([]*PredeployFeeInfo, error) {
 	curExcess, err := GetExcessConsolidationRequests(client)
 	if err != nil {
 		return nil, fmt.Errorf("error getting excess requests from predeploy: %w", err)
 	}
 
 	// feesPerChunk := make([]*big.Int, 0, len(requestChunks))
-	chunkInfo := make([]*ConsolidationFeeInfo, 0, len(requestChunks))
+	chunkInfo := make([]*PredeployFeeInfo, 0, len(requestChunks))
 
 	for _, chunk := range requestChunks {
 		fee := fakeExponential(
@@ -875,7 +908,7 @@ func EstimateConsolidationFeePerChunk(
 			fee,
 		)
 
-		chunkInfo = append(chunkInfo, &ConsolidationFeeInfo{
+		chunkInfo = append(chunkInfo, &PredeployFeeInfo{
 			CurrentQueueSize: curExcess,
 			FeePerRequest:    fee,
 			TotalFee:         totalFee,
@@ -896,13 +929,63 @@ func EstimateConsolidationFeePerChunk(
 	return chunkInfo, nil
 }
 
+// EstimateWithdrawalFeePerChunk estimates the withdrawal fee required to submit multiple "chunks"
+// of withdrawal requests. This method assumes the requests are submitted in sequential blocks,
+// with the system address updating the fee between each block.
+//
+// The returned array is the "fee per request" for each chunk
+func EstimateWithdrawalFeePerChunk(
+	client *ethclient.Client,
+	requestChunks [][]EigenPod.IEigenPodTypesWithdrawalRequest,
+) ([]*PredeployFeeInfo, error) {
+	curExcess, err := GetExcessWithdrawalRequests(client)
+	if err != nil {
+		return nil, fmt.Errorf("error getting excess requests from predeploy: %w", err)
+	}
+
+	// feesPerChunk := make([]*big.Int, 0, len(requestChunks))
+	chunkInfo := make([]*PredeployFeeInfo, 0, len(requestChunks))
+
+	for _, chunk := range requestChunks {
+		fee := fakeExponential(
+			MIN_WITHDRAWAL_REQUEST_FEE,
+			curExcess,
+			WITHDRAWAL_REQUEST_FEE_UPDATE_FRACTION,
+		)
+
+		totalFee := new(big.Int).Mul(
+			big.NewInt(int64(len(chunk))),
+			fee,
+		)
+
+		chunkInfo = append(chunkInfo, &PredeployFeeInfo{
+			CurrentQueueSize: curExcess,
+			FeePerRequest:    fee,
+			TotalFee:         totalFee,
+			OverestimateFee:  totalFee,
+		})
+
+		// Simulate excess update across block boundary
+		// new_excess = max(0, curExcess + len(chunk) - MAX_DEQUEUE)
+		reqCount := big.NewInt(int64(len(chunk)))
+		curExcess.Add(curExcess, reqCount)
+		curExcess.Sub(curExcess, MAX_WITHDRAWAL_REQUESTS_PER_BLOCK)
+
+		if curExcess.Sign() == -1 {
+			curExcess.SetUint64(0)
+		}
+	}
+
+	return chunkInfo, nil
+}
+
 // GetConsolidationFeeInfoForRequest retrieves info on the current fees required
 // to submit consolidation requests.
 func GetConsolidationFeeInfoForRequest(
 	client *ethclient.Client,
 	request []EigenPod.IEigenPodTypesConsolidationRequest,
 	overestimateFactor float64,
-) (*ConsolidationFeeInfo, error) {
+) (*PredeployFeeInfo, error) {
 	if overestimateFactor == 0 {
 		overestimateFactor = 1
 	}
@@ -930,7 +1013,49 @@ func GetConsolidationFeeInfoForRequest(
 	overestimatedFee := new(big.Int)
 	overestimatedFeeFloat.Int(overestimatedFee) // rounds down
 
-	return &ConsolidationFeeInfo{
+	return &PredeployFeeInfo{
+		CurrentQueueSize: curExcess,
+		FeePerRequest:    curFee,
+		TotalFee:         totalFee,
+		OverestimateFee:  overestimatedFee,
+	}, nil
+}
+
+// GetWithdrawalFeeInfoForRequest retrieves info on the current fees required
+// to submit withdrawal requests.
+func GetWithdrawalFeeInfoForRequest(
+	client *ethclient.Client,
+	request []EigenPod.IEigenPodTypesWithdrawalRequest,
+	overestimateFactor float64,
+) (*PredeployFeeInfo, error) {
+	if overestimateFactor == 0 {
+		overestimateFactor = 1
+	}
+
+	curExcess, err := GetExcessWithdrawalRequests(client)
+	if err != nil {
+		return nil, fmt.Errorf("error getting excess requests from predeploy: %w", err)
+	}
+
+	curFee, err := CurrentWithdrawalFee(client)
+	if err != nil {
+		return nil, fmt.Errorf("error getting current withdrawal fee: %w", err)
+	}
+
+	totalFee := new(big.Int).Mul(
+		big.NewInt(int64(len(request))),
+		curFee,
+	)
+
+	overestimatedFeeFloat := new(big.Float).Mul(
+		new(big.Float).SetInt(totalFee),
+		big.NewFloat(overestimateFactor), // e.g., 1.5
+	)
+
+	overestimatedFee := new(big.Int)
+	overestimatedFeeFloat.Int(overestimatedFee) // rounds down
+
+	return &PredeployFeeInfo{
 		CurrentQueueSize: curExcess,
 		FeePerRequest:    curFee,
 		TotalFee:         totalFee,

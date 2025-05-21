@@ -3,19 +3,17 @@ package commands
 import (
 	"context"
 	"fmt"
-	"math/big"
 
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/EigenPod"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core"
 	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/core/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/fatih/color"
 	lo "github.com/samber/lo"
 )
 
-type ConsolidateBaseCommandArgs struct {
+type WithdrawalBaseCommandArgs struct {
 	EigenpodAddress string
 
 	DisableColor        bool
@@ -33,20 +31,20 @@ type ConsolidateBaseCommandArgs struct {
 	FeeOverestimateFactor float64
 }
 
-type TConsolidateSwitchCommandArgs struct {
-	ConsolidateBaseCommandArgs
+type TRequestFullExitCommandArgs struct {
+	WithdrawalBaseCommandArgs
 
 	Validators []uint64
 }
 
-type TConsolidateToTargetCommandArgs struct {
-	ConsolidateBaseCommandArgs
+type TRequestPartialWithdrawalCommandArgs struct {
+	WithdrawalBaseCommandArgs
 
-	TargetValidator  uint64
-	SourceValidators []uint64
+	Validators []uint64
+	AmtsGwei   []uint64
 }
 
-func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
+func RequestFullExitCommand(args TRequestFullExitCommandArgs) error {
 	ctx := context.Background()
 	if args.DisableColor {
 		color.NoColor = true
@@ -63,7 +61,7 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 	}
 
 	if len(args.Validators) == 0 {
-		return fmt.Errorf("usage: consolidate switch --validators <validatorIndexA>, <validatorIndexB>, ...")
+		return fmt.Errorf("usage: request-withdrawal full --validators <validatorIndexA>, <validatorIndexB>, ...")
 	}
 
 	eth, beaconClient, chainId, err := utils.GetClients(ctx, args.Node, args.BeaconNode, enableLogs)
@@ -75,20 +73,14 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 	eigenpodValidators, err := utils.GetEigenPodValidatorsByIndex(args.EigenpodAddress, headState)
 	utils.PanicOnError("failed to fetch validators for eigenpod", err)
 
-	// Form requests, filtering duplicates and validators that aren't pointed at the pod
-	requests := make([]EigenPod.IEigenPodTypesConsolidationRequest, 0)
-	seen := make(map[uint64]bool)
+	requests := make([]EigenPod.IEigenPodTypesWithdrawalRequest, 0)
 	for _, vIndex := range args.Validators {
 		if v, exists := eigenpodValidators[vIndex]; !exists {
 			return fmt.Errorf("validator index %d is not pointed at this eigenpod", vIndex)
-		} else if seen[vIndex] {
-			return fmt.Errorf("validator index %d is included twice in input args", vIndex)
 		} else {
-			seen[vIndex] = true
-
-			requests = append(requests, EigenPod.IEigenPodTypesConsolidationRequest{
-				SrcPubkey:    v.PublicKey[:],
-				TargetPubkey: v.PublicKey[:],
+			requests = append(requests, EigenPod.IEigenPodTypesWithdrawalRequest{
+				Pubkey:     v.PublicKey[:],
+				AmountGwei: 0,
 			})
 		}
 	}
@@ -97,8 +89,8 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 	txns := make([]*types.Transaction, 0)
 
 	for i, chunk := range requestChunks {
-		feeInfo, err := utils.GetConsolidationFeeInfoForRequest(eth, chunk, args.FeeOverestimateFactor)
-		utils.PanicOnError("error getting consolidation fee info", err)
+		feeInfo, err := utils.GetWithdrawalFeeInfoForRequest(eth, chunk, args.FeeOverestimateFactor)
+		utils.PanicOnError("error getting withdrawal fee info", err)
 
 		isSimulatedStr := ""
 		if args.SimulateTransaction {
@@ -110,7 +102,7 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 		// Prompt the user for consent.
 		// We prompt for individual chunks because the predeploy includes exponential fee growth depending
 		// on the size of the queue, and we want to make sure the user is aware of the rising fee.
-		utils.PanicIfNoConsent(utils.SubmitSwitchRequestConsent(
+		utils.PanicIfNoConsent(utils.SubmitFullExitRequestConsent(
 			len(chunk),
 			feeInfo.CurrentQueueSize,
 			toPrintableUnits(feeInfo.FeePerRequest),
@@ -123,7 +115,7 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 			color.Green("Submitting chunk %d/%d (msg.value: %s)", i+1, len(requestChunks), toPrintableUnits(feeInfo.OverestimateFee))
 		}
 
-		txn, err := core.SubmitConsolidationRequests(
+		txn, err := core.SubmitWithdrawalRequests(
 			ctx,
 			args.Sender,
 			args.EigenpodAddress,
@@ -138,11 +130,11 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 		// If submission fails, print any successful requests before exiting with the error message
 		if err != nil {
 			if len(txns) != 0 {
-				fmt.Println("Error submitting consolidation request. Printing successful requests:")
-				printConsolidateTxnsAsJSON(txns)
+				fmt.Println("Error submitting withdrawal request. Printing successful requests:")
+				printWithdrawalTxnsAsJSON(txns)
 			}
 
-			utils.PanicOnError("consolidation request submission failed", err)
+			utils.PanicOnError("withdrawal request submission failed", err)
 		} else {
 			if isVerbose {
 				color.Green("transaction %d/%d succeeded: %s", i+1, len(requestChunks), txn.Hash().Hex())
@@ -158,17 +150,17 @@ func ConsolidateSwitchCommand(args TConsolidateSwitchCommandArgs) error {
 
 	// If all submissions succeeded, print transactions
 	if args.SimulateTransaction {
-		printConsolidateTxnsAsJSON(txns)
+		printWithdrawalTxnsAsJSON(txns)
 	} else {
 		for i, txn := range txns {
-			color.Green("transaction(%d): %s", i, txn.Hash().Hex())
+			color.Green("transaction(%d): %s", i+1, txn.Hash().Hex())
 		}
 	}
 
 	return nil
 }
 
-func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
+func RequestPartialWithdrawalCommand(args TRequestPartialWithdrawalCommandArgs) error {
 	ctx := context.Background()
 	if args.DisableColor {
 		color.NoColor = true
@@ -184,8 +176,14 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 		enableLogs = false
 	}
 
-	if len(args.SourceValidators) == 0 {
-		return fmt.Errorf("usage: consolidate source-to-target --target <validatorIndexA> --sources <validatorIndexB>, <validatorIndexC>, ...")
+	if len(args.Validators) == 0 || len(args.Validators) != len(args.AmtsGwei) {
+		return fmt.Errorf("usage: request-withdrawal partial --validators <validatorIndexA>, <validatorIndexB> --amounts <amtGweiA>, <amtGweiB>")
+	}
+
+	for _, amtGwei := range args.AmtsGwei {
+		if amtGwei == 0 {
+			return fmt.Errorf("input contains full exit request (amtGwei == 0). Aborting; use full-exit for full exits.")
+		}
 	}
 
 	eth, beaconClient, chainId, err := utils.GetClients(ctx, args.Node, args.BeaconNode, enableLogs)
@@ -195,40 +193,16 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 	utils.PanicOnError("failed to fetch beacon chain head state", err)
 
 	eigenpodValidators, err := utils.GetEigenPodValidatorsByIndex(args.EigenpodAddress, headState)
-	utils.PanicOnError("failed to fetch source validators for eigenpod", err)
+	utils.PanicOnError("failed to fetch validators for eigenpod", err)
 
-	targetValidator, exists := eigenpodValidators[args.TargetValidator]
-	if !exists {
-		return fmt.Errorf("target validator (index %d) is not pointed at this eigenpod", args.TargetValidator)
-	}
-
-	eigenPod, err := EigenPod.NewEigenPod(common.HexToAddress(args.EigenpodAddress), eth)
-	utils.PanicOnError("failed to locate eigenpod. is your address correct?", err)
-
-	status, err := eigenPod.ValidatorStatus(nil, targetValidator.PublicKey[:])
-	utils.PanicOnError("failed to fetch target validator status", err)
-
-	// Target validator must be in ACTIVE state in pod (verified withdrawal credentials; not withdrawn)
-	if status == utils.ValidatorStatusInactive {
-		return fmt.Errorf("target validator must have verified withdrawal credentials and be in the ACTIVE status. got status: INACTIVE")
-	} else if status == utils.ValidatorStatusWithdrawn {
-		return fmt.Errorf("target validator must have verified withdrawal credentials and be in the ACTIVE status. got status: WITHDRAWN")
-	}
-
-	// Form requests, filtering duplicate source validators and validators that aren't pointed at the pod
-	requests := make([]EigenPod.IEigenPodTypesConsolidationRequest, 0)
-	seen := make(map[uint64]bool)
-	for _, vIndex := range args.SourceValidators {
+	requests := make([]EigenPod.IEigenPodTypesWithdrawalRequest, 0)
+	for i, vIndex := range args.Validators {
 		if v, exists := eigenpodValidators[vIndex]; !exists {
-			return fmt.Errorf("source validator (index %d) is not pointed at this eigenpod", vIndex)
-		} else if seen[vIndex] {
-			return fmt.Errorf("source validator (index %d) is included twice in input args", vIndex)
+			return fmt.Errorf("validator index %d is not pointed at this eigenpod", vIndex)
 		} else {
-			seen[vIndex] = true
-
-			requests = append(requests, EigenPod.IEigenPodTypesConsolidationRequest{
-				SrcPubkey:    v.PublicKey[:],
-				TargetPubkey: targetValidator.PublicKey[:],
+			requests = append(requests, EigenPod.IEigenPodTypesWithdrawalRequest{
+				Pubkey:     v.PublicKey[:],
+				AmountGwei: args.AmtsGwei[i],
 			})
 		}
 	}
@@ -237,8 +211,8 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 	txns := make([]*types.Transaction, 0)
 
 	for i, chunk := range requestChunks {
-		feeInfo, err := utils.GetConsolidationFeeInfoForRequest(eth, chunk, args.FeeOverestimateFactor)
-		utils.PanicOnError("error getting consolidation fee info", err)
+		feeInfo, err := utils.GetWithdrawalFeeInfoForRequest(eth, chunk, args.FeeOverestimateFactor)
+		utils.PanicOnError("error getting withdrawal fee info", err)
 
 		isSimulatedStr := ""
 		if args.SimulateTransaction {
@@ -250,14 +224,12 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 		// Prompt the user for consent.
 		// We prompt for individual chunks because the predeploy includes exponential fee growth depending
 		// on the size of the queue, and we want to make sure the user is aware of the rising fee.
-		utils.PanicIfNoConsent(utils.SubmitSourceToTargetRequestConsent(
+		utils.PanicIfNoConsent(utils.SubmitPartialExitRequestConsent(
 			len(chunk),
 			feeInfo.CurrentQueueSize,
 			toPrintableUnits(feeInfo.FeePerRequest),
 			toPrintableUnits(feeInfo.TotalFee),
 			toPrintableUnits(feeInfo.OverestimateFee),
-			args.TargetValidator,
-			len(args.SourceValidators),
 			isSimulatedStr,
 		))
 
@@ -265,7 +237,7 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 			color.Green("Submitting chunk %d/%d (msg.value: %s)", i+1, len(requestChunks), toPrintableUnits(feeInfo.OverestimateFee))
 		}
 
-		txn, err := core.SubmitConsolidationRequests(
+		txn, err := core.SubmitWithdrawalRequests(
 			ctx,
 			args.Sender,
 			args.EigenpodAddress,
@@ -280,11 +252,11 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 		// If submission fails, print any successful requests before exiting with the error message
 		if err != nil {
 			if len(txns) != 0 {
-				fmt.Println("Error submitting consolidation request. Printing successful requests:")
-				printConsolidateTxnsAsJSON(txns)
+				fmt.Println("Error submitting withdrawal request. Printing successful requests:")
+				printWithdrawalTxnsAsJSON(txns)
 			}
 
-			utils.PanicOnError("consolidation request submission failed", err)
+			utils.PanicOnError("withdrawal request submission failed", err)
 		} else {
 			if isVerbose {
 				color.Green("transaction %d/%d succeeded: %s", i+1, len(requestChunks), txn.Hash().Hex())
@@ -300,47 +272,24 @@ func ConsolidateToTargetCommand(args TConsolidateToTargetCommandArgs) error {
 
 	// If all submissions succeeded, print transactions
 	if args.SimulateTransaction {
-		printConsolidateTxnsAsJSON(txns)
+		printWithdrawalTxnsAsJSON(txns)
 	} else {
 		for i, txn := range txns {
-			color.Green("transaction(%d): %s", i, txn.Hash().Hex())
+			color.Green("transaction(%d): %s", i+1, txn.Hash().Hex())
 		}
 	}
 
 	return nil
 }
 
-// If the amount is greater than 0.0001 ETH, print as ETH
-// If amount is less than 100_000 Wei, print as Wei
-// Otherwise, print as Gwei
-func toPrintableUnits(weiAmt *big.Int) string {
-	printAsETHThreshhold := new(big.Int).Mul(
-		big.NewInt(100_000),
-		big.NewInt(params.GWei),
-	)
-
-	printAsWeiThreshhold := new(big.Int).Mul(
-		big.NewInt(100_000),
-		big.NewInt(params.Wei),
-	)
-
-	if weiAmt.Cmp(printAsETHThreshhold) > 0 {
-		return fmt.Sprintf("%f ETH", utils.IweiToEther(weiAmt))
-	} else if weiAmt.Cmp(printAsWeiThreshhold) < 0 {
-		return fmt.Sprintf("%d Wei", weiAmt)
-	} else {
-		return fmt.Sprintf("%f Gwei", utils.WeiToGwei(weiAmt))
-	}
-}
-
-func printConsolidateTxnsAsJSON(txns []*types.Transaction) {
+func printWithdrawalTxnsAsJSON(txns []*types.Transaction) {
 	printableTxns := lo.Map(txns, func(txn *types.Transaction, _ int) PredeployRequestTransaction {
 		gas := txn.Gas()
 		return PredeployRequestTransaction{
 			Transaction: Transaction{
 				To:              txn.To().Hex(),
 				CallData:        common.Bytes2Hex(txn.Data()),
-				Type:            "consolidation_request",
+				Type:            "withdrawal_request",
 				GasEstimateGwei: &gas,
 			},
 			Value: txn.Value(),

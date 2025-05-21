@@ -207,9 +207,8 @@ func main() {
 				},
 			},
 			{
-				Name:    "consolidate",
-				Aliases: []string{"con"},
-				Usage:   "Consolidates eligible validators via EigenPod.requestConsolidation()",
+				Name:  "consolidate",
+				Usage: "Consolidates eligible validators via EigenPod.requestConsolidation()",
 				Subcommands: []*cli.Command{
 					{
 						Name:    "switch-to-compounding",
@@ -277,6 +276,81 @@ func main() {
 								},
 								TargetValidator:  ctx.Uint64("target"),
 								SourceValidators: ctx.Uint64Slice("sources"),
+							})
+						},
+					},
+				},
+			},
+			{
+				Name:  "request-withdrawal",
+				Usage: "Request partial or full exits via EigenPod.requestWithdrawal()",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "full-exit",
+						Aliases: []string{"full"},
+						Usage:   "Specify a list of validators to fully withdraw from the beacon chain.",
+						Flags: append(
+							RequestWithdrawalFlags,
+							&cli.Uint64SliceFlag{
+								Name:     "validators",
+								Required: true,
+								Usage:    "The list of validators to exit from the beacon chain",
+							},
+						),
+						Action: func(ctx *cli.Context) error {
+							return commands.RequestFullExitCommand(commands.TRequestFullExitCommandArgs{
+								WithdrawalBaseCommandArgs: commands.WithdrawalBaseCommandArgs{
+									EigenpodAddress:       eigenpodAddress,
+									DisableColor:          disableColor,
+									UseJSON:               useJSON,
+									SimulateTransaction:   sender == "" || estimateGas,
+									Node:                  node,
+									BeaconNode:            beacon,
+									Sender:                sender,
+									BatchSize:             batchSize,
+									NoPrompt:              noPrompt,
+									Verbose:               verbose,
+									CheckFee:              checkFee,
+									FeeOverestimateFactor: feeOverestimateFactor,
+								},
+								Validators: ctx.Uint64Slice("validators"),
+							})
+						},
+					},
+					{
+						Name:  "partial",
+						Usage: "Specify a list of validators and gwei amounts to request beacon chain withdrawals for.",
+						Flags: append(
+							RequestWithdrawalFlags,
+							&cli.Uint64SliceFlag{
+								Name:     "validators",
+								Required: true,
+								Usage:    "The list of validators for which partial withdrawal requests will be submitted",
+							},
+							&cli.Uint64SliceFlag{
+								Name:     "amounts",
+								Required: true,
+								Usage:    "The amount (in gwei) for each partial withdrawal request",
+							},
+						),
+						Action: func(ctx *cli.Context) error {
+							return commands.RequestPartialWithdrawalCommand(commands.TRequestPartialWithdrawalCommandArgs{
+								WithdrawalBaseCommandArgs: commands.WithdrawalBaseCommandArgs{
+									EigenpodAddress:       eigenpodAddress,
+									DisableColor:          disableColor,
+									UseJSON:               useJSON,
+									SimulateTransaction:   sender == "" || estimateGas,
+									Node:                  node,
+									BeaconNode:            beacon,
+									Sender:                sender,
+									BatchSize:             batchSize,
+									NoPrompt:              noPrompt,
+									Verbose:               verbose,
+									CheckFee:              checkFee,
+									FeeOverestimateFactor: feeOverestimateFactor,
+								},
+								Validators: ctx.Uint64Slice("validators"),
+								AmtsGwei:   ctx.Uint64Slice("amounts"),
 							})
 						},
 					},
