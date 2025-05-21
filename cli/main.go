@@ -208,18 +208,18 @@ func main() {
 			},
 			{
 				Name:  "consolidate",
-				Usage: "Consolidates eligible validators via EigenPod.requestConsolidation()",
+				Usage: "(EIP-7521) Consolidates eligible validators via EigenPod.requestConsolidation()",
 				Subcommands: []*cli.Command{
 					{
 						Name:    "switch-to-compounding",
 						Aliases: []string{"switch"},
-						Usage:   "Specify a list of validators to switch from 0x01 to 0x02 withdrawal prefix.",
+						Usage:   "Specify a list of validator indices to switch from 0x01 to 0x02 withdrawal prefix.",
 						Flags: append(
 							ConsolidationFlags,
 							&cli.Uint64SliceFlag{
 								Name:     "validators",
 								Required: true,
-								Usage:    "The list of validators to switch from 0x01 to 0x02 withdrawal credentials",
+								Usage:    "[required] The list of validator indices to switch from 0x01 to 0x02 withdrawal credentials",
 							},
 						),
 						Action: func(ctx *cli.Context) error {
@@ -244,17 +244,17 @@ func main() {
 					},
 					{
 						Name:  "source-to-target",
-						Usage: "Specify a list of validators to switch from 0x01 to 0x02 withdrawal prefix.",
+						Usage: "Specify a target validator inbdex and a list of source validator indices to consolidate into the target.",
 						Flags: append(
 							ConsolidationFlags,
 							&cli.Uint64Flag{
 								Name:     "target",
-								Usage:    "Specify the target validator for a consolidation",
+								Usage:    "[required] Specify the target validator index for a consolidation",
 								Required: true,
 							},
 							&cli.Uint64SliceFlag{
 								Name:     "sources",
-								Usage:    "Specify the source validators for a consolidation",
+								Usage:    "[required] Specify the source validator indices for a consolidation",
 								Required: true,
 							},
 						),
@@ -283,18 +283,18 @@ func main() {
 			},
 			{
 				Name:  "request-withdrawal",
-				Usage: "Request partial or full exits via EigenPod.requestWithdrawal()",
+				Usage: "(EIP-7002) Request partial or full exits via EigenPod.requestWithdrawal()",
 				Subcommands: []*cli.Command{
 					{
 						Name:    "full-exit",
 						Aliases: []string{"full"},
-						Usage:   "Specify a list of validators to fully withdraw from the beacon chain.",
+						Usage:   "Specify a list of validator indices to fully withdraw from the beacon chain.",
 						Flags: append(
 							RequestWithdrawalFlags,
 							&cli.Uint64SliceFlag{
 								Name:     "validators",
 								Required: true,
-								Usage:    "The list of validators to exit from the beacon chain",
+								Usage:    "[required] The list of validator indices to exit from the beacon chain",
 							},
 						),
 						Action: func(ctx *cli.Context) error {
@@ -319,18 +319,18 @@ func main() {
 					},
 					{
 						Name:  "partial",
-						Usage: "Specify a list of validators and gwei amounts to request beacon chain withdrawals for.",
+						Usage: "Specify a list of validator indices and gwei amounts to request beacon chain withdrawals for.",
 						Flags: append(
 							RequestWithdrawalFlags,
 							&cli.Uint64SliceFlag{
 								Name:     "validators",
 								Required: true,
-								Usage:    "The list of validators for which partial withdrawal requests will be submitted",
+								Usage:    "[required] The list of validator indices for which partial withdrawal requests will be submitted",
 							},
 							&cli.Uint64SliceFlag{
 								Name:     "amounts",
 								Required: true,
-								Usage:    "The amount (in gwei) for each partial withdrawal request",
+								Usage:    "[required] The amount (in gwei) for each partial withdrawal request",
 							},
 						),
 						Action: func(ctx *cli.Context) error {
