@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.4
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v1.1.0-testnet.0.20250219143349-7a05fa397d3d
+	github.com/Layr-Labs/eigenlayer-contracts v1.4.1-testnet-holeksy.0.20250515141756-179e268ddbff
 	github.com/attestantio/go-eth2-client v0.24.0
 	github.com/ethereum/go-ethereum v1.14.9
 	github.com/fatih/color v1.18.0
@@ -76,7 +76,6 @@ require (
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect

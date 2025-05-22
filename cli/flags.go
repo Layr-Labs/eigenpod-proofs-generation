@@ -1,6 +1,9 @@
 package main
 
-import cli "github.com/urfave/cli/v2"
+import (
+	"github.com/Layr-Labs/eigenpod-proofs-generation/cli/utils"
+	cli "github.com/urfave/cli/v2"
+)
 
 // Required for commands that need an EigenPod's address
 var PodAddressFlag = &cli.StringFlag{
@@ -68,6 +71,14 @@ var AmountWeiFlag = &cli.Uint64Flag{
 	Destination: &amountWei,
 }
 
+var VerboseFlag = &cli.BoolFlag{
+	Name:        "verbose",
+	Aliases:     []string{"v"},
+	Value:       false,
+	Usage:       "Enable verbose output.",
+	Destination: &verbose,
+}
+
 // Optional use for commands that support JSON output
 var PrintJSONFlag = &cli.BoolFlag{
 	Name:        "json",
@@ -82,10 +93,68 @@ func BatchBySize(destination *uint64, defaultValue uint64) *cli.Uint64Flag {
 	return &cli.Uint64Flag{
 		Name:        "batch",
 		Value:       defaultValue,
-		Usage:       "Submit proofs in groups of size `batchSize`, to avoid gas limit.",
+		Usage:       "Submit proofs/requests in groups of size `batchSize`, to avoid gas limit.",
 		Required:    false,
 		Destination: destination,
 	}
+}
+
+// Flags for each consolidation subcommand
+var ConsolidationFlags = []cli.Flag{
+	VerboseFlag,
+	PodAddressFlag,
+	BeaconNodeFlag,
+	ExecNodeFlag,
+	SenderPkFlag,
+	EstimateGasFlag,
+	PrintJSONFlag,
+	BatchBySize(&batchSize, utils.DEFAULT_BATCH_CONSOLIDATE),
+	// &cli.BoolFlag{
+	// 	Name: "no-warn",
+	// 	Usage: "Turn off warnings for various consolidation failure states. By default, this command will prompt you if a consolidation might fail because of:\n" +
+	// 		"* invalid switch request (source already has 0x02 credentials)\n" +
+	// 		"* conflicting consolidation already in progress\n" +
+	// 		"* conflicting withdrawal requests already in progress\n" +
+	// 		"* invalid consolidation source/target\n" +
+	// 		"* ... and more.", // TODO
+	// 	Destination: &noWarn,
+	// },
+	&cli.Float64Flag{
+		Name:        "fee-overestimate-factor",
+		Aliases:     []string{"overestimate", "over"},
+		Usage:       "Specify how much to overestimate the predeploy request fee by when sending. Overestimating can help ensure your request succeeds even if the request fee changes before your transaction is included.",
+		Value:       feeOverestimateFactor,
+		Destination: &feeOverestimateFactor,
+	},
+}
+
+// Flags for each consolidation subcommand
+var RequestWithdrawalFlags = []cli.Flag{
+	VerboseFlag,
+	PodAddressFlag,
+	BeaconNodeFlag,
+	ExecNodeFlag,
+	SenderPkFlag,
+	EstimateGasFlag,
+	PrintJSONFlag,
+	BatchBySize(&batchSize, utils.DEFAULT_BATCH_WITHDRAWREQUEST),
+	// &cli.BoolFlag{
+	// 	Name: "no-warn",
+	// 	Usage: "Turn off warnings for various consolidation failure states. By default, this command will prompt you if a consolidation might fail because of:\n" +
+	// 		"* invalid switch request (source already has 0x02 credentials)\n" +
+	// 		"* conflicting consolidation already in progress\n" +
+	// 		"* conflicting withdrawal requests already in progress\n" +
+	// 		"* invalid consolidation source/target\n" +
+	// 		"* ... and more.", // TODO
+	// 	Destination: &noWarn,
+	// },
+	&cli.Float64Flag{
+		Name:        "fee-overestimate-factor",
+		Aliases:     []string{"overestimate", "over"},
+		Usage:       "Specify how much to overestimate the predeploy request fee by when sending. Overestimating can help ensure your request succeeds even if the request fee changes before your transaction is included.",
+		Value:       feeOverestimateFactor,
+		Destination: &feeOverestimateFactor,
+	},
 }
 
 // Hack to make a copy of a flag that sets `Required` to true

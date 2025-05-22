@@ -120,6 +120,7 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			IsAwaitingWithdrawalCredentialProof: utils.IsAwaitingWithdrawalCredentialProof(validator.Info, validator.Validator),
 			EffectiveBalance:                    uint64(validator.Validator.EffectiveBalance),
 			CurrentBalance:                      uint64(allBeaconBalancesGwei[validator.Index]),
+			WithdrawalPrefix:                    validator.Validator.WithdrawalCredentials[0],
 		}
 	}
 
@@ -161,7 +162,6 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 
 	if checkpointTimestamp != 0 {
 		// Change in the pod's native ETH balance (already calculated for us when the checkpoint was started)
-		fmt.Printf("pod had a checkpoint\n")
 		nativeETHDeltaWei = utils.IGweiToWei(new(big.Int).SetUint64(checkpoint.PodBalanceGwei))
 
 		// Remove already-computed delta from an in-progress checkpoint
@@ -175,7 +175,6 @@ func GetStatus(ctx context.Context, eigenpodAddress string, eth *ethclient.Clien
 			StartedAt:       checkpointTimestamp,
 		}
 	} else {
-		fmt.Printf("pod did not have a checkpoint\n")
 		latestPodBalanceWei, err := eth.BalanceAt(ctx, gethCommon.HexToAddress(eigenpodAddress), nil)
 		utils.PanicOnError("failed to fetch pod balance", err)
 
