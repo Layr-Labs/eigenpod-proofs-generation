@@ -47,6 +47,7 @@ func SubmitSwitchRequestConsent(
 	isSimulatedStr string,
 ) string {
 	return fmt.Sprintf(`	%s This will submit switch requests to your pod, updating your validators' withdrawal credential prefixes.
+	
 	Moving from 0x01 to 0x02 withdrawal prefix can NOT be undone. 0x02 validators:
 	 - Can be the 'target' of a consolidation request
 	 - Have a max effective balance of 2048 ETH
@@ -83,9 +84,8 @@ func SubmitSourceToTargetRequestConsent(
 	numSourceValidators int,
 	isSimulatedStr string,
 ) string {
-	return fmt.Sprintf(`	%s This will submit source-to-target consolidation requests to your pod, consolidating one or more source
-	validators to the specified target validator. Once these requests are processed on the beacon chain, each of your source
-	validators will be considered "exited", and their balances will move to the target validator. This is irreversible.
+	return fmt.Sprintf(`	%s This will submit source-to-target consolidation requests to your pod, consolidating one or more source validators to the specified target validator. Once these requests are processed on the beacon chain, each of your source validators will be considered "exited", and their balances will move to the target validator. 
+	This is irreversible.
 
 	Note that the beacon chain may reject consolidations if:
 	 - the target does NOT have an 0x02 withdrawal prefix
@@ -125,8 +125,7 @@ func SubmitFullExitRequestConsent(
 	totalOverestimateFee string,
 	isSimulatedStr string,
 ) string {
-	return fmt.Sprintf(`	%s This will submit validator FULL EXIT requests to your pod, fully exiting your validators from the beacon chain.
-	Like a traditional beacon-chain-initiated exit, this cannot be undone. Full exit requests can be initiated for EITHER 0x01 OR 0x02 validators.
+	return fmt.Sprintf(`	%s This will submit validator FULL EXIT requests to your pod, fully exiting your validators from the beacon chain. Like a traditional beacon-chain-initiated exit, this cannot be undone. Full exit requests can be initiated for EITHER 0x01 OR 0x02 validators.
 	
 	Note that the beacon chain may reject full exit requests if:
 	 - the validator has pending partial withdrawal requests
@@ -161,9 +160,7 @@ func SubmitPartialExitRequestConsent(
 	totalOverestimateFee string,
 	isSimulatedStr string,
 ) string {
-	return fmt.Sprintf(`	%s This will submit validator PARTIAL WITHDRAWAL requests to your pod, withdrawing part of your validator's balance from the beacon chain.
-	Partial withdrawals can only be initiated for 0x02 validators, and can only withdraw down to 32 ETH. If you want to withdraw more, it must be through a full exit; 32 ETH
-	is the minimum balance for an active validator.
+	return fmt.Sprintf(`	%s This will submit validator PARTIAL WITHDRAWAL requests to your pod, withdrawing part of your validator's balance from the beacon chain. Partial withdrawals can only be initiated for 0x02 validators, and can only withdraw down to 32 ETH. If you want to withdraw more, it must be through a full exit; 32 ETH is the minimum balance for an active validator.
 	
 	Note that the beacon chain may reject partial exit requests if:
 	 - the validator does not have the 0x02 withdrawal prefix
@@ -171,8 +168,7 @@ func SubmitPartialExitRequestConsent(
 
 	Before submitting this request, please make sure that none of these apply to you!
 
-	Note also that if you intend to use any of these validators as the _source_ for a consolidation, having an outstanding withdrawal request will cause the consolidation
-	to be skipped.
+	Note also that if you intend to use any of these validators as the _source_ for a consolidation, having an outstanding withdrawal request will cause the consolidation to be skipped.
 	
 	%s PLAN: This will call EigenPod.requestWithdrawal to request PARTIAL WITHDRAWALS for %d validators.
 	 - The EIP-7002 predeploy requires a fee sent as msg.value, depending on the number of requests in the withdrawal queue.
