@@ -442,6 +442,7 @@ func IsAwaitingWithdrawalCredentialProof(validatorInfo EigenPod.IEigenPodTypesVa
 func ForkVersions() map[uint64]string {
 	return map[uint64]string{
 		11155111: "90000069", //sepolia (https://github.com/eth-clients/sepolia/blob/main/README.md?plain=1#L66C26-L66C36)
+		560048:   "10000910", //hoodi (https://github.com/eth-clients/hoodi/blob/main/README.md)
 		17000:    "01017000", //holesky (https://github.com/eth-clients/holesky/blob/main/README.md)
 		1:        "00000000", // mainnet (https://github.com/eth-clients/mainnet)
 	}
@@ -458,8 +459,8 @@ func GetEthClient(ctx context.Context, node string) (*ethclient.Client, *big.Int
 		return nil, nil, fmt.Errorf("failed to fetch chain id: %w", err)
 	}
 
-	if chainId == nil || (chainId.Int64() != 17000 && chainId.Int64() != 1) {
-		return nil, nil, errors.New("this tool only supports the Holesky and Mainnet Ethereum Networks")
+	if chainId == nil || (chainId.Int64() != 17000 && chainId.Int64() != 1 && chainId.Int64() != 560048) {
+		return nil, nil, errors.New("this tool only supports the Holesky, Hoodi, and Mainnet Ethereum Networks")
 	}
 	return eth, chainId, nil
 }

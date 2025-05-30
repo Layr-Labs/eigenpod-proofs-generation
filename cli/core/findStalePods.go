@@ -25,8 +25,9 @@ import (
 
 func PodManagerContracts() map[uint64]string {
 	return map[uint64]string{
-		1:     "0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338",
-		17000: "0x30770d7E3e71112d7A6b7259542D1f680a70e315", //testnet holesky
+		1:      "0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338",
+		17000:  "0x30770d7E3e71112d7A6b7259542D1f680a70e315", //testnet holesky
+		560048: "0xcd1442415Fc5C29Aa848A49d2e232720BE07976c", //testnet hoodi
 	}
 }
 
