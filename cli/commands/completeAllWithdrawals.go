@@ -27,8 +27,9 @@ type TCompleteWithdrawalArgs struct {
 
 func DelegationManager(chainId *big.Int) common.Address {
 	data := map[uint64]string{
-		1:     "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A", // mainnet
-		17000: "0xA44151489861Fe9e3055d95adC98FbD462B948e7", // holesky testnet
+		1:      "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A", // mainnet
+		17000:  "0xA44151489861Fe9e3055d95adC98FbD462B948e7", // holesky testnet
+		560048: "0x867837a9722C512e0862d8c2E15b8bE220E8b87d", // hoodi testnet
 	}
 	contract, ok := data[chainId.Uint64()]
 	if !ok {
