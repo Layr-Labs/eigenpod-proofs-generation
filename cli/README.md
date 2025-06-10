@@ -60,3 +60,85 @@ Proofs are submitted to networks in batches by default. You can adjust the batch
 
 Congrats! Your pod balance is up-to-date.
 
+## Consolidation Requests
+
+#### How Does Consolidation Work?
+
+Consolidation allows you to combine multiple validator indices together, allowing your total balance to occupy fewer validator indices and saving tons of gas on checkpoint proofs. 
+
+Consolidations have a _source_ and a _target_. The _source_ is the validator index that will be "consumed", and the _target_ is where the source's balance will go once the consolidation request has been processed on the beacon chain.
+
+Consolidations are initiated through your EigenPod which forwards requests to the consolidation predeploy. In order to successfully consolidate a source to a target, there are two primary requirements to keep in mind:
+
+1. The _target_ validator must have 0x02 withdrawal credentials (and must not be exiting/exited) in order for the beacon chain to successfully process the consolidation. This is NOT checked by either the CLI or your pod.
+2. The consolidation predeploy requires each request to be sent with a "request fee", which fluctuates depending on whether more requests are being added than removed. This fee is only updated at the end of each block, so if you're sending a bunch of requests in a single transaction, the current consolidation fee applies to each of the individual requests.
+
+For more technical details and a walkthrough of how to perform a consolidation, see the [MOOCOW HackMD](https://hackmd.io/uijo9RSnSMOmejK1aKH0vw#Technical-Details).
+
+#### Required Flags
+
+All consolidation requests require the following flags in addition to command-specific flags:
+
+```
+-p podAddress
+-b beaconNodeRPC
+-e execNodeRPC
+--sender senderPrivateKey
+```
+
+#### Switch to 0x02 credentials
+
+Pass in a list of validator indices. This will initiate switch requests to change each validator's withdrawal prefix from 0x01 to 0x02. In order to be a consolidation _target_, a validator must have 0x02 credentials.
+
+```
+./cli consolidate switch --validators 425303,123444,555333
+```
+
+#### Source to Target
+
+Pass in a target index and a list of source indices. This will initiate consolidations from each source to the specified target.
+
+```
+./cli consolidate source-to-target --target 425303 --sources 123444,555333
+```
+
+## Withdrawal Requests
+
+#### How Do Withdrawal Requests Work?
+
+Withdrawal requests allow your pod to initiate partial/full withdrawals on behalf of its validators. There are two kinds of withdrawal requests:
+1. Full exits. Fully exit a validator from the beacon chain, withdrawing its entire balance to your EigenPod. This works just like a standard beacon-chain-initiated full exit.
+2. Partial withdrawals. Withdraw a portion of your validator's balance, _down to 32 ETH_. The beacon chain will still process withdrawals that would bring a validator under 32 ETH
+
+Withdrawal requests are initiated through your EigenPod which forwards requests to the withdrawal request predeploy. For more technical details, see the [MOOCOW HackMD](https://hackmd.io/uijo9RSnSMOmejK1aKH0vw#Technical-Details).
+
+#### Required Flags
+
+All withdrawal requests require the following flags in addition to command-specific flags:
+
+```
+-p podAddress
+-b beaconNodeRPC
+-e execNodeRPC
+--sender senderPrivateKey
+```
+
+#### Full Exit
+
+*(0x01 AND 0x02 validators)*
+
+Pass in a list of validator indices. This will initiate full exits from the beacon chain.
+
+```
+./cli request-withdrawal  full-exit --validators 425303,123444,555333
+```
+
+#### Partial Withdrawal
+
+*(0x02 validators only)*
+
+Pass in a list of validator indices and an equally-sized list of amounts in gwei. This will initiate partial withdrawals from the beacon chain. Note that this method will NOT allow `amountGwei == 0`, as that is a full exit.
+
+```
+./cli request-withdrawal partial --validators 425303,123444,555333 --amounts 1000000000,2000000000,3000000000
+```
