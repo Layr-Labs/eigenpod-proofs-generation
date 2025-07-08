@@ -595,52 +595,30 @@ func PanicIfNoConsent(prompt string) {
 }
 
 func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error) {
-	if noSend {
-		isSimulatingGas := owner != nil && *owner != ""
-		var senderPk = func() string {
-			if owner == nil || *owner == "" {
-				return "372d94b8645091147a5dfc10a454d0d539773d2431293bf0a195b44fa5ddbb33" // this is a RANDOM private key. Do not use this for anything.
+	isSimulatingGas := owner != nil && *owner != ""
+	senderPk, err := func() (string, error) {
+		// if we're trying to send a transaction, make sure we were supplied a private key
+		if owner == nil || *owner == "" {
+			if !noSend {
+				return "", errors.New("no private key supplied")
 			}
-			return *owner
-		}()
 
-		privateKey, err := crypto.HexToECDSA(senderPk)
-		if err != nil {
-			return nil, err
+			return "372d94b8645091147a5dfc10a454d0d539773d2431293bf0a195b44fa5ddbb33", nil // this is a RANDOM private key used as a default value. do not use.
 		}
 
-		publicKey := privateKey.Public()
-		publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-		if !ok {
-			log.Fatal("error casting public key to ECDSA")
-		}
-		fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-		auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
-		if err != nil {
-			return nil, err
-		}
+		return *owner, nil
+	}()
 
-		if !isSimulatingGas {
-			auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
-			auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
-			auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
-			auth.GasLimit = 21000
-		}
-		auth.NoSend = true
-
-		return &Owner{
-			FromAddress:        fromAddress,
-			PublicKey:          nil,
-			TransactionOptions: auth,
-			IsDryRun:           true,
-		}, nil
+	if err != nil {
+		return nil, err
 	}
 
-	if owner == nil {
-		return nil, errors.New("no owner")
+	// trim leading "0x" if needed
+	if senderPk[0:2] == "0x" {
+		senderPk = senderPk[2:]
 	}
 
-	privateKey, err := crypto.HexToECDSA(*owner)
+	privateKey, err := crypto.HexToECDSA(senderPk)
 	if err != nil {
 		return nil, err
 	}
@@ -654,6 +632,14 @@ func PrepareAccount(owner *string, chainID *big.Int, noSend bool) (*Owner, error
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	if err != nil {
 		return nil, err
+	}
+
+	auth.NoSend = noSend
+	if noSend && !isSimulatingGas {
+		auth.GasPrice = nil             // big.NewInt(10)  // Gas price to use for the transaction execution (nil = gas price oracle)
+		auth.GasFeeCap = big.NewInt(10) // big.NewInt(10) // Gas fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasTipCap = big.NewInt(2)  // big.NewInt(2) // Gas priority fee cap to use for the 1559 transaction execution (nil = gas price oracle)
+		auth.GasLimit = 21000
 	}
 
 	return &Owner{
