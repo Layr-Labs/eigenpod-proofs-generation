@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.23.10
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v1.6.0
+	github.com/Layr-Labs/eigenlayer-contracts v1.6.2
 	github.com/attestantio/go-eth2-client v0.24.0
 	github.com/ethereum/go-ethereum v1.16.1
 	github.com/fatih/color v1.18.0
