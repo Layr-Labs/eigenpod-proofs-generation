@@ -6,10 +6,13 @@ import (
 	"github.com/attestantio/go-eth2-client/spec"
 	"github.com/attestantio/go-eth2-client/spec/deneb"
 	"github.com/attestantio/go-eth2-client/spec/electra"
+	"github.com/attestantio/go-eth2-client/spec/fulu"
 )
 
 func GetGenesisTime(state *spec.VersionedBeaconState) (uint64, error) {
 	switch state.Version {
+	case spec.DataVersionFulu:
+		return state.Fulu.GenesisTime, nil
 	case spec.DataVersionElectra:
 		return state.Electra.GenesisTime, nil
 	case spec.DataVersionDeneb:
@@ -43,6 +46,9 @@ func CreateVersionedState(state interface{}) (spec.VersionedBeaconState, error) 
 	var versionedState spec.VersionedBeaconState
 
 	switch s := state.(type) {
+	case *fulu.BeaconState:
+		versionedState.Fulu = s
+		versionedState.Version = spec.DataVersionFulu
 	case *electra.BeaconState:
 		versionedState.Electra = s
 		versionedState.Version = spec.DataVersionElectra
@@ -57,21 +63,29 @@ func CreateVersionedState(state interface{}) (spec.VersionedBeaconState, error) 
 
 func UnmarshalSSZVersionedBeaconState(data []byte) (*spec.VersionedBeaconState, error) {
 	beaconState := &spec.VersionedBeaconState{}
-	electraBeaconState := &electra.BeaconState{}
-	err := electraBeaconState.UnmarshalSSZ(data)
+	fuluBeaconState := &fulu.BeaconState{}
+	err := fuluBeaconState.UnmarshalSSZ(data)
 	if err != nil {
-		// If Electra fails, try Deneb
-		denebBeaconState := &deneb.BeaconState{}
-		err = denebBeaconState.UnmarshalSSZ(data)
+		// If Fulu fails, try Electra
+		electraBeaconState := &electra.BeaconState{}
+		err = electraBeaconState.UnmarshalSSZ(data)
 		if err != nil {
-			return nil, err
+			// If Electra fails, try Deneb
+			denebBeaconState := &deneb.BeaconState{}
+			err = denebBeaconState.UnmarshalSSZ(data)
+			if err != nil {
+				return nil, err
+			} else {
+				beaconState.Deneb = denebBeaconState
+				beaconState.Version = spec.DataVersionDeneb
+			}
 		} else {
-			beaconState.Deneb = denebBeaconState
-			beaconState.Version = spec.DataVersionDeneb
+			beaconState.Electra = electraBeaconState
+			beaconState.Version = spec.DataVersionElectra
 		}
 	} else {
-		beaconState.Electra = electraBeaconState
-		beaconState.Version = spec.DataVersionElectra
+		beaconState.Fulu = fuluBeaconState
+		beaconState.Version = spec.DataVersionFulu
 	}
 
 	return beaconState, nil
@@ -80,17 +94,25 @@ func UnmarshalSSZVersionedBeaconState(data []byte) (*spec.VersionedBeaconState, 
 func MarshalSSZVersionedBeaconState(beaconState spec.VersionedBeaconState) ([]byte, error) {
 	var data []byte
 	var err error
-	// Try to marshal using Electra
-	if beaconState.Version == spec.DataVersionElectra {
+	// Try to marshal based on version
+	switch beaconState.Version {
+	case spec.DataVersionFulu:
+		data, err = beaconState.Fulu.MarshalSSZ()
+		if err != nil {
+			return nil, err
+		}
+	case spec.DataVersionElectra:
 		data, err = beaconState.Electra.MarshalSSZ()
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	case spec.DataVersionDeneb:
 		data, err = beaconState.Deneb.MarshalSSZ()
 		if err != nil {
 			return nil, err
 		}
+	default:
+		return nil, errors.New("unsupported beacon state version")
 	}
 
 	return data, nil

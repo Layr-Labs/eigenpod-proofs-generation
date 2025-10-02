@@ -77,6 +77,18 @@ func (epp *EigenPodProofs) ComputeBeaconStateRoot(state *spec.VersionedBeaconSta
 	var beaconStateRoot phase0.Root
 	var err error
 	switch state.Version {
+	case spec.DataVersionFulu:
+		beaconState := state.Fulu
+		beaconStateRoot, err = epp.loadOrComputeBeaconStateRoot(
+			beaconState.Slot,
+			func() (phase0.Root, error) {
+				stateRoot, err := beaconState.HashTreeRoot()
+				if err != nil {
+					return phase0.Root{}, err
+				}
+				return stateRoot, nil
+			},
+		)
 	case spec.DataVersionElectra:
 		beaconState := state.Electra
 		beaconStateRoot, err = epp.loadOrComputeBeaconStateRoot(
@@ -137,6 +149,8 @@ func (epp *EigenPodProofs) ComputeBeaconStateTopLevelRoots(beaconState *spec.Ver
 
 func (epp *EigenPodProofs) ComputeVersionedBeaconStateTopLevelRoots(beaconState *spec.VersionedBeaconState) (*beacon.VersionedBeaconStateTopLevelRoots, error) {
 	switch beaconState.Version {
+	case spec.DataVersionFulu:
+		return beacon.ComputeBeaconStateTopLevelRootsFulu(beaconState.Fulu)
 	case spec.DataVersionElectra:
 		return beacon.ComputeBeaconStateTopLevelRootsElectra(beaconState.Electra)
 	case spec.DataVersionDeneb:

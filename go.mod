@@ -6,7 +6,7 @@ toolchain go1.23.10
 
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.6.2
-	github.com/attestantio/go-eth2-client v0.24.0
+	github.com/attestantio/go-eth2-client v0.26.1-0.20250829122455-ff89a2135a43
 	github.com/ethereum/go-ethereum v1.16.1
 	github.com/fatih/color v1.18.0
 	github.com/ferranbt/fastssz v0.1.4
