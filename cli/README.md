@@ -17,8 +17,6 @@
 
 The CLI produces two kinds of proofs, each corresponding to a different action you can take with your eigenpod. The CLI takes an additional `--sender $EIGENPOD_OWNER_PK` argument; if supplied, the CLI will submit proofs and act onchain for you.
 
-Note that this is testnet software -- we aim to be addressing any bugs communicated with the team in a timely manner. We appreciate your understanding :) 
-
 ## Credential Proofs
 
 - Credential proofs are a way of proving that a validator belongs to a given EigenPod. Later on (via a checkpointProof) you'll then prove
