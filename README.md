@@ -23,6 +23,8 @@ PEPE Changes how we prove balances to EigenLayer. For more information, check ou
 
 # Usage
 
+- For `EigenPodGloas`, use the separate [Gloas proof generator](./gloas/README.md).
+
 - If you want to produce and submit proofs onchain -- either immediately, or by writing to a file to submit later -- check out our [CLI](./cli/README.md). The CLI can produce both credential and checkpoint proofs, and submit them onchain if given a private key.
 
 - If you want to produce proofs from within Golang, please use `cli/core:GenerateValidatorProof` or `cli/core:GenerateCheckpointProof` for our high-level APIs. These will handle downloading beacon state, interfacing with an eth node, and generating the relevant proofs. Lower level APIs are available in `prove_validator.go`.
