@@ -39,6 +39,8 @@ jobs:
       run: /home/runner/.go/bin/golangci-lint run ./cli
   test:
     runs-on: ubuntu-latest
+    env:
+      RPC_URL: http://127.0.0.1:8545
 
     steps:
     - name: Checkout code
@@ -64,9 +66,25 @@ jobs:
         curl -o data/electra_mekong_beacon_state_654719.ssz.zip https://d1w8rcimizlk6a.cloudfront.net/electra_mekong_beacon_state_654719.ssz.zip
         unzip -j data/electra_mekong_beacon_state_654719.ssz.zip -d data/
 
+    - name: Set up local EVM
+      uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1
+      with:
+        version: v1.7.1
+
+    - name: Load proof verifier
+      shell: bash
+      run: |
+        anvil --host 127.0.0.1 > "$RUNNER_TEMP/anvil.log" 2>&1 &
+        for attempt in {1..30}; do
+          if cast block-number --rpc-url "$RPC_URL" --rpc-timeout 1 > /dev/null 2>&1; then break; fi
+          sleep 1
+        done
+        bytecode=$(sed -n 's/^[[:space:]]*Bin: "\([^"]*\)",$/\1/p' bindings/BeaconChainProofsWrapper/binding.go)
+        test -n "$bytecode"
+        runtime_code=$(cast rpc --rpc-url "$RPC_URL" eth_call "{\"data\":\"$bytecode\"}" latest | jq -r .)
+        cast rpc --rpc-url "$RPC_URL" anvil_setCode 0x874Be4b0CaC8D3F6286Eee6E6196553aabA8Cb85 "$runtime_code"
+
     - name: Run tests
-      env:
-        RPC_URL: ${{ secrets.RPC_URL }}
       run: |
         go test -v ./...
   goreleaser:
