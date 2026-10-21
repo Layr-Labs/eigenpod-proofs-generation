@@ -1,0 +1,32 @@
+name: Gloas proofs
+
+on:
+  pull_request:
+    paths:
+      - 'gloas/**'
+      - '.github/workflows/gloas.yml'
+  push:
+    paths:
+      - 'gloas/**'
+      - '.github/workflows/gloas.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gloas
+    env:
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: gloas/go.mod
+          cache-dependency-path: gloas/go.sum
+      - run: go test ./...
+      - run: go vet ./...
+      - run: go build -o "$RUNNER_TEMP/gloasproof" ./cmd/gloasproof

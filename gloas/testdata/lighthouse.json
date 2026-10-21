@@ -1,0 +1,31 @@
+{
+  "client": "Lighthouse/v8.3.0-ce6f8f0/aarch64-linux",
+  "image": "ethpandaops/lighthouse@sha256:ffe5457af11463b1d69e55b5a396c2995ace3555a4fe145ad29d8913c82c7306",
+  "validators": 2050,
+  "stateSHA256": "29d7cb9c29f25574fa0d635a3d80b867bd1586fc186ae5c37797271f3432fd3a",
+  "expectedRoot": "0xb71ac1167ea2ab769b50a6a22bc3a97e0b6d85ed28ac3f5ab86a0d375d4b9be1",
+  "executionParent": "0x8155fe20161fc810ae2a8d4bfc478d0128a1c7b83d7cc51fc831ccacdf5c5b03",
+  "header": {
+    "slot": "431",
+    "proposer_index": "320",
+    "parent_root": "0x889202e00e5499ea7336ccd543c2b5a5ba19fe1468d5e3e0aa5cf5511a34d1af",
+    "state_root": "0x6974b6d2efe6c76d8564bb5c293106fd8ffce36b5f30d5e8378c045d36219d76",
+    "body_root": "0x32e1164be72efaeb57bba0758108e03b4c941a7ffb878831fce51a5e51729498"
+  },
+  "indices": [
+    0,
+    1,
+    4,
+    5,
+    20,
+    21,
+    84,
+    85,
+    340,
+    341,
+    1364,
+    1365,
+    2048,
+    2049
+  ]
+}

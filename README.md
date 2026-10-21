@@ -9,7 +9,7 @@ At all times, refer to the `mainnet`, `testnet`, and `preprod` git tags to under
 | Environment    |     Version   |
 | -------------- | ------------- |
 | Mainnet                 |       [v1.6.1](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/v1.6.1) |
-| Testnet(Hoodi & Holesky)|       [v1.6.1](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/v1.6.1) |
+| Hoodi (before Gloas) |       [v1.6.1](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/v1.6.1) |
 | Preprod                 |       [v1.6.1](https://github.com/Layr-Labs/eigenpod-proofs-generation/releases/tag/v1.6.1) |
 
 # Introduction
@@ -22,6 +22,11 @@ PEPE Changes how we prove balances to EigenLayer. For more information, check ou
 - [Contract Documentation](https://github.com/Layr-Labs/eigenlayer-contracts/blob/feat/partial-withdrawal-batching/docs/core/EigenPod.md)
 
 # Usage
+
+- For `EigenPodGloas`, use the separate [Gloas proof generator](./gloas/README.md).
+  The root CLI's proof commands do not support post-Gloas Hoodi state. The Gloas
+  CLI currently reads local SSZ/header files and emits arguments; it does not
+  fetch state or submit transactions.
 
 - If you want to produce and submit proofs onchain -- either immediately, or by writing to a file to submit later -- check out our [CLI](./cli/README.md). The CLI can produce both credential and checkpoint proofs, and submit them onchain if given a private key.
 
