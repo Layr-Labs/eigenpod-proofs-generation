@@ -43,3 +43,13 @@ with a fresh root; historical proofs are unnecessary.
 The CLI reads local files and prints JSON arguments; it does not submit
 transactions. Memory use grows with validator count because it builds a tree
 for the complete state. Run `CGO_ENABLED=0 go test ./...` to check the module.
+
+Tests include an archived Lighthouse Gloas SSZ state, its client root and SHA-256
+checksum in `testdata/`. Export synthetic and real-client Solidity proof vectors
+with `GLOAS_FIXTURE_DIR=/absolute/output CGO_ENABLED=0 go test -run 'TestExportFixtures|TestRealClientProofs'`.
+Synthetic fault vectors deliberately exercise states rejected by consensus.
+
+A measured synthetic two-million-validator full-state run used 3,164,205,056
+bytes peak RSS and took 8.414 s on Linux arm64 with 2 CPU / 4 GiB limits.
+That is a sizing reference, not a live-mainnet measurement. Benchmark tree
+construction with `CGO_ENABLED=0 go test -run '^$' -bench 'BenchmarkGenerator/2000000$' -benchtime=1x -benchmem`.
